@@ -79,7 +79,7 @@ def triage_literal( name, E ):
 def main():
     E = Global_E
     input = Input(sys.stdin)
-    prompt = ">>> "
+    prompt = "* "
     sys.stdout.write(prompt);
     sys.stdout.flush()
     repl = input.read(E)

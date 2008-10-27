@@ -52,6 +52,7 @@ def is_true(val):
     elif val==0: return False
     else: return True
 
+
 class Exception():
     def __init__( self, child, text ):
         self.child = child
@@ -114,7 +115,6 @@ class PyFunction():
         self.body = body  #a Python function object
         self.E = E
     def apply( self, args, call_E ):
-        print "Applying function..."
         hung_E = Environment(self.E)
         ## not a recursive function; don't be confused
         return apply(self.body,[hung_E,[lisp_eval(i,call_E) for i in args]])
@@ -122,7 +122,7 @@ class PyFunction():
 def py_eval( E, args ):
     if len(args)!=1:
         return Exception(None, "Expected 1 argument. Got %i."%len(args))
-    return args[0]
+    return lisp_eval(args[0],E)
 def py_cons( E, args ):
     if len(args)!=2:
         return Exception(None, "Expected 2 arguments. Received %i." % len(args))
