@@ -84,7 +84,7 @@ class Environment():
             self.symbols = []
     def get_symbol( self, name ):
         if self.parent: #only the global environ stores Symbol objects
-            return get_symbol(self.parent, name)
+            return self.parent.get_symbol(name)
         else:
             hits = [ sym for sym in self.symbols if sym.name==name ]
             if hits:
@@ -201,9 +201,6 @@ def py_modulo( E, args ):
         return Exception( None, "Expected 2 args. Received %i." % len(args))
     return args[0]%args[1]
 def py_equal( E, args ):
-    for i in args:
-        if type(i)!=type(1) and type(i)!=type(1.0):
-            return Exception(None, "Expected numbers only.")
     if len(args)!=2:
         return Exception( None, "Expected 2 args. Received %i." % len(args))
     return args[0]==args[1]
@@ -223,11 +220,16 @@ def py_not( E, args ):
         return Nil()
     else:
         return 1
-
 def py_print( E, args ):
     for i in args:
         print tostring(i),
     print
+def py_listp( E, args ):
+    return isinstance(args[0],Cons) or isinstance(args[0],Nil)
+def py_nullp( E, args ):
+    if not isinstance(args[0],Nil) and not isinstance(args[0],Cons):
+        return Exception(None,'"null?" expects a list')
+    return isinstance(args[0],Nil)
 
 
 fn_bindings = (("eval",py_eval),
@@ -243,7 +245,9 @@ fn_bindings = (("eval",py_eval),
                ("<",py_less),
                ("and", py_and),
                ("not",py_not),
-               ("print",py_print))
+               ("print",py_print),
+               ("isls",py_listp),
+               ("null",py_nullp))
 
 class LispFunction():
     def __init__( self, arg_list, has_rest, rest_sym, body, E ):
@@ -316,15 +320,24 @@ def py_quote( E, args ):
     if isinstance( arg, Cons ):
         if arg.car() == E.get_symbol("unquote"):
             if isinstance(arg.cdr(),Nil):
-                return Nil()
+                return Exception(None,"unquote needs an argument")
             elif not isinstance(arg.cdr().cdr(),Nil):
                 return Exception(None,"unquote received too many arguments")
             else:
                 return lisp_eval(arg.cdr().car(),E)
         else:
             arg = arg.python_list()
-            for i in range(len(arg)):
-                arg[i] = py_quote(E,[arg[i]])
+            for i in range(len(arg)-1,-1,-1):
+                if isinstance(arg[i],Cons) and arg[i].car()==E.get_symbol("unquote-splice"):
+                    if isinstance(arg[i].cdr(),Nil):
+                        return Exception(None,"unquote-splice needs an argument")
+                    elif not isinstance(arg[i].cdr().cdr(),Nil):
+                        return Exception(None,"unquote-splice received too many arguments")
+                    else:
+                        lower_level = lisp_eval(arg[i].cdr().car(),E).python_list()
+                        arg = arg[:i] + lower_level + arg[i+1:]
+                else:
+                    arg[i] = py_quote(E,[arg[i]])
             return make_cons_list(arg)
     else:
         return arg
@@ -375,6 +388,40 @@ def py_define( E, args ):
         # </hack>
         fun = LispFunction( lambda_args[1:], has_rest, rest_sym, args[1:], E )
         E.bind_symbol(lambda_args[0],fun)
+    else:
+        return Exception(None, "Malformed definition.")
+def py_defglobal( E, args ):
+    bind_E = E.parent
+    while bind_E.parent:
+        bind_E = bind_E.parent
+    if len(args)<2:
+        return Exception(None, "Expected at least 2 arguments. "
+                         "Received %i."%len(args))
+    if isinstance(args[0],Symbol):
+        if len(args)>2:
+            return Exception(None, "Define received too many arguments.")
+        val = lisp_eval(args[1],E)
+        if isinstance(val,Exception):
+            return val #which is an exception
+        bind_E.bind_symbol(args[0],val)
+    elif isinstance(args[0],Cons):
+        lambda_args = args[0].python_list()
+        if len(lambda_args)==0:
+            return Exception(None, "Empty args list.")
+        if isinstance(lambda_args,Exception):
+            return Exception(lambda_args, "Couldn't parse args list.")
+        ### hack for &rest
+        names = [i.name for i in lambda_args]
+        has_rest = False
+        rest_sym = Nil()
+        if "&rest" in names:
+            index = names.index("&rest")
+            has_rest = True
+            rest_sym = lambda_args[index+1]
+            lambda_args = lambda_args[:index]
+        # </hack>
+        fun = LispFunction( lambda_args[1:], has_rest, rest_sym, args[1:], E )
+        bind_E.bind_symbol(lambda_args[0],fun)
     else:
         return Exception(None, "Malformed definition.")
 def py_defmacro( E, args ):
@@ -453,6 +500,7 @@ def py_funcall( E, args ):
 sf_bindings = (("quote",py_quote),
                ("lambda",py_lambda),
                ("def",py_define),
+               ("def-global",py_defglobal),
                ("if",py_if),
                ("while",py_while),
                ("break",py_break),
