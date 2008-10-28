@@ -1,0 +1,61 @@
+no function should ever need to make sure that it's
+arguments are legally lists. This should be checked by eval or apply.
+
+difference between interactive and noninteractive
+regarding postfix operators.
+
+"let" needs to check for globalness to do temporary replaces.
+it should also be able to temporarily overwrite car's, cdr's,
+and other data fields in the same temporary way.
+
+"if" should take an arbitrary number of args, as in "cond" but w/o
+parentheses. like arc.
+
+(for i in list do
+     a
+     b
+     c)
+(for i is 1 to 10 keep 
+(for i 
+
+(if a b
+    c d
+    e f
+      g)
+
+(let a b)
+
+(ret x)
+
+
+TYPES:
+Cons
+Atom:
+  Int
+  Float
+  Array
+  Dict
+  String
+  Fn
+  Form
+
+PREDEFINED FORMS:
+quote
+fn (lambda)
+def
+def-locally (will be called by "let")
+deform
+call
+if (subsumes cond)
+do
+tag goto ret unwind-protect (will modify Stack objects)
+
+PREDEFINED PYTHON FUNCTIONS:
+eval
+cons car cdr setcar setcdr
++ - * / // % = < <= > >=
+and or not
+{array,dict,string}
+null
+isnum iscons ...
+pr (print) ...

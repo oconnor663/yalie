@@ -2,13 +2,11 @@
     rest)
 
 (def (append &rest rest)
-    (if (not rest)
+    (if (null rest)
 	()
-	(if (= 1 (len rest))
-	    (car rest)
-	    (if (not (car rest))
-		(call append (cdr rest))
-		(cons (car (car rest)) (call append (cons (cdr (car rest)) (cdr rest))))))))
+	(if (null (car rest))
+	    (call append (cdr rest))
+	    (cons (car (car rest)) (call append (cons (cdr(car rest)) (cdr rest)))))))
 
 (def (len list)
     (if (not list)
