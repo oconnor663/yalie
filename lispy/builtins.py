@@ -52,6 +52,17 @@ def is_true(val):
     elif val==0: return False
     else: return True
 
+class Callstack():
+    def __init__( self ):
+        self.stack = Nil()
+
+class Block():
+    ### Everything with a &body (including a whole code file)
+    ### will implicitly drop a block. All blocks can contain
+    ### (tag x) and (goto x) forms.
+    def __init__( self, body ):
+        self.body = body # Py list of lisp expressions
+        
 
 class Exception():
     def __init__( self, child, text ):
@@ -91,6 +102,12 @@ class Symbol():
         self.name = name
         self.is_global = False
 
+def make_cons_list( py_list ):
+    ret = Nil()
+    for i in range(len(py_list)-1,-1,-1):
+        ret = Cons(py_list[i],ret)
+    return ret
+        
 class Cons():
     def __init__( self, ar, dr ):
         self.ar = ar
@@ -219,12 +236,15 @@ fn_bindings = (("eval",py_eval),
                ("print",py_print))
 
 class LispFunction():
-    def __init__( self, arg_list, body, E ):
+    def __init__( self, arg_list, has_rest, rest_sym, body, E ):
         self.arg_list = arg_list    #a list of Lisp symbols
+        self.has_rest = has_rest
+        self.rest_sym = rest_sym
         self.body = body            #a list of Lisp expressions
         self.E = E
     def apply( self, args, call_E ):
-        if len(args)!=len(self.arg_list):
+        if len(args)!=len(self.arg_list) \
+                and not (self.has_rest and len(args)>len(self.arg_list)):
             return Exception(None,
                              "Expected %i arguments. Received %i." \
                                  % (len(self.arg_list),len(args)))
@@ -234,6 +254,9 @@ class LispFunction():
             if isinstance(val,Exception):
                 return val
             hung_E.bind_symbol( a,val )
+        if self.has_rest:
+            hung_E.bind_symbol( self.rest_sym,
+                                make_cons_list(args[len(self.arg_list):]))
         for expr in self.body:
             ret = lisp_eval( expr, hung_E )
             if isinstance(ret,Exception):
@@ -273,10 +296,20 @@ def py_lambda( E, args ):
     if not isinstance(args[0],Cons) and not isinstance(args[0],Nil):
         return Exception(None, "Lambda requires an argument list.")
     lambda_args = args[0].python_list()
+    ### hack for &rest
+    names = [i.name for i in lambda_args]
+    has_rest = False
+    rest_sym = Nil()
+    if "&rest" in names:
+        index = names.index("&rest")
+        has_rest = True
+        rest_sym = lambda_args[index+1]
+        lambda_args = lambda_args[:index]
+    # </hack>
     if isinstance(lambda_args,Exception):
         return lambda_args #which is an exception
     body = args[1:]
-    return LispFunction( lambda_args, body, E )
+    return LispFunction( lambda_args, has_rest, rest_sym, body, E )
 def py_define( E, args ):
     if len(args)<2:
         return Exception(None, "Expected at least 2 arguments. "
@@ -290,11 +323,21 @@ def py_define( E, args ):
         E.bind_symbol(args[0],val)
     elif isinstance(args[0],Cons):
         lambda_args = args[0].python_list()
+        ### hack for &rest
+        names = [i.name for i in lambda_args]
+        has_rest = False
+        rest_sym = Nil()
+        if "&rest" in names:
+            index = names.index("&rest")
+            has_rest = True
+            rest_sym = lambda_args[index+1]
+            lambda_args = lambda_args[:index]
+        # </hack>
         if len(lambda_args)==0:
             return Exception(None, "Empty args list.")
         if isinstance(lambda_args,Exception):
             return Exception(lambda_args, "Couldn't parse args list.")
-        fun = LispFunction( lambda_args[1:], args[1:], E )
+        fun = LispFunction( lambda_args[1:], has_rest, rest_sym, args[1:], E )
         E.bind_symbol(lambda_args[0],fun)
     else:
         return Exception(None, "Malformed definition.")

@@ -77,7 +77,20 @@ def triage_literal( name, E ):
         return E.get_symbol(name)
 
 def main():
-    E = Global_E
+    E = Global_E #this contains builtin python functions
+
+    ### First read-in builtin lisp functions
+    input = Input(open("builtins.lp","r"))
+    line = input.read(E)
+    while line:
+        val = lisp_eval( line, E )
+        string = tostring(val)
+        if isinstance(val,Exception):
+            print "Error in builtins.lp"
+            print string
+            return 1
+        line = input.read(E)
+
     input = Input(sys.stdin)
     prompt = "* "
     sys.stdout.write(prompt);
@@ -89,7 +102,7 @@ def main():
         if string!='':
             sys.stdout.write(string+'\n')
         if isinstance(val,Exception) and not sys.stdin.isatty():
-            return 1
+            return 2
         sys.stdout.write(prompt);
         sys.stdout.flush()
         repl = input.read(E)
