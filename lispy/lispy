@@ -8,6 +8,9 @@ class Input():
         self.input = input
         self.buf = None
 
+    def is_interactive( self ):
+        return self.input.isatty()
+
     def read( self, E ):    
         def read_1(self):
             if self.buf:
@@ -92,19 +95,22 @@ def main():
         line = input.read(E)
 
     input = Input(sys.stdin)
-    prompt = "* "
-    sys.stdout.write(prompt);
-    sys.stdout.flush()
+    prompt = "> "
+    retprompt = ""
+    if input.is_interactive():
+        sys.stdout.write(prompt);
+        sys.stdout.flush()
     repl = input.read(E)
     while repl:
         val = lisp_eval( repl, E )
         string = tostring(val)
-        if string!='':
-            sys.stdout.write(string+'\n')
+        if input.is_interactive():
+            if string!='':
+                sys.stdout.write(retprompt+string+'\n')
+            sys.stdout.write(prompt);
+            sys.stdout.flush()
         if isinstance(val,Exception) and not sys.stdin.isatty():
             return 2
-        sys.stdout.write(prompt);
-        sys.stdout.flush()
         repl = input.read(E)
     if sys.stdin.isatty():
         print

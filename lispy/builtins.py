@@ -9,14 +9,21 @@ def lisp_eval( expr, E ):
         if isinstance(rest,Exception):
             return rest #which is an exception
         if (isinstance(f,PyFunction) or
-               isinstance(f,LispFunction) or
-               isinstance(f,SpecialForm) or
-               isinstance(f,LispMacro)):
+            isinstance(f,LispFunction)):
+            rest = [ lisp_eval(i,E) for i in rest ]
+            for i in rest:
+                if isinstance(i,Exception):
+                    return Exception(i,'In "%s":'%tostring(expr.car()))
+            ret = f.apply(rest,E)
+            if isinstance(ret,Exception):
+                ret = Exception(ret, 'In "%s":'% tostring(expr.car()))
+        elif (isinstance(f,SpecialForm) or
+              isinstance(f,LispMacro)):
             ret = f.apply(rest,E)
             if isinstance(ret,Exception):
                 ret = Exception(ret, 'In "%s":'% tostring(expr.car()))
         else:
-            raise RuntimeError, "Not implemented!!!"
+            ret = Exception( None, '"%s" is not a function' % tostring(expr.car()))
     else:
         ret = expr
     return ret
@@ -134,7 +141,10 @@ class PyFunction():
     def apply( self, args, call_E ):
         hung_E = Environment(self.E)
         ## not a recursive function; don't be confused
-        return apply(self.body,[hung_E,[lisp_eval(i,call_E) for i in args]])
+        for i in args:
+            if isinstance(i,Exception):
+                return i
+        return apply(self.body,[hung_E,args]) #arg evaluation is handled by lisp_eval
 
 def py_eval( E, args ):
     if len(args)!=1:
@@ -250,13 +260,18 @@ class LispFunction():
                                  % (len(self.arg_list),len(args)))
         hung_E = Environment(self.E)
         for i,a in enumerate(self.arg_list):
-            val = lisp_eval(args[i],call_E)
+            val = args[i] #evaluation of this is handled by lisp_eval
             if isinstance(val,Exception):
                 return val
             hung_E.bind_symbol( a,val )
         if self.has_rest:
-            hung_E.bind_symbol( self.rest_sym,
-                                make_cons_list(args[len(self.arg_list):]))
+            rest = []
+            for i,a in enumerate(args[len(self.arg_list):]):
+                val = a #as above
+                if isinstance(val,Exception):
+                    return val
+                rest.append(val)
+            hung_E.bind_symbol( self.rest_sym, make_cons_list(rest) )
         for expr in self.body:
             ret = lisp_eval( expr, hung_E )
             if isinstance(ret,Exception):
@@ -264,18 +279,24 @@ class LispFunction():
         return ret
 
 class LispMacro():
-    def __init__( self, arg_list, body, E ):
+    def __init__( self, arg_list, has_rest, rest_sym, body, E ):
         self.arg_list = arg_list
+        self.has_rest = has_rest
+        self.rest_sym = rest_sym
         self.body = body
         self.E = E
     def apply( self, args, call_E ):
-        if len(args)!=len(self.arg_list):
+        if len(args)!=len(self.arg_list) \
+                and not (self.has_rest and len(args)>len(self.arg_list)):
             return Exception(None,
                              "Expected %i arguments. Received %i." \
                                  % (len(self.arg_list),len(args)))
         hung_E = Environment(self.E)
         for i,a in enumerate(self.arg_list):
             hung_E.bind_symbol( a,args[i] )
+        if self.has_rest:
+            hung_E.bind_symbol( self.rest_sym,
+                                make_cons_list(args[len(self.arg_list):]))
         for expr in self.body:
             ret = lisp_eval( expr, hung_E )
             if isinstance(ret,Exception):
@@ -291,7 +312,22 @@ class SpecialForm():
 def py_quote( E, args ):
     if len(args)!=1:
         return Exception(None, "Expected 1 argument. Received %i."%len(args))
-    return args[0]
+    arg = args[0]
+    if isinstance( arg, Cons ):
+        if arg.car() == E.get_symbol("unquote"):
+            if isinstance(arg.cdr(),Nil):
+                return Nil()
+            elif not isinstance(arg.cdr().cdr(),Nil):
+                return Exception(None,"unquote received too many arguments")
+            else:
+                return lisp_eval(arg.cdr().car(),E)
+        else:
+            arg = arg.python_list()
+            for i in range(len(arg)):
+                arg[i] = py_quote(E,[arg[i]])
+            return make_cons_list(arg)
+    else:
+        return arg
 def py_lambda( E, args ):
     if not isinstance(args[0],Cons) and not isinstance(args[0],Nil):
         return Exception(None, "Lambda requires an argument list.")
@@ -323,6 +359,10 @@ def py_define( E, args ):
         E.bind_symbol(args[0],val)
     elif isinstance(args[0],Cons):
         lambda_args = args[0].python_list()
+        if len(lambda_args)==0:
+            return Exception(None, "Empty args list.")
+        if isinstance(lambda_args,Exception):
+            return Exception(lambda_args, "Couldn't parse args list.")
         ### hack for &rest
         names = [i.name for i in lambda_args]
         has_rest = False
@@ -333,10 +373,6 @@ def py_define( E, args ):
             rest_sym = lambda_args[index+1]
             lambda_args = lambda_args[:index]
         # </hack>
-        if len(lambda_args)==0:
-            return Exception(None, "Empty args list.")
-        if isinstance(lambda_args,Exception):
-            return Exception(lambda_args, "Couldn't parse args list.")
         fun = LispFunction( lambda_args[1:], has_rest, rest_sym, args[1:], E )
         E.bind_symbol(lambda_args[0],fun)
     else:
@@ -351,7 +387,17 @@ def py_defmacro( E, args ):
             return Exception(None, "Empty args list.")
         if isinstance(lambda_args,Exception):
             return Exception(lambda_args, "Couldn't parse args list.")
-        macro = LispMacro( lambda_args[1:], args[1:], E )
+        ### hack for &rest
+        names = [i.name for i in lambda_args]
+        has_rest = False
+        rest_sym = Nil()
+        if "&rest" in names:
+            index = names.index("&rest")
+            has_rest = True
+            rest_sym = lambda_args[index+1]
+            lambda_args = lambda_args[:index]
+        # </hack>
+        macro = LispMacro( lambda_args[1:], has_rest, rest_sym, args[1:], E )
         E.bind_symbol(lambda_args[0],macro)
     else:
         return Exception(None, "Malformed macro definition.")
@@ -398,6 +444,11 @@ def py_while( E, args ):
     return ret
 def py_break( E, args ):
     return Break()
+def py_funcall( E, args ):
+    new_args = lisp_eval(args[1],E).python_list()
+    return lisp_eval(args[0],E).apply(new_args,E) ### NB: this apply circumvents argument evaluation
+                                                  ###     that is usually done by lisp_eval
+    
 
 sf_bindings = (("quote",py_quote),
                ("lambda",py_lambda),
@@ -405,7 +456,8 @@ sf_bindings = (("quote",py_quote),
                ("if",py_if),
                ("while",py_while),
                ("break",py_break),
-               ("deform",py_defmacro))
+               ("deform",py_defmacro),
+               ("call",py_funcall))
 
 Global_E = Environment(None)
 variable_bindings = (("t",Global_E.get_symbol('t')),
