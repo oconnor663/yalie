@@ -1,31 +1,55 @@
-no function should ever need to make sure that it's
-arguments are legally lists. This should be checked by eval or apply.
+no function should ever need to make sure that it's arguments are
+legally lists. This should be checked by eval or apply.
 
-difference between interactive and noninteractive
-regarding postfix operators.
+difference between interactive and noninteractive regarding postfix
+operators. (no. require that postfixing of array ref [and of
+method/member ref?] have no whitespace)
 
-"let" needs to check for globalness to do temporary replaces.
-it should also be able to temporarily overwrite car's, cdr's,
-and other data fields in the same temporary way.
+"let" needs to check for globalness to do temporary replaces.  it
+should also be able to temporarily overwrite car's, cdr's, and other
+data fields in the same temporary way. (how would the (let a b)
+operator resolve its own scope? perhaps it can refuse to do that
+because of the parens required to take a car. but the same problem
+exists for global variables...)
+
+can let define a recursive function? lambda has to hang on its lexical
+scope, but 
+(let a (lambda (x)
+       	 (if (= x 0)
+	     x 
+	     (a (- x 1)))))
 
 "if" should take an arbitrary number of args, as in "cond" but w/o
 parentheses. like arc.
 
-(for i in list do
-     a
-     b
-     c)
-(for i is 1 to 10 keep 
-(for i 
+Member/method reference: Classes superclass Environment? Environments
+as objects? The member operator "." finds the member in the referenced
+namespace. If the member is a function (method), it will be wrapped in
+a lambda that automatically passes the instance as the first argument.
 
-(if a b
-    c d
-    e f
-      g)
+OR--
+Member operator is ':' and operates on symbol lookup. Namespaces
+(envs) need to be objects in userspace!!! Symbol lookup knows how to
+tell the difference between a namespace (or classdef) and an instance
+of a class with regard to wrapping methods in the appropriate
+lambda. YESSSS!!!!! This is how to do it.
 
-(let a b)
+Builtin polymorphic functions should check for class methods.
 
-(ret x)
+There will be no Python Class/Lisp Class dichotomy, as there is for
+functions and forms.
+
+class Lispy_Class():
+   def __init__( self, E, parents_list ):
+   	  self.E = E  #E is kept solely for associating new methods
+	  	      #with their lexical scope. No method/member
+	      	      #lookups will use it.
+	  self.parents_list = parents_list
+   def lookup( self, symbol ):
+       ### Will need to be prepared to wrap methods.
+
+(class My_Class (Parent1 ... Parentn)
+   (
 
 
 TYPES:
@@ -37,7 +61,10 @@ Atom:
   Dict
   String
   Fn
-  Form
+  Forn
+  Env?
+  Stack?
+  Class/Instance?
 
 PREDEFINED FORMS:
 quote
@@ -47,8 +74,14 @@ def-locally (will be called by "let")
 deform
 call
 if (subsumes cond)
-do
-tag goto ret unwind-protect (will modify Stack objects)
+tag goto ret unwind-protect (Py?) (will modify Stack objects)
+
+PREDEFINED LISP FORMS:
+for
+while
+do (optional block name?)
+let
+ref
 
 PREDEFINED PYTHON FUNCTIONS:
 eval
@@ -59,3 +92,10 @@ and or not
 null
 isnum iscons ...
 pr (print) ...
+
+PREDEFINED LISP FUNCTIONS
+ls (list)
+len
+map
+append
+ret
