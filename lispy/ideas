@@ -1,3 +1,5 @@
+Eventually add support for pronouns :)
+
 no function should ever need to make sure that it's arguments are
 legally lists. This should be checked by eval or apply.
 
@@ -66,7 +68,7 @@ Atom:
   Stack?
   Class/Instance?
 
-PREDEFINED FORMS:
+SPECIAL FORMS:
 quote
 fn (lambda)
 def
@@ -92,6 +94,7 @@ and or not
 null
 isnum iscons ...
 pr (print) ...
+dir (as in Python!)
 
 PREDEFINED LISP FUNCTIONS
 ls (list)
