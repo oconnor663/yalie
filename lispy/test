@@ -1,0 +1,9 @@
+from rewrite import *
+
+E = Environment(None)
+
+plus_fn = PyCode( (lambda x,y:x+y) )
+E.bind_sym(E.get_sym("+"),plus_fn)
+
+expr = Cons(E.get_sym("+"),Cons(1,Cons(1,None)))
+print lisp_eval(expr,E)
