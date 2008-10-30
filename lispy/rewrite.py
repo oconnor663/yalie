@@ -86,8 +86,9 @@ def lisp_eval( expr, env ):
                 cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
             else:  # arg is an S-exp
                 cur_stack.receiving_arg = True
+                tmp = cur_stack.arg_ptr.car
                 cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
-                cur_stack = Callstack( cur_stack.arg_ptr.car,
+                cur_stack = Callstack( tmp,
                                        cur_stack,
                                        Environment(cur_stack.env) )
 
@@ -111,8 +112,9 @@ def lisp_eval( expr, env ):
                     ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 else:
+                    tmp = cur_stack.body_ptr.car
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
-                    cur_stack = Callstack( cur_stack.body_ptr.car,
+                    cur_stack = Callstack( tmp,
                                            cur_stack,
                                            Environment(cur_stack.env) )
 
