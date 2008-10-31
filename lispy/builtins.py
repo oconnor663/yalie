@@ -56,6 +56,31 @@ def geq( a, b ):
     return a <= b
 Geq = PyCode(geq,'<=')
 
-def plus( a, b ):
-    return a + b
+def plus( *args ):
+    return sum(args)
 Plus = PyCode(plus,'+')
+
+def minus( *args ):
+    if len(args)<2: return -sum(args)
+    else: return args[0] - sum(args[1:])
+Minus = PyCode(minus,'-')
+
+def times( *args ):
+    ret = 1
+    for i in args:
+        ret *= i
+    return ret
+Times = PyCode(times,'*')
+
+def divide( *args ):
+    if len(args)<2: return 1.0/args[0]
+    else:
+        ret = args[0]
+        for i in args[1:]:
+            ret /= i
+    return ret
+Divide = PyCode(divide,'/')
+
+def remainder( a, b ):
+    return a%b
+Remainder = PyCode(remainder,'%')

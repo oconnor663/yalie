@@ -1,0 +1,116 @@
+#! /usr/bin/python
+
+import string,sys
+from core import *
+
+class Input():
+    def __init__( self, input ):
+        self.input = input
+        self.buf = None
+
+    def is_interactive( self ):
+        return self.input.isatty()
+
+    def read( self, E ):    
+        def read_1(self):
+            if self.buf:
+                tmp=self.buf
+                self.buf = None
+                return tmp
+            else:
+                return self.input.read(1)
+
+        def buffer(self,c):
+            if self.buf:
+                raise RuntimeError, "PROBLEM!"
+            self.buf = c
+
+        def read_token( self, E ):
+            PARENS = ( "(", ")" )
+            TOKENS = ( "`", ",",".",":" )
+            c = read_1(self)
+            while c in string.whitespace and c!='':
+                c = read_1(self)
+            if c=='':
+                return None
+            if c in PARENS:
+                return c  ### Parens aren't symbols. They're handled below.
+            if c in TOKENS:
+                name = c
+            else:
+                name = []
+                while c not in string.whitespace \
+                        and c not in TOKENS \
+                        and c not in PARENS \
+                        and c!='':
+                    name.append(c)
+                    c = read_1(self)
+                buffer(self,c) ###KEEPING TRACK OF THE READ-AHEAD
+                name = string.join(name,'')
+            return triage_literal(name,E)
+
+        def read_sexp( self, E ):
+            t = read_token(self, E)
+            if t=='(':
+                return Cons( read_sexp(self, E), read_sexp(self,E ) )
+            elif t==')':
+                return None
+            elif t==None:
+                raise RuntimeError, "Missing paren."
+            else:
+                return Cons( t, read_sexp(self, E) )
+
+        t = read_token(self,E)
+        if t==')':
+            raise RuntimeError, "mismatched paren"
+        elif t=='(':
+            return read_sexp(self,E)
+        else:
+            return t
+
+def triage_literal( name, E ):
+    for i in name:
+        if i not in string.digits:
+            break
+    else:
+        return int(name)
+    try:
+        return float(name)
+    except ValueError:
+        return E.get_sym(name)
+
+def main():
+    E = Environment(None)
+
+    ### First read-in builtin lisp functions
+    input = Input(open("rc.lisp","r"))
+    line = input.read(E)
+    while line:
+        val = lisp_eval( line, E )
+        if isinstance(val,Exception):
+            print "Error in builtins.lp"
+            print val
+            return 1
+        line = input.read(E)
+
+    input = Input(sys.stdin)
+    prompt = "> "
+    retprompt = ""
+    if input.is_interactive():
+        sys.stdout.write(prompt);
+        sys.stdout.flush()
+    repl = input.read(E)
+    while repl:
+        val = lisp_eval( repl, E )
+        if input.is_interactive():
+            sys.stdout.write(retprompt+repr(val)+'\n')
+            sys.stdout.write(prompt);
+            sys.stdout.flush()
+        if isinstance(val,Exception) and not sys.stdin.isatty():
+            return 2
+        repl = input.read(E)
+    if sys.stdin.isatty():
+        print
+
+if __name__=='__main__':
+    main()
