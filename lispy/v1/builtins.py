@@ -498,7 +498,7 @@ def py_funcall( E, args ):
     
 
 sf_bindings = (("quote",py_quote),
-               ("lambda",py_lambda),
+               ("fn",py_lambda),
                ("def",py_define),
                ("def-global",py_defglobal),
                ("if",py_if),

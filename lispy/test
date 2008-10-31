@@ -2,10 +2,27 @@ from rewrite import *
 
 E = Environment(None)
 
+p = E.get_sym("+")
+q = E.get_sym("mine")
+x = E.get_sym("x")
+
 plus_fn = PyCode( (lambda x,y:x+y) )
-E.bind_sym(E.get_sym("+"),plus_fn)
+E.bind_sym(p,plus_fn)
 
-expr = Cons(E.get_sym("+"),Cons(1,Cons(Cons(E.get_sym("+"),Cons(1,Cons(1,None))),None)))
+expr = Cons(E.get_sym("+"),
+            Cons(1,Cons(Cons(E.get_sym("+"),
+			     Cons(1,Cons(1,None))),
+ 			None)))
+print expr
+print lisp_eval(expr,E)
 
+print
+print
+
+plus_1 = LispCode( Cons(Cons(p,Cons(x,Cons(1,None))),None),
+		   Cons(x,None) )
+E.bind_sym(q,plus_1)
+
+expr = Cons(q,Cons(9,None))
 print expr
 print lisp_eval(expr,E)

@@ -1,3 +1,14 @@
+Everything an object?
+How does python handle "a = 7 ; if x: ..." for printint value?
+Are python functions/classes objects themselves?
+
+
+Symbols referenced from an imported module do not actually have to be
+the exact same objects as the originals. The Global environment can
+create a new symbol object whose lookup properties point work
+differently from that symbol in its original context. Since the two
+can never be eq'd, this won't cause any problems.
+
 Eventually add support for pronouns :)
 
 no function should ever need to make sure that it's arguments are
@@ -5,7 +16,7 @@ legally lists. This should be checked by eval or apply.
 
 difference between interactive and noninteractive regarding postfix
 operators. (no. require that postfixing of array ref [and of
-method/member ref?] have no whitespace)
+method/member ref?] have no whitespace?)
 
 "let" needs to check for globalness to do temporary replaces.  it
 should also be able to temporarily overwrite car's, cdr's, and other
@@ -13,6 +24,12 @@ data fields in the same temporary way. (how would the (let a b)
 operator resolve its own scope? perhaps it can refuse to do that
 because of the parens required to take a car. but the same problem
 exists for global variables...)
+
+When let is called as (let x y), it should throw an exception if x is
+a global variable, because the scope will not be well defined? (Unless
+we want to start adding termination conditions to
+callstacks. Actually, this could be helpful in implementing
+unwind-protect...)
 
 can let define a recursive function? lambda has to hang on its lexical
 scope, but 
@@ -28,7 +45,6 @@ Member/method reference: Classes superclass Environment? Environments
 as objects? The member operator "." finds the member in the referenced
 namespace. If the member is a function (method), it will be wrapped in
 a lambda that automatically passes the instance as the first argument.
-
 OR--
 Member operator is ':' and operates on symbol lookup. Namespaces
 (envs) need to be objects in userspace!!! Symbol lookup knows how to
@@ -50,7 +66,7 @@ class Lispy_Class():
    def lookup( self, symbol ):
        ### Will need to be prepared to wrap methods.
 
-(class My_Class (Parent1 ... Parentn)
+(class My_Class (Parent1 ... Parentn) (arg1...argn)
    (
 
 
@@ -61,9 +77,9 @@ Atom:
   Float
   Array
   Dict
-  String
+  String (no char)
   Fn
-  Forn
+  Form
   Env?
   Stack?
   Class/Instance?
@@ -92,7 +108,7 @@ cons car cdr setcar setcdr
 and or not
 {array,dict,string}
 null
-isnum iscons ...
+isnum iscons ... ot just (type ...)
 pr (print) ...
 dir (as in Python!)
 
