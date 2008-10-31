@@ -1,4 +1,4 @@
-def lisp_eval( expr, env ):
+def lisp_eval( expr, Global_Env ):
     ### lisp_eval() is the Python definition of the canonical lisp
     ### function "eval".  This definition is ITERATIVE (not
     ### recursive), which avoids the use of the Python callstack and
@@ -8,14 +8,14 @@ def lisp_eval( expr, env ):
     if isatom(expr):
         return expr
     if issymbol(expr):
-        return env.lookup(expr)
+        return Global_Env.lookup(expr)
     #
     # CHECK FOR MALFORMATTED CODE
     #
 
     ## Everything else is for handling the case when expr is an S-expression
 
-    cur_stack = Callstack( expr, None, env )
+    cur_stack = Callstack( expr, None, Global_Env )
     
     ## The main loop:
     while True:
@@ -73,8 +73,6 @@ def lisp_eval( expr, env ):
                 cur_stack.has_args = True
                 if islisp(cur_stack.fn):  # variables must be bound in the local env
                     tmp = cur_stack.fn.arg_syms
-                    print "Tmp:",tmp
-                    print "Array:",cur_stack.args_array
                     for a in cur_stack.args_array:
                         cur_stack.env.bind_sym(tmp.car,a)
                         tmp = tmp.cdr
@@ -83,7 +81,6 @@ def lisp_eval( expr, env ):
                 cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
             ## below this point, arguments need to be evaluated
             elif isatom(cur_stack.arg_ptr.car):
-                print "Appending!",cur_stack.arg_ptr.car, " to ",cur_stack.expr
                 cur_stack.args_array.append(cur_stack.arg_ptr.car)
                 cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
             elif issymbol(cur_stack.arg_ptr.car):
@@ -114,14 +111,22 @@ def lisp_eval( expr, env ):
                     ret = cur_stack.body_ptr.car
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 elif issymbol(cur_stack.body_ptr.car):
-                    ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
+                    #scoping rules
+                    if not isform(cur_stack.fn):
+                        ret = cur_stack.fn.env.lookup(cur_stack.body_ptr.car)
+                    else:
+                        ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 else:
                     tmp = cur_stack.body_ptr.car
+                    if islisp(cur_stack.fn) and not isform(cur_stack.fn):
+                        tmp_env = cur_stack.fn.env
+                    else:
+                        tmp_env = cur_stack.env
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                     cur_stack = Callstack( tmp,
                                            cur_stack,
-                                           Environment(cur_stack.env) )
+                                           Environment(tmp_env) )
 
             else:  # a form/func written in Python
                 ret = apply( cur_stack.fn.call, cur_stack.args_array )
@@ -170,13 +175,14 @@ class Environment():
         self.bindings = {}
         if parent==None:
             self.symbols = {}
+            self.import_python("builtins")
     def lookup( self, sym ):
         if sym.name in self.bindings:
             return self.bindings[sym.name]
         elif self.parent:
             return self.parent.lookup(sym)
         else:
-            raise RuntimeError, "MOOOOO!!!"  
+            raise RuntimeError, "MOOOOO!!! %s" % sym.name
     def get_sym( self, name ):
         if self.parent:
             return self.parent.get_sym(name)
@@ -188,7 +194,9 @@ class Environment():
             return ret
     def bind_sym( self, sym, val ):
         self.bindings[sym.name] = val
-    def python_import( self, module_name ):
+    def import_python( self, module_name ):
+        if module_name in dir():
+            raise RuntimeError, "MOOOOOOOOOOOOOOOO!!!"
         exec "import %s" % module_name
         for i in eval("dir(%s)" % module_name):
             x = eval("%s.%s" % (module_name,i))
@@ -233,17 +241,19 @@ def issymbol(expr):
 
 class PyCode():
     '''Object representation of Python functions and special forms.'''
-    def __init__( self, name, call, isform=False ):
+    def __init__( self, call, name, isform=False ):
         self.name = name # only used for the initial binding during import
         self.call = call
         self.isform = isform
+        #self.env will be set by import_python
 
 class LispCode():
     '''Object representation of Lisp functions and forms.'''
-    def __init__( self, body, arg_syms, isform=False ):
+    def __init__( self, body, arg_syms, lexical_env ):
         self.body = body
         self.arg_syms = arg_syms
-        self.isform = isform
+        self.env = lexical_env
+        self.isform = (lexical_env==None)
 
 def islisp(expr):
     return isinstance(expr,LispCode)

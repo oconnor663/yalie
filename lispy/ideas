@@ -1,3 +1,7 @@
+There needs to be a function for generating a fresh global scope
+containing all builtin functions and constants. These will be used as
+base Env objects for imported namespaces.
+
 Everything an object?
 How does python handle "a = 7 ; if x: ..." for printint value?
 Are python functions/classes objects themselves?
@@ -85,6 +89,7 @@ Atom:
   Class/Instance?
 
 SPECIAL FORMS:
+eval
 quote
 fn (lambda)
 def
@@ -102,7 +107,6 @@ let
 ref
 
 PREDEFINED PYTHON FUNCTIONS:
-eval
 cons car cdr setcar setcdr
 + - * / // % = < <= > >=
 and or not
