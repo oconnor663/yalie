@@ -27,7 +27,7 @@ class Input():
 
         def read_token( self, E ):
             PARENS = ( "(", ")" )
-            TOKENS = ( "`", ",",".",":" )
+            TOKENS = ( "'", ",",":" )
             c = read_1(self)
             while c in string.whitespace and c!='':
                 c = read_1(self)
@@ -102,12 +102,12 @@ def main():
     repl = input.read(E)
     while repl:
         val = lisp_eval( repl, E )
+        if isinstance(val,Exception) and not sys.stdin.isatty():
+            return 2
         if input.is_interactive():
             sys.stdout.write(retprompt+repr(val)+'\n')
             sys.stdout.write(prompt);
             sys.stdout.flush()
-        if isinstance(val,Exception) and not sys.stdin.isatty():
-            return 2
         repl = input.read(E)
     if sys.stdin.isatty():
         print

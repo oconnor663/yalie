@@ -26,9 +26,10 @@ def lisp_eval( expr, Global_Env ):
                 cur_stack.fn = ret   # ret is set when cur_stack returns, see below
                 cur_stack.receiving_fn = False
                 cur_stack.has_fn = True
-                if islisp(ret):
+                if ret.islisp:
                     cur_stack.body_ptr = ret.body
-                cur_stack.eval_ret = isform(ret) and islisp(ret) #Python never returns code
+                cur_stack.eval_ret = ret.eval_ret
+                ret.stack = cur_stack
                 #
                 # CHECK ERRORS HERE
                 #
@@ -36,15 +37,15 @@ def lisp_eval( expr, Global_Env ):
             elif isatom(cur_stack.expr.car):
                 cur_stack.fn = cur_stack.expr.car
                 cur_stack.has_fn = True
-                if islisp(cur_stack.fn):
+                if cur_stack.fn.islisp:
                     cur_stack.body_ptr = cur_stack.fn.body
-                cur_stack.eval_ret = isform(cur_stack.fn) and islisp(cur_stack.fn)
+                cur_stack.eval_ret = cur_stack.fn.eval_ret
             elif issymbol(cur_stack.expr.car):
                 cur_stack.fn = cur_stack.env.lookup(cur_stack.expr.car)                
                 cur_stack.has_fn = True
-                if islisp(cur_stack.fn):
+                if cur_stack.fn.islisp:
                     cur_stack.body_ptr = cur_stack.fn.body
-                cur_stack.eval_ret = isform(cur_stack.fn) and islisp(cur_stack.fn)
+                cur_stack.eval_ret = cur_stack.fn.eval_ret
                 ### MISSING BIT
                 ### How to return an exception for failed lookup?
                 ### cur_stack.make_Exception( "stuff" )?
@@ -67,16 +68,18 @@ def lisp_eval( expr, Global_Env ):
                 #
                 # CHECK ERRORS HERE
                 #
-            # "if" is ok here, unlike above
-            if cur_stack.arg_ptr == None:
+            elif cur_stack.arg_ptr == None:
                 
                 cur_stack.has_args = True
-                if islisp(cur_stack.fn):  # variables must be bound in the local env
+                if cur_stack.fn.islisp:  # variables must be bound in the local env
                     tmp = cur_stack.fn.arg_syms
                     for a in cur_stack.args_array:
                         cur_stack.env.bind_sym(tmp.car,a)
                         tmp = tmp.cdr
-            elif isform(cur_stack.fn):    # this means that the arguments should not be eval'd
+                else:
+                    # Python functions/forms take self as a first arg
+                    cur_stack.args_array = [cur_stack.fn] + cur_stack.args_array
+            elif not cur_stack.fn.eval_args:    # this means that the arguments should not be eval'd
                 cur_stack.args_array.append(cur_stack.arg_ptr.car)
                 cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
             ## below this point, arguments need to be evaluated
@@ -102,8 +105,30 @@ def lisp_eval( expr, Global_Env ):
             # AND ADD EXCEPTION HANDLING TO ALL OF THESE
             #
             
-            ## Run through the body. Lisp forms are differentiated later.
-            if islisp( cur_stack.fn ):
+            ## This loop first checks whether it needs to evaluate the
+            ## return from a previous call
+            if cur_stack.isdone and cur_stack.eval_ret:
+                #
+                # CHECK FOR MALFORMATTED CODE
+                #
+                cur_stack.eval_ret = False
+                if isatom(ret):
+                    pass
+                if issymbol(ret):
+                    ret = cur_stack.env.lookup(ret)
+                else:
+                    cur_stack = Callstack( ret,
+                                           cur_stack,
+                                           Environment(cur_stack.env) )
+            
+            ## Once everything is wrapped up, this will pop the current stack.
+            elif cur_stack.isdone and not cur_stack.eval_ret:
+                if cur_stack.parent==None:
+                    return ret
+                else:
+                    cur_stack = cur_stack.parent
+
+            elif cur_stack.fn.islisp:
 
                 if cur_stack.body_ptr == None:
                     cur_stack.isdone = True
@@ -111,15 +136,16 @@ def lisp_eval( expr, Global_Env ):
                     ret = cur_stack.body_ptr.car
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 elif issymbol(cur_stack.body_ptr.car):
-                    #scoping rules
-                    if not isform(cur_stack.fn):
+                    ## Scoping rule: anything without eval_ret is lexical
+                    if not cur_stack.fn.eval_ret:
                         ret = cur_stack.fn.env.lookup(cur_stack.body_ptr.car)
                     else:
                         ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 else:
                     tmp = cur_stack.body_ptr.car
-                    if islisp(cur_stack.fn) and not isform(cur_stack.fn):
+                    ## Same scoping rule as above
+                    if cur_stack.fn.islisp and not cur_stack.fn.eval_ret:
                         tmp_env = cur_stack.fn.env
                     else:
                         tmp_env = cur_stack.env
@@ -134,40 +160,21 @@ def lisp_eval( expr, Global_Env ):
 
             ###CHECK FOR ERRORS
 
-            ## The returns from Lisp forms are evaluated in the calling environment.
-            if cur_stack.isdone and cur_stack.eval_ret:
-                #
-                # CHECK FOR MALFORMATTED CODE
-                #
-                cur_stack.eval_ret = False
-                if isatom(ret):
-                    pass
-                if issymbol(ret):
-                    ret = cur_stack.env.lookup(ret)
-                else:
-                    cur_stack
-            
-            ## Once everything is wrapped up, this will pop the current stack.
-            if cur_stack.isdone:
-                if cur_stack.parent==None:
-                    return ret
-                else:
-                    cur_stack = cur_stack.parent
-
 
 class Callstack():
     def __init__( self, expr, parent, env ):
         self.expr = expr
         self.parent = parent
         self.env = env
-        self.has_fn = False
-        self.receiving_fn = False
-        self.has_args = False
-        self.receiving_arg = False
-        self.args_array = []
-        self.arg_ptr = expr.cdr
-        self.isdone = False
-        ## fn, body_ptr, and eval_ret will be added by lisp_eval
+        if isinstance(expr,Cons):
+            self.has_fn = False
+            self.receiving_fn = False
+            self.has_args = False
+            self.receiving_arg = False
+            self.args_array = []
+            self.arg_ptr = expr.cdr
+            self.isdone = False
+            ## fn, body_ptr, and eval_ret will be added by lisp_eval
 
 class Environment():
     def __init__( self, parent ):
@@ -201,13 +208,9 @@ class Environment():
         for i in eval("dir(%s)" % module_name):
             x = eval("%s.%s" % (module_name,i))
             if isinstance(x,PyCode):
+                x.env = self
                 sym = self.get_sym(x.name)
                 self.bind_sym(sym,x)
-
-####
-####   TEST THIS
-####
-
 
 class Symbol():
     def __init__( self, name ):
@@ -241,23 +244,21 @@ def issymbol(expr):
 
 class PyCode():
     '''Object representation of Python functions and special forms.'''
-    def __init__( self, call, name, isform=False ):
+    def __init__( self, call, name, eval_args=True, eval_ret=False ):
+        self.islisp = False
         self.name = name # only used for the initial binding during import
         self.call = call
-        self.isform = isform
+        self.eval_args = eval_args
+        self.eval_ret = eval_ret
         #self.env will be set by import_python
+        #self.stack will be set during evaluation
 
 class LispCode():
     '''Object representation of Lisp functions and forms.'''
     def __init__( self, body, arg_syms, lexical_env ):
+        self.islisp = True
         self.body = body
         self.arg_syms = arg_syms
         self.env = lexical_env
-        self.isform = (lexical_env==None)
-
-def islisp(expr):
-    return isinstance(expr,LispCode)
-
-def isform(expr):
-    return expr.isform
-
+        self.eval_ret = (lexical_env==None)
+        self.eval_args = (lexical_env!=None)

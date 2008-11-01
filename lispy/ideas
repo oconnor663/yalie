@@ -89,17 +89,21 @@ Atom:
   Class/Instance?
 
 SPECIAL FORMS:
-eval
 quote
 fn (lambda)
-def
+def-globally
 def-locally (will be called by "let")
 deform
-call
-if (subsumes cond)
-tag goto ret unwind-protect (Py?) (will modify Stack objects)
+call?
+if-goto
+unwind-protect (Py?) (will modify Stack objects)
 
 PREDEFINED LISP FORMS:
+if
+goto
+tag
+return?
+def
 for
 while
 do (optional block name?)
@@ -107,8 +111,10 @@ let
 ref
 
 PREDEFINED PYTHON FUNCTIONS:
+eval
 cons car cdr setcar setcdr
 + - * / // % = < <= > >=
+is? (eq)
 and or not
 {array,dict,string}
 null
