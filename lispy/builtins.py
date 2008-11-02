@@ -24,23 +24,39 @@ def exposed_eval( context, val ):
     return val
 Eval = PyCode(exposed_eval,'eval', True, True)
 
-def quote( context, val ):
+def noeval( context, val ):
     return val
-Quote = PyCode(quote,'quote', False, False)
+Noeval = PyCode(noeval,'noeval', False, False)
 
 def fn( context, *args ):
-    #
-    # Check for well-formedness
-    #
-    return LispCode( args[0], list2cons(args[1:]), context[1].env )
+    body = list2cons(args[1:])
+    if not iscode(body):
+        return Exception("fn received malformed body: %s"%body,None)
+    return LispCode( args[0], body, context[1].env )
     # Note that it is the callstack's env, not self's env, that is the lexical environment.
 Fn = PyCode(fn,'fn', False, False)
 
+def form( context, *args ):
+    #
+    # Check for well-formedness
+    #
+    body = list2cons(args[1:])
+    if not iscode(body):
+        return Exception("fn received malformed body: %s"%body,None)
+    return LispCode( args[0], body, None )
+    # Note that it is the callstack's env, not self's env, that is the lexical environment.
+Form = PyCode(form,'form', False, False)
+
+def set_locally( context, sym, val ):
+    context[1].env.bind_sym(sym,val)
+    return val
+SetLocally = PyCode(set_locally,'set-locally',False,False,[1]) #note the eval-index
+
 ########## Functions ##########
 
-def cons( context, car, cdr ):
+def cons_fn( context, car, cdr ):
     return Cons(car,cdr)
-Cons = PyCode(cons,'cons')
+ConsFn = PyCode(cons_fn,'cons')
 
 def car( context, cell ):
     return cell.car
@@ -104,3 +120,8 @@ Divide = PyCode(divide,'/')
 def remainder( context, a, b ):
     return a%b
 Remainder = PyCode(remainder,'%')
+
+def put( context, val ):
+    print val
+    return val
+Put = PyCode(put,'put')

@@ -7,6 +7,7 @@ class Input():
     def __init__( self, input ):
         self.input = input
         self.buf = None
+        self.EOF = False
 
     def is_interactive( self ):
         return self.input.isatty()
@@ -32,6 +33,7 @@ class Input():
             while c in string.whitespace and c!='':
                 c = read_1(self)
             if c=='':
+                self.EOF = True
                 return None
             if c in PARENS:
                 return c  ### Parens aren't symbols. They're handled below.
@@ -100,12 +102,12 @@ def main():
         sys.stdout.write(prompt);
         sys.stdout.flush()
     repl = input.read(E)
-    while repl:
+    while not input.EOF:
         val = lisp_eval( repl, E )
         if isinstance(val,Exception) and not sys.stdin.isatty():
             return 2
         if input.is_interactive():
-            sys.stdout.write(retprompt+repr(val)+'\n')
+            sys.stdout.write(retprompt+lisp_repr(val)+'\n')
             sys.stdout.write(prompt);
             sys.stdout.flush()
         repl = input.read(E)
