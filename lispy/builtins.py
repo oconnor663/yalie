@@ -6,10 +6,11 @@ from core import *
 ### behaviors by explicitly passing third and fourth arguments to the
 ### PyCode constructor.
 ###
-### NB: All PyCode calls must expect the equivalent of "self" as their
-### first argument. Self will be the PyCode object, which notably
-### contains a reference to the lexical environment (defined for a
-### function during import) and the callstack.
+### NB: All PyCode calls must expect a context tuple (self,callstack)
+### as their first argument before any other arguments supplied by the
+### call in lisp. This tuple will contain the PyCode object -- which
+### itself contains a reference to the lexical environment (defined
+### for a function during import) -- and the callstack.
 ###
 ### Giving the same name to function declarations and (capitalized) to
 ### PyCode declarations is just a helpful convention. Only the string
@@ -19,72 +20,79 @@ from core import *
 
 ######## Special Forms ########
 
-def exposed_eval( self, val ):
+def exposed_eval( context, val ):
     return val
 Eval = PyCode(exposed_eval,'eval', True, True)
 
-def quote( self, val ):
+def quote( context, val ):
     return val
 Quote = PyCode(quote,'quote', False, False)
 
+def fn( context, *args ):
+    #
+    # Check for well-formedness
+    #
+    return LispCode( args[0], list2cons(args[1:]), context[1].env )
+    # Note that it is the callstack's env, not self's env, that is the lexical environment.
+Fn = PyCode(fn,'fn', False, False)
 
 ########## Functions ##########
 
-def cons( self, car, cdr ):
+def cons( context, car, cdr ):
     return Cons(car,cdr)
 Cons = PyCode(cons,'cons')
 
-def car( self, cell ):
+def car( context, cell ):
     return cell.car
 Car = PyCode(car,'car')
 
-def cdr( self, cell ):
+def cdr( context, cell ):
     return cell.cdr
 Cdr = PyCode(cdr,'cdr')
 
-def lisp_not( self, val ):
+def lisp_not( context, val ):
     return not val
 Not = PyCode(lisp_not,'not')
 
 ### AND and OR need to be special forms
 
-def equals( self, a, b ):
+def equals( context, a, b ):
     return a==b
 Equals = PyCode(equals,'=')
 
-def lt( self, a, b ):
+def lt( context, a, b ):
     return a < b
 Lt = PyCode(lt,'<')
 
-def leq( self, a, b ):
+def leq( context, a, b ):
     return a <= b
 Leq = PyCode(leq,'<=')
 
-def gt( self, a, b ):
+def gt( context, a, b ):
     return a < b
 Gt = PyCode(gt,'<')
 
-def geq( self, a, b ):
+def geq( context, a, b ):
     return a <= b
 Geq = PyCode(geq,'<=')
 
-def plus( self, *args ):
+def plus( context, *args ):
     return sum(args)
 Plus = PyCode(plus,'+')
 
-def minus( self, *args ):
+def minus( context, *args ):
     if len(args)<2: return -sum(args)
     else: return args[0] - sum(args[1:])
 Minus = PyCode(minus,'-')
 
-def times( self, *args ):
+def times( context, *args ):
     ret = 1
     for i in args:
         ret *= i
     return ret
 Times = PyCode(times,'*')
 
-def divide( self, *args ):
+def divide( context, *args ):
     if len(args)<2: return 1.0/args[0]
     else:
         ret = args[0]
@@ -93,6 +101,6 @@ def divide( self, *args ):
     return ret
 Divide = PyCode(divide,'/')
 
-def remainder( self, a, b ):
+def remainder( context, a, b ):
     return a%b
 Remainder = PyCode(remainder,'%')

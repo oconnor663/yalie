@@ -20,8 +20,33 @@ def lisp_eval( expr, Global_Env ):
     ## The main loop:
     while True:
         
-        ## This section handles looking up the function at the head of expr
-        if not cur_stack.has_fn:
+        ## This section first checks whether it needs to evaluate the
+        ## return from a previous call
+        if cur_stack.isdone and cur_stack.eval_ret:
+            #
+            # CHECK FOR MALFORMATTED CODE
+            #
+            cur_stack.eval_ret = False
+            if isatom(ret):
+                pass
+            if issymbol(ret):
+                ret = cur_stack.env.lookup(ret)
+            else:
+                cur_stack = Callstack( ret,
+                                       cur_stack,
+                                       cur_stack.env )
+            
+        ## If everything is finished, this will pop the current stack.
+        elif cur_stack.isdone:
+            if cur_stack.parent==None:
+                return ret
+            else:
+                cur_stack = cur_stack.parent
+
+        ## If we're starting a new stack, this section handles looking
+        ## up the function at the head of expr
+        elif not cur_stack.has_fn:
+            
             if cur_stack.receiving_fn:
                 cur_stack.fn = ret   # ret is set when cur_stack returns, see below
                 cur_stack.receiving_fn = False
@@ -29,11 +54,9 @@ def lisp_eval( expr, Global_Env ):
                 if ret.islisp:
                     cur_stack.body_ptr = ret.body
                 cur_stack.eval_ret = ret.eval_ret
-                ret.stack = cur_stack
                 #
                 # CHECK ERRORS HERE
                 #
-            # "elif" is important here to avoid infinite loop, unlike below
             elif isatom(cur_stack.expr.car):
                 cur_stack.fn = cur_stack.expr.car
                 cur_stack.has_fn = True
@@ -55,7 +78,7 @@ def lisp_eval( expr, Global_Env ):
                 cur_stack.receiving_fn = True
                 cur_stack = Callstack( cur_stack.expr.car,
                                        cur_stack,
-                                       Environment(cur_stack.env) )
+                                       cur_stack.env )
                 
         ## This section handles the assembly of the arguments list
         elif not cur_stack.has_args:
@@ -69,16 +92,25 @@ def lisp_eval( expr, Global_Env ):
                 # CHECK ERRORS HERE
                 #
             elif cur_stack.arg_ptr == None:
-                
                 cur_stack.has_args = True
+                ## All scoping happens right here, after all arguments
+                ## have been evaluated (or not, in the case of a
+                ## form). Lexical scoping is given to anything that
+                ## evaluates its arguments but not its return.
+                if cur_stack.fn.eval_args and not cur_stack.fn.eval_ret:
+                    cur_stack.env = Environment(cur_stack.fn.env)
+                else:
+                    cur_stack.env = Environment(cur_stack.env)
+
                 if cur_stack.fn.islisp:  # variables must be bound in the local env
                     tmp = cur_stack.fn.arg_syms
                     for a in cur_stack.args_array:
                         cur_stack.env.bind_sym(tmp.car,a)
                         tmp = tmp.cdr
                 else:
-                    # Python functions/forms take self as a first arg
-                    cur_stack.args_array = [cur_stack.fn] + cur_stack.args_array
+                    # Python functions/forms take (self,stack) as a first arg
+                    cur_stack.args_array = [(cur_stack.fn,cur_stack)] + cur_stack.args_array
+
             elif not cur_stack.fn.eval_args:    # this means that the arguments should not be eval'd
                 cur_stack.args_array.append(cur_stack.arg_ptr.car)
                 cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
@@ -95,7 +127,7 @@ def lisp_eval( expr, Global_Env ):
                 cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
                 cur_stack = Callstack( tmp,
                                        cur_stack,
-                                       Environment(cur_stack.env) )
+                                       cur_stack.env )
 
         ## Now, fn and args_array in hand, we're going to evaluate the body of the function!
         else:
@@ -104,31 +136,8 @@ def lisp_eval( expr, Global_Env ):
             # CHECK THE VALIDITY OF THE ARGS LIST AGAINST THE FUNCTION
             # AND ADD EXCEPTION HANDLING TO ALL OF THESE
             #
-            
-            ## This loop first checks whether it needs to evaluate the
-            ## return from a previous call
-            if cur_stack.isdone and cur_stack.eval_ret:
-                #
-                # CHECK FOR MALFORMATTED CODE
-                #
-                cur_stack.eval_ret = False
-                if isatom(ret):
-                    pass
-                if issymbol(ret):
-                    ret = cur_stack.env.lookup(ret)
-                else:
-                    cur_stack = Callstack( ret,
-                                           cur_stack,
-                                           Environment(cur_stack.env) )
-            
-            ## Once everything is wrapped up, this will pop the current stack.
-            elif cur_stack.isdone and not cur_stack.eval_ret:
-                if cur_stack.parent==None:
-                    return ret
-                else:
-                    cur_stack = cur_stack.parent
 
-            elif cur_stack.fn.islisp:
+            if cur_stack.fn.islisp:
 
                 if cur_stack.body_ptr == None:
                     cur_stack.isdone = True
@@ -136,23 +145,14 @@ def lisp_eval( expr, Global_Env ):
                     ret = cur_stack.body_ptr.car
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 elif issymbol(cur_stack.body_ptr.car):
-                    ## Scoping rule: anything without eval_ret is lexical
-                    if not cur_stack.fn.eval_ret:
-                        ret = cur_stack.fn.env.lookup(cur_stack.body_ptr.car)
-                    else:
-                        ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
+                    ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 else:
                     tmp = cur_stack.body_ptr.car
-                    ## Same scoping rule as above
-                    if cur_stack.fn.islisp and not cur_stack.fn.eval_ret:
-                        tmp_env = cur_stack.fn.env
-                    else:
-                        tmp_env = cur_stack.env
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                     cur_stack = Callstack( tmp,
                                            cur_stack,
-                                           Environment(tmp_env) )
+                                           cur_stack.env )
 
             else:  # a form/func written in Python
                 ret = apply( cur_stack.fn.call, cur_stack.args_array )
@@ -166,7 +166,7 @@ class Callstack():
         self.expr = expr
         self.parent = parent
         self.env = env
-        if isinstance(expr,Cons):
+        if iscons(expr):
             self.has_fn = False
             self.receiving_fn = False
             self.has_args = False
@@ -182,6 +182,7 @@ class Environment():
         self.bindings = {}
         if parent==None:
             self.symbols = {}
+            self.unique_counter = 0
             self.import_python("builtins")
     def lookup( self, sym ):
         if sym.name in self.bindings:
@@ -191,6 +192,8 @@ class Environment():
         else:
             raise RuntimeError, "MOOOOO!!! %s" % sym.name
     def get_sym( self, name ):
+        if type(name)!=type(''):
+            raise RuntimeError, "Moo."
         if self.parent:
             return self.parent.get_sym(name)
         elif name in self.symbols:
@@ -211,6 +214,18 @@ class Environment():
                 x.env = self
                 sym = self.get_sym(x.name)
                 self.bind_sym(sym,x)
+    def import_lisp( self, module_name ):
+        input = Input(open(module_name+'.lisp',"r"))
+        expr = input.read()
+        while expr:
+            #
+            # Error check
+            #
+            lisp_eval(expr,self)
+            #
+            # Error check
+            #
+            expr = input.read()
 
 class Symbol():
     def __init__( self, name ):
@@ -218,6 +233,8 @@ class Symbol():
         self.isglobal = False
         self.iskeyword = (name[0]==':')
     def __repr__( self ):
+        if type(self.name)!=type(''):
+            raise RuntimeError, "Moooo..."
         return self.name
 
 class Cons():
@@ -227,7 +244,7 @@ class Cons():
     def __repr__( self ):
         ret = '('
         tmp = self
-        while isinstance(tmp.cdr,Cons):
+        while iscons(tmp.cdr):
             ret += repr(tmp.car) + ' '
             tmp = tmp.cdr
         if tmp.cdr==None:
@@ -235,6 +252,19 @@ class Cons():
         else:
             ret += repr(tmp.car)+' . '+repr(tmp.cdr)+')'
         return ret
+    def py_list( self ):
+        ret = []
+        tmp = self
+        while tmp != None:
+            ret.append(tmp.car)
+            tmp = tmp.cdr
+        return ret
+
+def list2cons( list ):
+    ret = None
+    for i in range(len(list)-1,-1,-1):
+        ret = Cons(list[i],ret)
+    return ret
 
 def isatom(expr):
     return not isinstance(expr,Symbol) and not isinstance(expr,Cons)
@@ -242,23 +272,36 @@ def isatom(expr):
 def issymbol(expr):
     return isinstance(expr,Symbol)
 
+def iscons(expr):
+    return isinstance(expr,Cons)
+
+def iscode(expr):
+    '''Checks the well-formedness of an S-expression.'''
+    if not iscons(expr):
+        return True
+    elif not iscons(expr.cdr) and expr.cdr!=None:
+        return False
+    elif not iscons(expr.car):
+        return iscode(expr.cdr)
+    else:
+        return iscode(expr.car) and iscode(expr.cdr)
+
 class PyCode():
     '''Object representation of Python functions and special forms.'''
     def __init__( self, call, name, eval_args=True, eval_ret=False ):
         self.islisp = False
         self.name = name # only used for the initial binding during import
-        self.call = call
+        self.call = call # call must take a specific form. see builtins.
         self.eval_args = eval_args
         self.eval_ret = eval_ret
         #self.env will be set by import_python
-        #self.stack will be set during evaluation
 
 class LispCode():
     '''Object representation of Lisp functions and forms.'''
-    def __init__( self, body, arg_syms, lexical_env ):
+    def __init__( self, arg_syms, body, lexical_env ):
         self.islisp = True
-        self.body = body
-        self.arg_syms = arg_syms
+        self.body = body  # a cons list
+        self.arg_syms = arg_syms  # another cons list
         self.env = lexical_env
         self.eval_ret = (lexical_env==None)
         self.eval_args = (lexical_env!=None)

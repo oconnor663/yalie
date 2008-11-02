@@ -1,3 +1,5 @@
+Support for &rest/&body will be tricky.
+
 There needs to be a function for generating a fresh global scope
 containing all builtin functions and constants. These will be used as
 base Env objects for imported namespaces.
@@ -91,6 +93,7 @@ Atom:
 SPECIAL FORMS:
 quote
 fn (lambda)
+form (as lambda, but for a macro)
 def-globally
 def-locally (will be called by "let")
 deform
@@ -121,6 +124,7 @@ null
 isnum iscons ... ot just (type ...)
 pr (print) ...
 dir (as in Python!)
+exit
 
 PREDEFINED LISP FUNCTIONS
 ls (list)
