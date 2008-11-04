@@ -1,13 +1,25 @@
 Things to do immediately:
        input
        quoting/unquoting
-       def
-       function parameters
-       exceptions
+       function parameters!!!
+       exceptions (Done, but see below)
        stack unwinding
        classes
 
-Support for &rest/&body will be tricky.
+UNWIND-PROTECT SHOULD BE A FEATURE OF fn!
+
+FORBID TOPLEVEL [] SYNTAX! (Brilliant!) (Terrible?)
+
+Exceptions need to be built from the entire stack. They should be
+built in place without being passed up the stack. If nothing "catches"
+the exception, it can then be RETURNED directly from lisp_eval.
+
+The parser should signal an error for malformatted keywords, for
+instance symbols such as ":keyword:member". Also, consider introducing
+special syntax into the parser to make it easier to catch a failure to
+close parentheses.
+
+Support for &rest/&body will be tricky. Reserve a keyword?
 
 There needs to be a function for generating a fresh global scope
 containing all builtin functions and constants. These will be used as
@@ -105,23 +117,22 @@ fn (lambda)
 form (as lambda, but for a macro)
 set-globally
 set-locally (will be called by "let")
-set-car/cdr
-deform
-call?
 if-goto
-unwind-protect (Py?) (will modify Stack objects)
+unwind-protect (Py?) (will modify Stack objects) (part of fn?)
 
 PREDEFINED LISP FORMS:
+semiquote
 if
 goto
 tag
 return?
-def
+def,deform
 for
 while
 do (optional block name?)
 let
 ref
+call
 
 PREDEFINED PYTHON FUNCTIONS:
 eval

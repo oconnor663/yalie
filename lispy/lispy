@@ -28,7 +28,7 @@ class Input():
 
         def read_token( self, E ):
             PARENS = ( "(", ")" )
-            TOKENS = ( "'", ",",":" )
+            TOKENS = ( "'", "," )
             c = read_1(self)
             while c in string.whitespace and c!='':
                 c = read_1(self)
@@ -85,7 +85,7 @@ def main():
     E = Environment(None)
 
     ### First read-in builtin lisp functions
-    input = Input(open("rc.lisp","r"))
+    input = Input(open("./rc.lisp","r"))
     line = input.read(E)
     while line:
         val = lisp_eval( line, E )

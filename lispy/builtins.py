@@ -24,11 +24,131 @@ def exposed_eval( context, val ):
     return val
 Eval = PyCode(exposed_eval,'eval', True, True)
 
-def noeval( context, val ):
+def quote( context, val ):
     return val
-Noeval = PyCode(noeval,'noeval', False, False)
+Quote = PyCode(quote,'quote', False, False)
 
+### This function is used by fn and form below to parse their args
+def parse_args( args_list ):
+    def legal_pair( list ):
+        if list.cdr == None:
+            return False
+        if list.cdr.cdr == None:
+            if issymbol(list.car):
+                return True
+        return False
+    def legal_trio( list ):
+        if list.cdr == None or list.cdr.cdr==None:
+            return False
+        if list.cdr.cdr.cdr==None:
+            if issymbol(list.car) and issymbol(list.cdr.cdr.car):
+                return True
+        return False
+
+    used_symbols = []
+    normal_args = []
+    optional_args = []
+    optional_args_trios = []
+    rest_arg = None
+    body_arg = None
+    kw_args = []
+    kw_def_args = []
+    kw_def_arg_trios = []
+    while args_list and issymbol(args_list.car) and not args_list.car.iskeyword:
+        if args_list.car not in used_symbols:
+            normal_args.append(args_list.car)
+            used_symbols.append(args_list.car)
+        else:
+            return "Duplicate symbol"
+        args_list = args_list.cdr
+    while args_list and iscons(args_list.car):
+        if legal_pair(args_list.car):
+            if args_list.car.car not in used_symbols:
+                optional_args.append(args_list.car)
+                used_symbols.append(args_list.car.car)
+            else:
+                return "Duplicate symbol"
+            args_list = args_list.cdr
+        elif legal_trio(args_list.car):
+            if args_list.car.car not in used_symbols and \
+                    args_list.car.cdr.cdr.car not in used_symbols:
+                optional_args_trios.append(args_list.car)
+                used_symbols.append(args_list.car.car)
+                used_symbols.append(args_list.car.cdr.cdr.car)
+            else:
+                return "Duplicate symbol"
+            args_list = args_list.cdr
+        else:
+            return "Illegal optional tuple %s" % args_list.car
+    while args_list:
+        if issymbol(args_list.car) and args_list.car.iskeyword:
+            if args_list.cdr==None:
+                return "Keyword provided without value"
+            elif args_list.car.name in (':r',':b'):
+                if rest_arg or body_arg:
+                    return "Duplicate rest/body"
+                elif args_list.car.name==':r':
+                    if not issymbol(args_list.cdr.car) or args_list.cdr.car.iskeyword:
+                        return "Rest needs a symbol"
+                    if args_list.cdr.car not in used_symbols:
+                        rest_arg = args_list.cdr.car
+                        used_symbols.append(args_list.cdr.car)
+                    else:
+                        return "Duplicate symbol"
+                    args_list = args_list.cdr.cdr
+                elif args_list.car.name==':b':
+                    if not issymbol(args_list.cdr.car) or args_list.cdr.car.iskeyword:
+                        return "Body needs a symbol"
+                    if args_list.cdr.car not in used_symbols:                            
+                        body_arg = args_list.cdr.car
+                        used_symbols.append(args_list.cdr.car)
+                    else:
+                        return "Duplicate symbol"
+                    args_list = args_list.cdr.cdr
+            elif args_list.car.name==':k':
+                if kw_args:
+                    return "Keywords already provided"
+                args_list = args_list.cdr
+                while args_list and \
+                        ((issymbol(args_list.car) and not args_list.car.iskeyword) \
+                             or iscons(args_list.car)):
+                    if issymbol(args_list.car):
+                        if args_list.car in used_symbols:
+                            return "duplicate symbol"
+                        else:
+                            used_symbols.append(args_list.car)
+                            kw_args.append(args_list.car)
+                    elif legal_pair(args_list.car):
+                        if args_list.car.car not in used_symbols:
+                            kw_def_args.append(args_list.car)
+                            used_symbols.append(args_list.car.car)
+                        else:
+                            return "Duplicate symbol"
+                    elif legal_trio(args_list.car):
+                        if args_list.car.car not in used_symbols and \
+                                args_list.car.cdr.cdr.car not in used_symbols:
+                            kw_def_arg_trios.append(args_list.car)
+                            used_symbols.append(args_list.car.car)
+                            used_symbols.append(args_list.car.cdr.cdr.car)
+                        else:
+                            return "Duplicate symbol"
+                    else:
+                        return "Malformed kw arg"
+                    args_list = args_list.cdr
+                if not kw_args:
+                    return "No keyword args provided after :k"
+            else:
+                return "Unknown keyword %s" % args_list.car
+            continue #look for further keywords
+        else: #stuff left over
+            return "Weirdness in args list."
+    return (normal_args,optional_args,optional_args_trios,
+            rest_arg,body_arg,kw_args,kw_def_args,kw_def_arg_trios)
+ 
 def fn( context, *args ):
+    print parse_args(args[0])
+    return "No value!!!"
+
     body = list2cons(args[1:])
     if not iscode(body):
         return Exception("fn received malformed body: %s"%body,None)

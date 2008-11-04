@@ -232,7 +232,9 @@ class Environment():
             self.unique_counter = 0
             self.import_python("builtins")
     def lookup( self, sym ):
-        if sym.name in self.bindings:
+        if sym.iskeyword:
+            return Exception( "Tried to look up keyword %s"%sym, None )
+        elif sym.name in self.bindings:
             return self.bindings[sym.name]
         elif self.parent:
             return self.parent.lookup(sym)
@@ -241,7 +243,9 @@ class Environment():
     def get_sym( self, name ):
         if type(name)!=type(''):
             raise RuntimeError, "Moo."
-        if self.parent:
+        elif name[0]==':':
+            return Symbol(name) #keywords aren't interned
+        elif self.parent:
             return self.parent.get_sym(name)
         elif name in self.symbols:
             return self.symbols[name]
