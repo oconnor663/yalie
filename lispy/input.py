@@ -9,14 +9,10 @@ class TtyInput():
         self.interactive = file.isatty()
         self.line = None
 
-    def read_char( self ):
-        tmp = self.line[0]
-        self.line = self.line[1:]
-        return tmp
-
     def read( self ):
         if self.line == None:
             self.line = raw_input('> ')
+        
 
 def tokenize( s ):
     chars = list(s)
@@ -65,7 +61,21 @@ def tokenize( s ):
                 chars = chars[1:]
 
         ret.append(string.join(current,''))
-
     return ret
 
-
+def triage( token, env ):
+    ## Note that token should not be in TOKENS (excepting a '.' at the beginning of a number)
+    if token[0] in string.digits or token[0]=='.':
+        try:
+            return int(token)
+        except ValueError:
+            try:
+                return float(token)
+            except ValueError:
+                return Exception("Could not parse number: %s" % token, None )
+    elif token[0]=='"':
+        return eval(token)
+    elif token[0]=="'":
+        return eval('r'+token)
+    else:
+        return env.get_sym(token)
