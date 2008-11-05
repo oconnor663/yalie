@@ -6,9 +6,15 @@ Things to do immediately:
        stack unwinding
        classes
 
-UNWIND-PROTECT SHOULD BE A FEATURE OF fn!
+When everything is a pointer in C, it becomes easier to make
+everything an object.
 
-FORBID TOPLEVEL [] SYNTAX! (Brilliant!) (Terrible?)
+UNWIND-PROTECT SHOULD BE A FEATURE OF fn (and form?)! "break" can be
+just a goto statement inside the predefined loops
+
+FORBID TOPLEVEL [] SYNTAX! (Brilliant!) (Terrible?) (just reset the
+input after complete lines, so as to trigger a 'no [ at beginning of
+file error'?)
 
 Exceptions need to be built from the entire stack. They should be
 built in place without being passed up the stack. If nothing "catches"
@@ -18,8 +24,6 @@ The parser should signal an error for malformatted keywords, for
 instance symbols such as ":keyword:member". Also, consider introducing
 special syntax into the parser to make it easier to catch a failure to
 close parentheses.
-
-Support for &rest/&body will be tricky. Reserve a keyword?
 
 There needs to be a function for generating a fresh global scope
 containing all builtin functions and constants. These will be used as
@@ -138,6 +142,7 @@ PREDEFINED PYTHON FUNCTIONS:
 eval
 cons car cdr setcar setcdr
 + - * / // % = < <= > >=
+id (test whether two pointers point to the same place)
 is? (eq)
 and or not
 {array,dict,string}
