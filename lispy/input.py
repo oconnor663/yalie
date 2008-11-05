@@ -1,7 +1,7 @@
-import sys,string,readline
+import sys,readline,string
 from core import *
 
-TOKENS = ( "'", "'", '`', '.', ',', '(', ')', '[', ']' )
+TOKENS = ( '"', "'", '`', '.', ',', '(', ')', '[', ']' )
 
 class TtyInput():
     def __init__( self, file ):
@@ -15,35 +15,57 @@ class TtyInput():
         return tmp
 
     def read( self ):
-        if self.line = None:
+        if self.line == None:
             self.line = raw_input('> ')
 
-
-
-def tokenize( line, env ):
-    chars = list(line)
+def tokenize( s ):
+    chars = list(s)
     ret = []
     while chars:
         current = []
-        while chars[0] in string.whitespace:
+        # clear the whitespace
+        while chars and chars[0] in string.whitespace:
             chars = chars[1:]
-        if chars[0] in TOKENS:
+        if not chars:
+            return ret
+        # parse strings
+        if chars[0] in ('"',"'"):  # NOTE that this comes before TOKENS, which quotes also are
             current.append(chars[0])
             chars = chars[1:]
-            if current[0] in ('"',"'"):
-                current.append(chars[0])
+            escaped = False
+            if not chars:
+                    return Exception("Unterminated string.", None)
+            while chars[0]!=current[0] or escaped:
+                if chars[0]=='\\':
+                    escaped = not escaped
+                else:
+                    escaped = False
+                if not escaped: current.append(chars[0]) #to avoid the \
                 chars = chars[1:]
-                escaped = False
-                while chars[0]!=current[0] or escaped:
-                    if chars[0]=='\\':
-                        escaped = not escaped
-                    else:
-                        escaped = False
-                    current.append(chars[0])
-                    chars = chars[1:]
-                    if not chars:
-                        return Exception("Unterminated string.", None)
-                current.append(chars[0])
+                if not chars:
+                    return Exception("Unterminated string.", None)
+            current.append(chars[0])
+            chars = chars[1:]
+        # parse numbers
+        elif chars[0] in string.digits or (chars[0]=='.' and len(chars)>1 and chars[1] in string.digits):
+            if chars[0]=='.':
+                current.append(chars[0]) #these two lines clear the '.' if there is one
                 chars = chars[1:]
+            while chars and chars[0] not in string.whitespace and chars[0] not in TOKENS:
+                current.append(chars[0])
+                chars=chars[1:]
+        # parse tokens
+        elif chars[0] in TOKENS:
+            current.append(chars[0])
+            chars = chars[1:]
+        # parse symbols
         else:
-            while chars[0] not in string.whitespace and chars[0] not in 
+            while chars and chars[0] not in string.whitespace and chars[0] not in TOKENS:
+                current.append(chars[0])
+                chars = chars[1:]
+
+        ret.append(string.join(current,''))
+
+    return ret
+
+
