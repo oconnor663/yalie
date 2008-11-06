@@ -302,7 +302,7 @@ class Cons():
         while iscons(tmp.cdr):
             ret += lisp_repr(tmp.car) + ' '
             tmp = tmp.cdr
-        if tmp.cdr==None:
+        if tmp.cdr==None:  # this handles () within a list. toplevel is handled separately
             ret += lisp_repr(tmp.car)+')'
         else:
             ret += lisp_repr(tmp.car)+' . '+lisp_repr(tmp.cdr)+')'

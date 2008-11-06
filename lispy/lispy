@@ -19,18 +19,24 @@ def main():
             print val
             return 1
 
+    input.close()
     input = Input(sys.stdin,E)
+    print "Lispy v0.2\nPress Ctrl-D to exit."
     while True:
-        expr = input.read()
-        if iserror(expr) and expr.string=='EOF':
-            break
-        val = lisp_eval( expr, E )
-        if input.input == sys.stdin:
-            print val
-        if isinstance(val,Exception) and not sys.stdin.isatty():
-            return 2
+        try:
+            expr = input.read()
+            if iserror(expr) and expr.string=='EOF':
+                break
+            val = lisp_eval( expr, E )
+            if input.input == sys.stdin:
+                print val if val!=None else '()'
+            if isinstance(val,Exception) and not sys.stdin.isatty():
+                return 2
+        except KeyboardInterrupt:
+            print "\nKeyboardInterrupt"
     if input.input == sys.stdin:
         print
+    input.close()
 
 if __name__=='__main__':
     main()

@@ -1,27 +1,49 @@
-import sys,readline,string
+import sys,readline,string,os
 from core import *
 
 PREFIX = ( '`', ',', ';' )
-POSTFIX= ( '@', )
+BINARY = ( '@', )
 DELIMITERS = ('(',')')
-TOKENS = PREFIX + POSTFIX + DELIMITERS
+TOKENS = PREFIX + BINARY + DELIMITERS
+
+SYNTAX = { '`':"semiquote",
+           ',':"unquote",
+           ';':"unquote-splice",
+           '@':"ref" }
+
+HISTORY = os.path.expanduser('~/.lispyhistory')
 
 class Input():
     def __init__( self, input, env ):
         self.input = input
+        if input.isatty():
+            if not os.path.exists( HISTORY ):
+                open(HISTORY,'w').close()
+            readline.read_history_file( HISTORY )
         self.env = env
         self.line = []
         self.linenum = 0
-        self.prompt = '> '
+        self.prompt = '>>> '
         self.reprompt = '... '
+
+    def close( self ):
+        if self.input.isatty():
+            readline.write_history_file(HISTORY)
+        else:
+            self.input.close()
+        self.input = None
 
     def get_token( self, in_sexp ):
         if self.line:
+            if iserror(self.line):
+                err = self.line
+                self.line = []
+                return err
             tmp = self.line[0]
             self.line = self.line[1:]
             return tmp
         else:
-            if self.input == sys.stdin:
+            if self.input.isatty():
                 try:
                     self.line = tokenize(raw_input(self.reprompt if in_sexp else self.prompt))
                     self.linenum += 1
@@ -39,12 +61,15 @@ class Input():
         # Intended for implementing syntax. Will NOT read a new line from input.
         if self.line:
             return self.line[0]
+
         else:
             return None
 
     def read( self, in_sexp=False ):
         t = self.get_token(in_sexp)
-        if t=='(':
+        if iserror(t):
+            ret = t
+        elif t=='(':
             if in_sexp:
                 ret = Cons(self.read(True),self.read(True))
             else:
@@ -54,6 +79,12 @@ class Input():
                 ret = None
             else:
                 ret = Exception( "Mismatched paren.", None )
+        elif t in PREFIX:
+            peek = self.peek_token()
+            if peek in (None, ')', '@'):
+                ret = Exception( "Misplaced syntax.", None )
+            else:
+                ret = Cons( self.env.get_sym(SYNTAX[t]), Cons( self.read(True), None ) )
         else:
             val = triage(t,self.env)
             if in_sexp:

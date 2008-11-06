@@ -234,6 +234,6 @@ def remainder( context, a, b ):
 Remainder = PyCode(remainder,'%')
 
 def put( context, val ):
-    print val
+    print val if val!=None else '()'
     return val
 Put = PyCode(put,'put')
