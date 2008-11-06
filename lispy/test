@@ -1,11 +1,9 @@
 from core import *
+from input import *
 
-E = Environment(None)
+e = Environment(None)
+i = TtyInput(e)
 
-p = E.get_sym('+')
-x = E.get_sym('x')
-
-expr = Cons(p,Cons(Cons(p,Cons(1,Cons(1,None))),Cons(1,None)))
-
-print expr
-print lisp_eval(expr,E)
+while True:
+      x = i.read()
+      print x

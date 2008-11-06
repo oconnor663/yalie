@@ -30,9 +30,9 @@ def lisp_eval( expr, Global_Env ):
                 # will have dropped a scope.
                 tmp_env = cur_stack.env.parent if cur_stack.fn.islisp else cur_stack.env
                 ret = tmp_env.lookup(ret)
-                if error(ret):
+                if iserror(ret):
                     ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
-            elif error(ret):
+            elif iserror(ret):
                 ret = Exception("In return from "+lisp_repr(cur_stack.expr)+':', ret )
             else:
                 if not iscode(ret):
@@ -56,7 +56,7 @@ def lisp_eval( expr, Global_Env ):
         elif not cur_stack.has_fn:
             
             if cur_stack.receiving_fn:
-                if error(ret):
+                if iserror(ret):
                     cur_stack.isdone = True
                     ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
                 else:
@@ -74,7 +74,7 @@ def lisp_eval( expr, Global_Env ):
                 cur_stack.eval_ret = cur_stack.fn.eval_ret
             elif issymbol(cur_stack.expr.car):
                 tmp = cur_stack.env.lookup(cur_stack.expr.car)                
-                if error(tmp):
+                if iserror(tmp):
                     cur_stack.isdone = True
                     ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', tmp )
                 else:
@@ -93,7 +93,7 @@ def lisp_eval( expr, Global_Env ):
         ## This section handles the assembly of the arguments list
         elif not cur_stack.has_args:
             if cur_stack.receiving_arg:   # analogous to the section above
-                if error(ret):
+                if iserror(ret):
                     cur_stack.isdone = True
                     ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
                 else:
@@ -139,7 +139,7 @@ def lisp_eval( expr, Global_Env ):
                 cur_stack.arg_index += 1
             elif issymbol(cur_stack.arg_ptr.car):
                 tmp = cur_stack.env.lookup(cur_stack.arg_ptr.car)
-                if error(tmp):
+                if iserror(tmp):
                     cur_stack.isdone = True
                     ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', tmp )
                 else:
@@ -161,7 +161,7 @@ def lisp_eval( expr, Global_Env ):
             ## The first bit just checks if the previous body form returned an error.
             if cur_stack.receiving_body:
                 cur_stack.receiving_body = False
-                if error(ret):
+                if iserror(ret):
                     cur_stack.isdone = True
                     ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )                
 
@@ -174,7 +174,7 @@ def lisp_eval( expr, Global_Env ):
                     cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 elif issymbol(cur_stack.body_ptr.car):
                     ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
-                    if error(ret):
+                    if iserror(ret):
                         cur_stack.isdone = True
                         ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
                     else:
@@ -189,7 +189,7 @@ def lisp_eval( expr, Global_Env ):
 
             else:  # a form/func written in Python
                 ret = apply( cur_stack.fn.call, cur_stack.args_array )
-                if error(ret):
+                if iserror(ret):
                     ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
                 # and whether or not there was an error...
                 cur_stack.isdone = True
@@ -326,7 +326,7 @@ def list2cons( list ):
 def isatom(expr):
     return not isinstance(expr,Symbol) and not isinstance(expr,Cons)
 
-def error(expr):
+def iserror(expr):
     return isinstance(expr,Exception)
 
 def issymbol(expr):

@@ -1,21 +1,66 @@
 import sys,readline,string
 from core import *
 
-TOKENS = ( '"', "'", '`', '.', ',', '(', ')', '[', ']' )
+PREFIX = ( '`', ',', ';' )
+POSTFIX= ( '@', )
+DELIMITERS = ( '(', ')' )
+TOKENS = PREFIX + POSTFIX + DELIMITERS
 
 class TtyInput():
-    def __init__( self, file ):
-        self.file = file
-        self.interactive = file.isatty()
-        self.line = None
+    def __init__( self, env ):
+        self.env = env
+        self.line = []
+        self.prompt = '> '
+        self.reprompt = '... '
 
-    def read( self ):
-        if self.line == None:
-            self.line = raw_input('> ')
-        
+    def get_token( self, in_sexp ):
+        if self.line:
+            tmp = self.line[0]
+            self.line = self.line[1:]
+            return tmp
+        else:
+            try:
+                self.line = tokenize(raw_input(self.reprompt if in_sexp else self.prompt))
+            except EOFError:
+                return None
+            return self.get_token(in_sexp)
 
-def tokenize( s ):
-    chars = list(s)
+    def peek_token( self ):
+        # Intended for implementing syntax. Will NOT read a new line from input.
+        if self.line:
+            return self.line[0]
+        else:
+            return None
+
+#     def read_sexp( self ):
+#         t = triage(self.get_token(True),self.env)
+#         if t=='(':
+#             return Cons( self.read_sexp(), self.read_sexp() )
+#         elif t==')':
+#             return None
+#         elif t==None:
+#             return Exception( "Unclosed parenthesis" )
+#         else:
+#             return Cons( t, self.read_sexp() )
+
+    def read( self, in_sexp=False ):
+        t = triage(self.get_token(in_sexp),self.env)
+        if t=='(':
+            if in_sexp:
+                ret = Cons(self.read(True),self.read(True))
+            else:
+                ret = self.read(True)
+        elif t==')':
+            ret = None
+        else:
+            if in_sexp:
+                ret = Cons( t, self.read() )
+            else:
+                ret = t
+        return ret
+
+def tokenize( line ):
+    chars = list(line)
     ret = []
     while chars:
         current = []
@@ -25,7 +70,7 @@ def tokenize( s ):
         if not chars:
             return ret
         # parse strings
-        if chars[0] in ('"',"'"):  # NOTE that this comes before TOKENS, which quotes also are
+        if chars[0] in ('"',"'"):
             current.append(chars[0])
             chars = chars[1:]
             escaped = False
@@ -42,19 +87,11 @@ def tokenize( s ):
                     return Exception("Unterminated string.", None)
             current.append(chars[0])
             chars = chars[1:]
-        # parse numbers
-        elif chars[0] in string.digits or (chars[0]=='.' and len(chars)>1 and chars[1] in string.digits):
-            if chars[0]=='.':
-                current.append(chars[0]) #these two lines clear the '.' if there is one
-                chars = chars[1:]
-            while chars and chars[0] not in string.whitespace and chars[0] not in TOKENS:
-                current.append(chars[0])
-                chars=chars[1:]
         # parse tokens
         elif chars[0] in TOKENS:
             current.append(chars[0])
             chars = chars[1:]
-        # parse symbols
+        # parse numbers and symbols
         else:
             while chars and chars[0] not in string.whitespace and chars[0] not in TOKENS:
                 current.append(chars[0])
@@ -64,18 +101,20 @@ def tokenize( s ):
     return ret
 
 def triage( token, env ):
-    ## Note that token should not be in TOKENS (excepting a '.' at the beginning of a number)
-    if token[0] in string.digits or token[0]=='.':
+    if token in TOKENS:
+        return token
+    elif token[0]=='"':
+        return eval(token)
+    elif token[0]=="'":
+        return eval('r'+token)
+    else:
         try:
             return int(token)
         except ValueError:
             try:
                 return float(token)
             except ValueError:
-                return Exception("Could not parse number: %s" % token, None )
-    elif token[0]=='"':
-        return eval(token)
-    elif token[0]=="'":
-        return eval('r'+token)
-    else:
-        return env.get_sym(token)
+                return env.get_sym(token)
+
+def desyntax( expr ):
+    pass

@@ -1,13 +1,34 @@
 Things to do immediately:
-       input
-       quoting/unquoting
-       function parameters!!!
-       exceptions (Done, but see below)
-       stack unwinding
-       classes
+    input
+    quoting/unquoting
+    function parameters!!!
+    exceptions (Done, but see below)
+    stack unwinding
+    classes
+
+Idiosyncratic rules:
+    symbols may not begin with a digit (this might be relaxed)
+    pre/postfix syntax must be on the same line (this is necessary)
+
+Syntax:
+    # comments
+    ` semiquote
+    , unquote
+    ; unquote-splice
+    @ ref
+    "/' strings/raw
+
+    
 
 When everything is a pointer in C, it becomes easier to make
 everything an object.
+
+All environments should point to the same dictionary for get_sym. This
+should be independent of the "parent" field, so that imported modules
+can still share symbols with the global scope.  OR!!!  Environments
+can have their imported names stored in the class. Then, when symbols
+are looked up inside that environment, the names are automatically
+adjusted!!! SWEET IDEA!!!
 
 UNWIND-PROTECT SHOULD BE A FEATURE OF fn (and form?)! "break" can be
 just a goto statement inside the predefined loops
@@ -15,6 +36,10 @@ just a goto statement inside the predefined loops
 FORBID TOPLEVEL [] SYNTAX! (Brilliant!) (Terrible?) (just reset the
 input after complete lines, so as to trigger a 'no [ at beginning of
 file error'?)
+
+NO! Require that prefix and postfix syntax be on the same line as the
+values they operate on. Enforce this rule both in the REPL and in text
+code. Use the peek_token() function to enable this.
 
 Exceptions need to be built from the entire stack. They should be
 built in place without being passed up the stack. If nothing "catches"
