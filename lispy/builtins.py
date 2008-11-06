@@ -50,7 +50,7 @@ def parse_args( args_list ):
     optional_args = []
     optional_args_trios = []
     rest_arg = None
-    body_arg = None
+    is_body = False
     kw_args = []
     kw_def_args = []
     kw_def_arg_trios = []
@@ -85,22 +85,14 @@ def parse_args( args_list ):
             if args_list.cdr==None:
                 return "Keyword provided without value"
             elif args_list.car.name in (':r',':b'):
-                if rest_arg or body_arg:
+                if rest_arg:
                     return "Duplicate rest/body"
-                elif args_list.car.name==':r':
+                else:
+                    is_body = args_list.car.name==':b'
                     if not issymbol(args_list.cdr.car) or args_list.cdr.car.iskeyword:
-                        return "Rest needs a symbol"
+                        return "%s needs a symbol" % ('Body' if is_body else 'Rest')
                     if args_list.cdr.car not in used_symbols:
                         rest_arg = args_list.cdr.car
-                        used_symbols.append(args_list.cdr.car)
-                    else:
-                        return "Duplicate symbol"
-                    args_list = args_list.cdr.cdr
-                elif args_list.car.name==':b':
-                    if not issymbol(args_list.cdr.car) or args_list.cdr.car.iskeyword:
-                        return "Body needs a symbol"
-                    if args_list.cdr.car not in used_symbols:                            
-                        body_arg = args_list.cdr.car
                         used_symbols.append(args_list.cdr.car)
                     else:
                         return "Duplicate symbol"
@@ -143,7 +135,7 @@ def parse_args( args_list ):
         else: #stuff left over
             return "Weirdness in args list."
     return (normal_args,optional_args,optional_args_trios,
-            rest_arg,body_arg,kw_args,kw_def_args,kw_def_arg_trios)
+            rest_arg,is_body,kw_args,kw_def_args,kw_def_arg_trios)
  
 def fn( context, *args ):
     print parse_args(args[0])

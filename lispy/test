@@ -1,9 +1,0 @@
-from core import *
-from input import *
-
-e = Environment(None)
-i = TtyInput(e)
-
-while True:
-      x = i.read()
-      print x

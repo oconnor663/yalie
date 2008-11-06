@@ -3,13 +3,15 @@ from core import *
 
 PREFIX = ( '`', ',', ';' )
 POSTFIX= ( '@', )
-DELIMITERS = ( '(', ')' )
+DELIMITERS = ('(',')')
 TOKENS = PREFIX + POSTFIX + DELIMITERS
 
-class TtyInput():
-    def __init__( self, env ):
+class Input():
+    def __init__( self, input, env ):
+        self.input = input
         self.env = env
         self.line = []
+        self.linenum = 0
         self.prompt = '> '
         self.reprompt = '... '
 
@@ -19,10 +21,18 @@ class TtyInput():
             self.line = self.line[1:]
             return tmp
         else:
-            try:
-                self.line = tokenize(raw_input(self.reprompt if in_sexp else self.prompt))
-            except EOFError:
-                return None
+            if self.input == sys.stdin:
+                try:
+                    self.line = tokenize(raw_input(self.reprompt if in_sexp else self.prompt))
+                    self.linenum += 1
+                except EOFError:
+                    return None
+            else:
+                tmp = self.input.readline()
+                if not tmp:
+                    return None
+                self.line = tokenize(tmp)
+                self.linenum += 1
             return self.get_token(in_sexp)
 
     def peek_token( self ):
@@ -32,34 +42,28 @@ class TtyInput():
         else:
             return None
 
-#     def read_sexp( self ):
-#         t = triage(self.get_token(True),self.env)
-#         if t=='(':
-#             return Cons( self.read_sexp(), self.read_sexp() )
-#         elif t==')':
-#             return None
-#         elif t==None:
-#             return Exception( "Unclosed parenthesis" )
-#         else:
-#             return Cons( t, self.read_sexp() )
-
     def read( self, in_sexp=False ):
-        t = triage(self.get_token(in_sexp),self.env)
+        t = self.get_token(in_sexp)
         if t=='(':
             if in_sexp:
                 ret = Cons(self.read(True),self.read(True))
             else:
                 ret = self.read(True)
         elif t==')':
-            ret = None
-        else:
             if in_sexp:
-                ret = Cons( t, self.read() )
+                ret = None
             else:
-                ret = t
+                ret = Exception( "Mismatched paren.", None )
+        else:
+            val = triage(t,self.env)
+            if in_sexp:
+                ret = Cons( val, self.read(True) )
+            else:
+                ret = val
         return ret
 
-def tokenize( line ):
+
+def tokenize( line ):  # please do not pass newlines to this function
     chars = list(line)
     ret = []
     while chars:
@@ -101,7 +105,9 @@ def tokenize( line ):
     return ret
 
 def triage( token, env ):
-    if token in TOKENS:
+    if token==None:
+        return Exception("EOF",None)
+    elif token in TOKENS:
         return token
     elif token[0]=='"':
         return eval(token)

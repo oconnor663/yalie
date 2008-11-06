@@ -69,9 +69,13 @@ def lisp_eval( expr, Global_Env ):
             elif isatom(cur_stack.expr.car):
                 cur_stack.fn = cur_stack.expr.car
                 cur_stack.has_fn = True
-                if cur_stack.fn.islisp:
-                    cur_stack.body_ptr = cur_stack.fn.body
-                cur_stack.eval_ret = cur_stack.fn.eval_ret
+                if not isinstance(cur_stack.fn,LispCode) and not isinstance(cur_stack.fn,PyCode):
+                    cur_stack.isdone = True
+                    ret = Exception( "%s is not a function" % cur_stack.fn, None )
+                else:
+                    if cur_stack.fn.islisp:
+                        cur_stack.body_ptr = cur_stack.fn.body
+                    cur_stack.eval_ret = cur_stack.fn.eval_ret
             elif issymbol(cur_stack.expr.car):
                 tmp = cur_stack.env.lookup(cur_stack.expr.car)                
                 if iserror(tmp):
