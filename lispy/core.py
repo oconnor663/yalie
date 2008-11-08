@@ -23,13 +23,12 @@ def lisp_eval( expr, Global_Env ):
         ## return from a previous call
         if cur_stack.isdone and cur_stack.eval_ret:
             cur_stack.eval_ret = False
+            cur_stack.env = cur_stack.env.parent
+            print cur_stack.env.bindings
             if isatom(ret):
                 pass
             elif issymbol(ret):
-                # eval needs to happen in the calling env. lisp forms
-                # will have dropped a scope.
-                tmp_env = cur_stack.env.parent if cur_stack.fn.islisp else cur_stack.env
-                ret = tmp_env.lookup(ret)
+                ret = cur_stack.env.lookup(ret)
                 if iserror(ret):
                     ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
             elif iserror(ret):
@@ -38,8 +37,6 @@ def lisp_eval( expr, Global_Env ):
                 if not iscode(ret):
                     ret = Exception("Form %s returned improper list: %s" % (cur_stack.expr,ret), None )
                 else:
-                ### SHOULD THE FOLLOWING LINE BE HERE
-                #tmp_env = cur_stack.env.parent if cur_stack.fn.islisp else cur_stack.env
                     cur_stack = Callstack( ret,
                                            cur_stack,
                                            cur_stack.env )
@@ -63,6 +60,10 @@ def lisp_eval( expr, Global_Env ):
                     cur_stack.fn = ret   # ret is set when cur_stack returns, see below
                     cur_stack.receiving_fn = False
                     cur_stack.has_fn = True
+                    test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
+                    if iserror(test):
+                        cur_stack.isdone = True
+                        ret = test
                     if ret.islisp:
                         cur_stack.body_ptr = ret.body
                     cur_stack.eval_ret = ret.eval_ret
@@ -73,6 +74,10 @@ def lisp_eval( expr, Global_Env ):
                     cur_stack.isdone = True
                     ret = Exception( "%s is not a function" % cur_stack.fn, None )
                 else:
+                    test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
+                    if iserror(test):
+                        cur_stack.isdone = True
+                        ret = test
                     if cur_stack.fn.islisp:
                         cur_stack.body_ptr = cur_stack.fn.body
                     cur_stack.eval_ret = cur_stack.fn.eval_ret
@@ -82,8 +87,13 @@ def lisp_eval( expr, Global_Env ):
                     cur_stack.isdone = True
                     ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', tmp )
                 else:
+                    print "HERE!!!"
                     cur_stack.fn = tmp
                     cur_stack.has_fn = True
+                    test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
+                    if iserror(test):
+                        cur_stack.isdone = True
+                        ret = test
                     if cur_stack.fn.islisp:
                         cur_stack.body_ptr = cur_stack.fn.body
                     cur_stack.eval_ret = cur_stack.fn.eval_ret
@@ -106,22 +116,18 @@ def lisp_eval( expr, Global_Env ):
             elif cur_stack.arg_ptr == None:
                 cur_stack.has_args = True
                 
-                #
-                # CHECK THE VALIDITY OF THE ARGUMENTS LIST
-                #
-                
                 ## All scoping happens right here, after all arguments
                 ## have been evaluated (or not, in the case of a
-                ## form). Lexical scoping is given to any lisp code
+                ## form). Lexical scoping is given to any code
                 ## evaluates its arguments but not its return. Python
                 ## code is not scoped here. (But it is scoped by the
                 ## Python interpreter.)
 
+                if cur_stack.fn.eval_args and not cur_stack.fn.eval_ret:
+                    cur_stack.env = Environment(cur_stack.fn.env)
+                else:
+                    cur_stack.env = Environment(cur_stack.env)
                 if cur_stack.fn.islisp:
-                    if cur_stack.fn.eval_args and not cur_stack.fn.eval_ret:
-                        cur_stack.env = Environment(cur_stack.fn.env)
-                    else:
-                        cur_stack.env = Environment(cur_stack.env)
                     ## Bind arguments to the new scope.
                     tmp = cur_stack.fn.arg_syms
                     for a in cur_stack.args_array:
@@ -247,6 +253,8 @@ class Environment():
     def get_sym( self, name ):
         if type(name)!=type(''):
             raise RuntimeError, "Moo."
+        elif '' in name.split(':')[1 if name[0]==':' else 0:]:
+            return Exception( "Not a legal symbol name: %s" % name, None )
         elif name[0]==':':
             return Symbol(name) #keywords aren't interned
         elif self.parent:
@@ -267,6 +275,7 @@ class Environment():
             x = eval("%s.%s" % (module_name,i))
             if isinstance(x,PyCode):
                 x.env = self
+                x.rest_arg = self.get_sym("rest")
                 sym = self.get_sym(x.name)
                 self.bind_sym(sym,x)
     def import_lisp( self, module_name ):
@@ -291,6 +300,11 @@ class Symbol():
         if type(self.name)!=type(''):
             raise RuntimeError, "Moooo..."
         return self.name
+    def kw2sym( self, env ):
+        if not self.iskeyword:
+            raise RuntimeError, "Keyword Moo..."
+        else:
+            return env.get_sym(self.name[1:])
 
 class Cons():
     def __init__( self, car, cdr ):
@@ -314,6 +328,12 @@ class Cons():
             ret.append(tmp.car)
             tmp = tmp.cdr
         return ret
+    def reverse( self, work=None ):
+        ret = None
+        while self:
+            ret = Cons(self.car,ret)
+            self = self.cdr
+        return ret
 
 def lisp_repr( expr ):
     if expr==None:
@@ -328,7 +348,7 @@ def list2cons( list ):
     return ret
 
 def isatom(expr):
-    return not isinstance(expr,Symbol) and not isinstance(expr,Cons)
+    return not isinstance(expr,Symbol) and not isinstance(expr,Cons) and not isinstance(expr,Exception)
 
 def iserror(expr):
     return isinstance(expr,Exception)
@@ -354,20 +374,68 @@ class PyCode():
     '''Object representation of Python functions and special forms.'''
     def __init__( self, call, name, eval_args=True, eval_ret=False, eval_indices = [] ):
         self.islisp = False
+        self.pos_args = None
+        self.rest_arg = None # will be set by import_python
+        self.kw_args = None
         self.name = name # only used for the initial binding during import
         self.call = call # call must take a specific form. see builtins.
         self.eval_args = eval_args
         self.eval_ret = eval_ret
         self.eval_indices = eval_indices  #allows selective evaluation of arguments (intended for forms)
-        #self.env will be set by import_python
+        self.env = None # will be set by import_python
 
 class LispCode():
     '''Object representation of Lisp functions and forms.'''
-    def __init__( self, arg_syms, body, lexical_env ):
+    def __init__( self, pos_args, rest_arg, is_body, kw_args, body, lexical_env ):
         self.islisp = True
-        self.body = body  # a cons list
-        self.arg_syms = arg_syms  # another cons list
+        self.pos_args = pos_args
+        self.rest_arg = rest_arg
+        self.is_body = is_body
+        self.kw_args = kw_args
+        self.body = body
         if lexical_env!=None:
             self.env = lexical_env
         self.eval_ret = (lexical_env==None)
         self.eval_args = (lexical_env!=None)
+
+def legal_args( args_list, fn ):
+    pos_args = fn.pos_args
+    rest_arg = fn.rest_arg
+    kw_args = fn.kw_args
+    
+    min = 0; max = 0
+    while pos_args and issymbol(pos_args.car):
+        min+=1; max+=1
+        pos_args = pos_args.cdr
+    if rest_arg:
+        max = -1
+    else:
+        while pos_args:
+            max+=1
+            pos_args = pos_args.cdr
+
+    kwds = []
+    while kw_args:
+        if issymbol(kw_args.car):
+            kwds.append(kw_args.car.name)
+        else:
+            kwds.append(kw_args.car.car.name)
+
+    length = 0
+    while args_list:
+        if issymbol(args_list.car) and args_list.car.iskeyword:
+            if args_list.car.name[1:] not in kwds:
+                return Exception( "Undefined keyword: %s" % args_list.car.name, None )
+            elif not args_list.cdr:
+                return Exception( "No argument supplied for keyword", None )
+            else:
+                kwds.pop(kwds.index(args_list.car.name[1:]))
+                args_list = args_list.cdr.cdr
+        else:
+            length += 1
+            args_list = args_list.cdr
+    
+    if length < min or (max!=-1 and length>max):
+        return Exception( "Wrong number of args", None )
+    else:
+        return True

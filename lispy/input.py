@@ -45,7 +45,9 @@ class Input():
         else:
             if self.input.isatty():
                 try:
-                    self.line = tokenize(raw_input(self.reprompt if in_sexp else self.prompt))
+                    tmp = raw_input(self.reprompt if in_sexp else self.prompt)
+                    tmp = cut_comments(tmp)
+                    self.line = tokenize(tmp)
                     self.linenum += 1
                 except EOFError:
                     return None
@@ -53,6 +55,7 @@ class Input():
                 tmp = self.input.readline()
                 if not tmp:
                     return None
+                tmp = cut_comments(tmp)
                 self.line = tokenize(tmp)
                 self.linenum += 1
             return self.get_token(in_sexp)
@@ -71,7 +74,15 @@ class Input():
             ret = t
         elif t=='(':
             if in_sexp:
-                ret = Cons(self.read(True),self.read(True))
+                inside = self.read(True)
+                if iserror(inside):
+                    ret = inside
+                else:
+                    outside = self.read(True)
+                    if iserror(outside):
+                        ret = outside
+                    else:
+                        ret = Cons(inside,outside)
             else:
                 ret = self.read(True)
         elif t==')':
@@ -80,19 +91,45 @@ class Input():
             else:
                 ret = Exception( "Mismatched paren.", None )
         elif t in PREFIX:
+            # Note the "False" arguments to self.read() in here.
             peek = self.peek_token()
             if peek in (None, ')', '@'):
                 ret = Exception( "Misplaced syntax.", None )
+            elif not in_sexp:
+                next = self.read(False)
+                if iserror(next):
+                    ret = next
+                else:
+                    ret = Cons( self.env.get_sym(SYNTAX[t]), Cons( next, None ) )
             else:
-                ret = Cons( self.env.get_sym(SYNTAX[t]), Cons( self.read(True), None ) )
+                inside = self.read(False)
+                if iserror(inside):
+                    ret = inside
+                else:
+                    outside = self.read(True)
+                    if iserror(outside):
+                        ret = outside
+                    else:
+                        ret = Cons( Cons( self.env.get_sym(SYNTAX[t]), Cons( inside, None ) ),
+                                    outside )
         else:
             val = triage(t,self.env)
-            if in_sexp:
-                ret = Cons( val, self.read(True) )
+            if in_sexp and not iserror(val):
+                next = self.read(True)
+                if iserror(next):
+                    ret = next
+                else:
+                    ret = Cons( val, next )
             else:
                 ret = val
         return ret
 
+
+def cut_comments( line ):
+    if '#' in line:
+        return line[:line.index('#')]
+    else:
+        return line
 
 def tokenize( line ):  # please do not pass newlines to this function
     chars = list(line)
