@@ -3,6 +3,219 @@
 import string,sys
 from core import *
 from input import *
+from arguments import *
+
+
+def lisp_eval( expr, Global_Env ):
+    ### lisp_eval() is the Python definition of the canonical lisp
+    ### function "eval".  This definition is ITERATIVE (not
+    ### recursive), which avoids the use of the Python callstack and
+    ### allows the lisp callstack to be exposed.
+    
+    ## Begin with simple cases (not S-expressions)
+    if isatom(expr):
+        return expr
+    if issymbol(expr):
+        return Global_Env.lookup(expr)
+    if not iscode(expr):
+        return Exception("Eval received improper list: %s" % expr, None)
+
+    ## Everything else is for handling the case when expr is an S-expression
+
+    cur_stack = Callstack( expr, None, Global_Env )
+    
+    ## The main loop:
+    while True:
+        
+        ## This section first checks whether it needs to evaluate the
+        ## return from a previous call
+        if cur_stack.isdone and cur_stack.eval_ret:
+            cur_stack.eval_ret = False
+            cur_stack.env = cur_stack.env.parent
+            if isatom(ret):
+                pass
+            elif issymbol(ret):
+                ret = cur_stack.env.lookup(ret)
+                if iserror(ret):
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
+            elif iserror(ret):
+                ret = Exception("In return from "+lisp_repr(cur_stack.expr)+':', ret )
+            else:
+                if not iscode(ret):
+                    ret = Exception("Form %s returned improper list: %s" % (cur_stack.expr,ret), None )
+                else:
+                    cur_stack = Callstack( ret,
+                                           cur_stack,
+                                           cur_stack.env )
+            
+        ## If everything is finished, this will pop the current stack.
+        elif cur_stack.isdone:
+            if cur_stack.parent==None:
+                return ret
+            else:
+                cur_stack = cur_stack.parent
+
+        ## If we're starting a new stack, this section handles looking
+        ## up the function at the head of expr
+        elif not cur_stack.has_fn:
+            
+            if cur_stack.receiving_fn:
+                if iserror(ret):
+                    cur_stack.isdone = True
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                else:
+                    cur_stack.fn = ret   # ret is set when cur_stack returns, see below
+                    cur_stack.receiving_fn = False
+                    cur_stack.has_fn = True
+                    test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
+                    if iserror(test):
+                        cur_stack.isdone = True
+                        ret = test
+                    if cur_stack.fn.islisp:
+                        cur_stack.body_ptr = cur_stack.fn.body
+                    cur_stack.eval_ret = cur_stack.fn.eval_ret
+                    cur_stack.pos_args = cur_stack.fn.pos_args
+                    cur_stack.kw_args = cur_stack.fn.kw_args
+                    cur_stack.used_kwds = []
+            elif isatom(cur_stack.expr.car):
+                cur_stack.fn = cur_stack.expr.car
+                cur_stack.has_fn = True
+                if not isinstance(cur_stack.fn,LispCode) and not isinstance(cur_stack.fn,PyCode):
+                    cur_stack.isdone = True
+                    ret = Exception( "%s is not a function" % cur_stack.fn, None )
+                else:
+                    test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
+                    if iserror(test):
+                        cur_stack.isdone = True
+                        ret = test
+                    if cur_stack.fn.islisp:
+                        cur_stack.body_ptr = cur_stack.fn.body
+                    cur_stack.eval_ret = cur_stack.fn.eval_ret
+                    cur_stack.pos_args = cur_stack.fn.pos_args
+                    cur_stack.kw_args = cur_stack.fn.kw_args
+                    cur_stack.used_kwds = []
+            elif issymbol(cur_stack.expr.car):
+                tmp = cur_stack.env.lookup(cur_stack.expr.car)                
+                if iserror(tmp):
+                    cur_stack.isdone = True
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', tmp )
+                else:
+                    cur_stack.fn = tmp
+                    cur_stack.has_fn = True
+                    test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
+                    if iserror(test):
+                        cur_stack.isdone = True
+                        ret = test
+                    if cur_stack.fn.islisp:
+                        cur_stack.body_ptr = cur_stack.fn.body
+                    cur_stack.eval_ret = cur_stack.fn.eval_ret
+                    cur_stack.pos_args = cur_stack.fn.pos_args
+                    cur_stack.kw_args = cur_stack.fn.kw_args
+                    cur_stack.used_kwds = []
+            else:
+                ## if (car expr) is itself an S-exp, put it on the stack
+                cur_stack.receiving_fn = True
+                cur_stack = Callstack( cur_stack.expr.car,
+                                       cur_stack,
+                                       cur_stack.env )
+                
+        ## This section handles the assembly of the arguments list
+        elif not cur_stack.has_args:
+            if cur_stack.receiving_arg:   # analogous to the section above
+                if iserror(ret):
+                    cur_stack.isdone = True
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                else:
+                    cur_stack.received_args = Cons(ret,cur_stack.received_args)
+                cur_stack.receiving_arg = False
+            elif cur_stack.arg_ptr == None:
+          
+                cur_stack.has_args = True
+                if cur_stack.received_args:
+                    cur_stack.received_args = cur_stack.received_args.reverse()
+                
+                ## All scoping happens right here, after all arguments
+                ## have been evaluated (or not, in the case of a
+                ## form). Lexical scoping is given to any code
+                ## evaluates its arguments but not its return. Python
+                ## code is not scoped here. (But it is scoped by the
+                ## Python interpreter.)
+
+                new_bindings = make_bindings(cur_stack.received_args, cur_stack.fn)
+
+                if cur_stack.fn.eval_args and not cur_stack.fn.eval_ret:
+                    cur_stack.env = Environment(cur_stack.fn.env,new_bindings)
+                else:
+                    cur_stack.env = Environment(cur_stack.env,new_bindings)
+
+            elif not cur_stack.fn.eval_args and (cur_stack.fn.islisp or \
+                    cur_stack.arg_index not in cur_stack.fn.eval_indices):   # don't eval arg
+                cur_stack.received_args = Cons(cur_stack.arg_ptr.car,cur_stack.received_args)
+                cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
+                cur_stack.arg_index += 1
+            ## below this point, arguments need to be evaluated
+            elif isatom(cur_stack.arg_ptr.car):
+                cur_stack.received_args = Cons(cur_stack.arg_ptr.car,cur_stack.received_args)
+                cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
+                cur_stack.arg_index += 1
+            elif issymbol(cur_stack.arg_ptr.car):
+                tmp = cur_stack.env.lookup(cur_stack.arg_ptr.car)
+                if iserror(tmp):
+                    cur_stack.isdone = True
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', tmp )
+                else:
+                    cur_stack.received_args = Cons(tmp,cur_stack.received_args)
+                    cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
+                    cur_stack.arg_index += 1
+            else:  # arg is an S-exp
+                cur_stack.receiving_arg = True
+                tmp = cur_stack.arg_ptr.car
+                cur_stack.arg_ptr = cur_stack.arg_ptr.cdr
+                cur_stack.arg_index += 1
+                cur_stack = Callstack( tmp,
+                                       cur_stack,
+                                       cur_stack.env )
+
+        ## Now, fn and args_array in hand, we're going to evaluate the body of the function!
+        else:
+
+            ## The first bit just checks if the previous body form returned an error.
+            if cur_stack.receiving_body:
+                cur_stack.receiving_body = False
+                if iserror(ret):
+                    cur_stack.isdone = True
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )                
+
+            elif cur_stack.fn.islisp:
+
+                if cur_stack.body_ptr == None:
+                    cur_stack.isdone = True
+                elif isatom(cur_stack.body_ptr.car):
+                    ret = cur_stack.body_ptr.car
+                    cur_stack.body_ptr = cur_stack.body_ptr.cdr
+                elif issymbol(cur_stack.body_ptr.car):
+                    ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
+                    if iserror(ret):
+                        cur_stack.isdone = True
+                        ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                    else:
+                        cur_stack.body_ptr = cur_stack.body_ptr.cdr
+                else:
+                    tmp = cur_stack.body_ptr.car
+                    cur_stack.body_ptr = cur_stack.body_ptr.cdr
+                    cur_stack.receiving_body = True
+                    cur_stack = Callstack( tmp,
+                                           cur_stack,
+                                           cur_stack.env )
+
+            else:  # a form/func written in Python
+                
+                ret = apply( cur_stack.fn.call, [cur_stack.fn,cur_stack]+cur_stack.env.lookup("rest").py_list() )
+                if iserror(ret):
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                # and whether or not there was an error...
+                cur_stack.isdone = True
+
 
 def main():
     E = Environment(None)

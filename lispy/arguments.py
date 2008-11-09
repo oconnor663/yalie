@@ -91,3 +91,47 @@ def parse_args( args_list ):
             return Exception( "Weirdness in args list.", None )
     return (pos_args.reverse() if pos_args else None,rest_arg,is_body,kw_args.reverse() if kw_args else None)
 
+def legal_args( args_list, fn ):
+    pos_args = fn.pos_args
+    rest_arg = fn.rest_arg
+    kw_args = fn.kw_args
+    
+    min = 0; max = 0
+    while pos_args and issymbol(pos_args.car):
+        min+=1; max+=1
+        pos_args = pos_args.cdr
+    if rest_arg:
+        max = -1
+    else:
+        while pos_args:
+            max+=1
+            pos_args = pos_args.cdr
+
+    kwds = []
+    while kw_args:
+        if issymbol(kw_args.car):
+            kwds.append(kw_args.car.name)
+        else:
+            kwds.append(kw_args.car.car.name)
+
+    length = 0
+    while args_list:
+        if issymbol(args_list.car) and args_list.car.iskeyword:
+            if args_list.car.name[1:] not in kwds:
+                return Exception( "Undefined keyword: %s" % args_list.car.name, None )
+            elif not args_list.cdr:
+                return Exception( "No argument supplied for keyword", None )
+            else:
+                kwds.pop(kwds.index(args_list.car.name[1:]))
+                args_list = args_list.cdr.cdr
+        else:
+            length += 1
+            args_list = args_list.cdr
+    
+    if length < min or (max!=-1 and length>max):
+        return Exception( "Wrong number of args", None )
+    else:
+        return True
+
+def make_bindings( vals, fn ):
+    pass
