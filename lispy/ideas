@@ -1,5 +1,5 @@
 Things to do immediately:
-    input
+    input (DONE!)
     quoting/unquoting
     function parameters!!!
     exceptions (Done, but see below)
@@ -7,7 +7,7 @@ Things to do immediately:
     classes
 
 Idiosyncratic rules:
-    symbols may not begin with a digit (this might be relaxed)
+    symbols may not begin with a digit (this restriction has been lifted)
     pre/postfix syntax must be on the same line (this is necessary)
 
 Syntax:
@@ -18,10 +18,18 @@ Syntax:
     @ ref
     "/' strings/raw
 
+Other symbols to make use of:
+    & (bitwise and?)
+    $ 
+    [ ]
+    { }
+    |
+    \
+    ~ (special syntax for "not"?)   
     
 
 When everything is a pointer in C, it becomes easier to make
-everything an object.
+everything an object. Use the enum type.
 
 All environments should point to the same dictionary for get_sym. This
 should be independent of the "parent" field, so that imported modules
@@ -35,8 +43,7 @@ just a goto statement inside the predefined loops
 
 FORBID TOPLEVEL [] SYNTAX! (Brilliant!) (Terrible?) (just reset the
 input after complete lines, so as to trigger a 'no [ at beginning of
-file error'?)
-
+file error'?) 
 NO! Require that prefix and postfix syntax be on the same line as the
 values they operate on. Enforce this rule both in the REPL and in text
 code. Use the peek_token() function to enable this.
@@ -54,32 +61,32 @@ There needs to be a function for generating a fresh global scope
 containing all builtin functions and constants. These will be used as
 base Env objects for imported namespaces.
 
-Everything an object?
-How does python handle "a = 7 ; if x: ..." for printint value?
+Everything an object? Yes!
+How does python handle "a = 7 ; if x: ..." for printint value? Answer: poorly.
 Are python functions/classes objects themselves?
-
 
 Symbols referenced from an imported module do not actually have to be
 the exact same objects as the originals. The Global environment can
 create a new symbol object whose lookup properties point work
 differently from that symbol in its original context. Since the two
-can never be eq'd, this won't cause any problems.
+can never be eq'd, this won't cause any problems.  DIFFERENT APPROACH:
+Environments will take a parameter giving their imported context. All
+symbol lookups will thus add module names to the front end of any
+symbols within them. This dovetails with the notion that all
+Environments will share a list of symbols with the importing env.
 
 Eventually add support for pronouns :)
 
 no function should ever need to make sure that it's arguments are
 legally lists. This should be checked by eval or apply.
 
-difference between interactive and noninteractive regarding postfix
-operators. (no. require that postfixing of array ref [and of
-method/member ref?] have no whitespace?)
-
 "let" needs to check for globalness to do temporary replaces.  it
 should also be able to temporarily overwrite car's, cdr's, and other
 data fields in the same temporary way. (how would the (let a b)
 operator resolve its own scope? perhaps it can refuse to do that
 because of the parens required to take a car. but the same problem
-exists for global variables...)
+exists for global variables...) (Perhaps I can reuse the
+"unwind-protect" functionality to accomplish this...)
 
 When let is called as (let x y), it should throw an exception if x is
 a global variable, because the scope will not be well defined? (Unless

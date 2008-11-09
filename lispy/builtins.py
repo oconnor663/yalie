@@ -31,24 +31,19 @@ Quote = PyCode(quote,'quote', False, False)
 
 def fn( self, stack, *args ):
     p = parse_args(args[0])
-    print p
-    return
-
     body = list2cons(args[1:])
     if not iscode(body):
         return Exception("fn received malformed body: %s"%body,None)
-    return LispCode( args[0], body, stack.env )
+    return LispCode( p[0],p[1],p[2],p[3], body, stack.env )
     # Note that it is the callstack's env, not self's env, that is the lexical environment.
 Fn = PyCode(fn,'fn', False, False)
 
 def form( self, stack, *args ):
-    #
-    # Check for well-formedness
-    #
+    p = parse_args(args[0])
     body = list2cons(args[1:])
     if not iscode(body):
         return Exception("fn received malformed body: %s"%body,None)
-    return LispCode( args[0], body, None )
+    return LispCode( p[0],p[1],p[2],p[3], body, None )
     # Note that it is the callstack's env, not self's env, that is the lexical environment.
 Form = PyCode(form,'form', False, False)
 

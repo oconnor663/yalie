@@ -92,6 +92,10 @@ def parse_args( args_list ):
     return (pos_args.reverse() if pos_args else None,rest_arg,is_body,kw_args.reverse() if kw_args else None)
 
 def legal_args( args_list, fn ):
+
+    if not isinstance(fn,LispCode) and not isinstance(fn,PyCode):
+        return Exception("%s is not a function." % fn, None)
+
     pos_args = fn.pos_args
     rest_arg = fn.rest_arg
     kw_args = fn.kw_args
@@ -133,5 +137,67 @@ def legal_args( args_list, fn ):
     else:
         return True
 
-def make_bindings( vals, fn ):
-    pass
+def make_bindings( vals, fn, env ):
+    #returns a dictionary with bindings. assumes correctness.
+
+    def first( tuple ):
+        if issymbol(tuple):
+            return tuple
+        else:
+            return tuple.car
+    
+    def third( tuple ):
+        if iscons(tuple) and tuple.cdr and tuple.cdr.cdr:
+            return tuple.cdr.cdr.car
+        else:
+            return False
+
+    if not legal_args(vals,fn):
+        raise RuntimeError, "MOOOOOOOOOO!!!!!!!!!!!!!!!!!!!!!"
+
+    pos_args = fn.pos_args
+    rest_arg = fn.rest_arg
+    rest_bound = False
+    kw_args = fn.kw_args
+    used_kwds = []
+    ret = {}
+    
+    while vals:
+        if issymbol(vals.car) and vals.car.iskeyword:
+            ret[vals.car.kw2sym(env).name] = vals.cdr.car
+            used_kwds.append(vals.car)
+            vals = vals.cdr.cdr
+        else:
+            if pos_args:
+                ret[first(pos_args.car).name] = vals.car
+                if third(pos_args.car):
+                    ret[third(pos_args.car).name] = True
+                vals = vals.cdr
+                pos_args = pos_args.cdr
+            else:
+                if rest_bound:
+                    ret[rest_arg.name] = Cons(vals.car,ret[rest_arg.name])
+                else:
+                    rest_bound = True
+                    ret[rest_arg.name] = Cons(vals.car,None)
+                vals = vals.cdr
+    
+    if rest_bound:
+        ret[rest_arg.name] = ret[rest_arg.name].reverse()
+    else:
+        ret[rest_arg.name] = None
+                
+    while pos_args:
+        ret[first(pos_args.car).name] = pos_args.car.cdr.car
+        if third(pos_args.car):
+            ret[third(pos_args.car).name] = False
+        pos_args = pos_args.cdr
+
+    while kw_args:
+        if first(kw_args.car) not in used_kwds:
+            ret[first(kw_args.car).name] = kw_args.car.cdr.car
+            if third(kw_args.car):
+                ret[third(kw_args.car).name] = False
+        kw_args = kw_args.cdr
+
+    return ret

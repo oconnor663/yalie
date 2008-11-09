@@ -37,7 +37,7 @@ class Environment():
     def lookup( self, sym ):
         if type(sym)==type(''):
             return self.lookup(self.get_sym(sym)) # for strings
-        elif sym.name in self.bindings:
+        elif sym.name in self.bindings.keys():
             return self.bindings[sym.name]
         elif self.parent:
             return self.parent.lookup(sym)
@@ -100,7 +100,7 @@ class Symbol():
     def __repr__( self ):
         if type(self.name)!=type(''):
             raise RuntimeError, "Moooo..."
-        return self.name
+        return "SYM"+self.name
     def kw2sym( self, env ):
         if not self.iskeyword:
             raise RuntimeError, "Keyword Moo..."

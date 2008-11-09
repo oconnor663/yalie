@@ -189,6 +189,3 @@ def triage( token, env ):
                 return float(token)
             except ValueError:
                 return env.get_sym(token)
-
-def desyntax( expr ):
-    pass

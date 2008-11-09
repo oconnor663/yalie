@@ -71,23 +71,21 @@ def lisp_eval( expr, Global_Env ):
                     if iserror(test):
                         cur_stack.isdone = True
                         ret = test
-                    if cur_stack.fn.islisp:
-                        cur_stack.body_ptr = cur_stack.fn.body
-                    cur_stack.eval_ret = cur_stack.fn.eval_ret
-                    cur_stack.pos_args = cur_stack.fn.pos_args
-                    cur_stack.kw_args = cur_stack.fn.kw_args
-                    cur_stack.used_kwds = []
+                    else:
+                        if cur_stack.fn.islisp:
+                            cur_stack.body_ptr = cur_stack.fn.body
+                        cur_stack.eval_ret = cur_stack.fn.eval_ret
+                        cur_stack.pos_args = cur_stack.fn.pos_args
+                        cur_stack.kw_args = cur_stack.fn.kw_args
+                        cur_stack.used_kwds = []
             elif isatom(cur_stack.expr.car):
                 cur_stack.fn = cur_stack.expr.car
                 cur_stack.has_fn = True
-                if not isinstance(cur_stack.fn,LispCode) and not isinstance(cur_stack.fn,PyCode):
+                test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
+                if iserror(test):
                     cur_stack.isdone = True
-                    ret = Exception( "%s is not a function" % cur_stack.fn, None )
+                    ret = test
                 else:
-                    test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
-                    if iserror(test):
-                        cur_stack.isdone = True
-                        ret = test
                     if cur_stack.fn.islisp:
                         cur_stack.body_ptr = cur_stack.fn.body
                     cur_stack.eval_ret = cur_stack.fn.eval_ret
@@ -106,12 +104,13 @@ def lisp_eval( expr, Global_Env ):
                     if iserror(test):
                         cur_stack.isdone = True
                         ret = test
-                    if cur_stack.fn.islisp:
-                        cur_stack.body_ptr = cur_stack.fn.body
-                    cur_stack.eval_ret = cur_stack.fn.eval_ret
-                    cur_stack.pos_args = cur_stack.fn.pos_args
-                    cur_stack.kw_args = cur_stack.fn.kw_args
-                    cur_stack.used_kwds = []
+                    else:
+                        if cur_stack.fn.islisp:
+                            cur_stack.body_ptr = cur_stack.fn.body
+                        cur_stack.eval_ret = cur_stack.fn.eval_ret
+                        cur_stack.pos_args = cur_stack.fn.pos_args
+                        cur_stack.kw_args = cur_stack.fn.kw_args
+                        cur_stack.used_kwds = []
             else:
                 ## if (car expr) is itself an S-exp, put it on the stack
                 cur_stack.receiving_fn = True
@@ -141,7 +140,7 @@ def lisp_eval( expr, Global_Env ):
                 ## code is not scoped here. (But it is scoped by the
                 ## Python interpreter.)
 
-                new_bindings = make_bindings(cur_stack.received_args, cur_stack.fn)
+                new_bindings = make_bindings(cur_stack.received_args, cur_stack.fn, Global_Env)
 
                 if cur_stack.fn.eval_args and not cur_stack.fn.eval_ret:
                     cur_stack.env = Environment(cur_stack.fn.env,new_bindings)
@@ -209,7 +208,7 @@ def lisp_eval( expr, Global_Env ):
                                            cur_stack.env )
 
             else:  # a form/func written in Python
-                
+
                 ret = apply( cur_stack.fn.call, [cur_stack.fn,cur_stack]+cur_stack.env.lookup("rest").py_list() )
                 if iserror(ret):
                     ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
