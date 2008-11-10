@@ -23,6 +23,7 @@ class Input():
         self.env = env
         self.line = []
         self.linenum = 0
+        self.expr_start = 0
         self.prompt = '>>> '
         self.reprompt = '... '
 
@@ -84,6 +85,7 @@ class Input():
                     else:
                         ret = Cons(inside,outside)
             else:
+                self.expr_start = self.linenum
                 ret = self.read(True)
         elif t==')':
             if in_sexp:
@@ -120,6 +122,8 @@ class Input():
                     ret = next
                 else:
                     ret = Cons( val, next )
+            elif in_sexp and val.string=="EOF":
+                ret = Exception("EOF inside S-expression, starting at line %i." %self.expr_start, None)
             else:
                 ret = val
         return ret

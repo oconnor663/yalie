@@ -224,9 +224,13 @@ def main():
         expr = input.read()
         if iserror(expr) and expr.string=='EOF':
             break
+        elif iserror(expr):
+            print "Error reading builtins.lisp"
+            print expr
+            return 1
         val = lisp_eval( expr, E )
         if iserror(val):
-            print "Error in builtins.lp"
+            print "Error in builtins.lisp"
             print val
             return 1
 
@@ -243,7 +247,7 @@ def main():
                 print val if val!=None else '()'
             if isinstance(val,Exception) and not sys.stdin.isatty():
                 return 2
-        except RuntimeError:#KeyboardInterrupt:
+        except KeyboardInterrupt:
             print "\nKeyboardInterrupt"
     if input.input == sys.stdin:
         print

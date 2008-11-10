@@ -1,3 +1,5 @@
+import string
+
 class Callstack():
     def __init__( self, expr, parent, env ):
         self.expr = expr # assumed to be an s-expr
@@ -37,6 +39,8 @@ class Environment():
     def lookup( self, sym ):
         if type(sym)==type(''):
             return self.lookup(self.get_sym(sym)) # for strings
+        elif not issymbol(sym):
+            return Exception( "Cannot dereference %s" % sym, None )
         elif sym.name in self.bindings.keys():
             return self.bindings[sym.name]
         elif self.parent:
@@ -65,9 +69,13 @@ class Environment():
             self.symbols[name] = ret
             return ret
     def bind_sym( self, sym, val ):
-        if sym.iskeyword:
-            raise RuntimeError, "Turn this into a real error or something."
-        self.bindings[sym.name] = val
+        if not issymbol(sym):
+            return Exception( "Cannot bind nonsymbol: %s" % sym, None )
+        elif sym.iskeyword:
+            return Exception( "Cannot bind keyword: %s" % sym, None )
+        else:
+            self.bindings[sym.name] = val
+            return True
     def import_python( self, module_name ):
         if module_name in dir():
             raise RuntimeError, "MOOOOOOOOOOOOOOOO!!!"
@@ -100,7 +108,7 @@ class Symbol():
     def __repr__( self ):
         if type(self.name)!=type(''):
             raise RuntimeError, "Moooo..."
-        return self.name
+        return string.upper(self.name)
     def kw2sym( self, env ):
         if not self.iskeyword:
             raise RuntimeError, "Keyword Moo..."

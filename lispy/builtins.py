@@ -48,13 +48,20 @@ def form( self, stack, *args ):
 Form = PyCode(form,'form', False, False)
 
 def set_locally( self, stack, sym, val ):
-    stack.env.parent.bind_sym(sym,val) # will be in a dropped environment
-    return val
+    ret = stack.env.parent.bind_sym(sym,val) # will be in a dropped environment
+    if iserror(ret):
+        return ret
+    else:
+        return val
 SetLocally = PyCode(set_locally,'set-locally',False,False,[1]) #note the eval-index
 
 def goto( self, stack, tag ):
     tag_sym = stack.env.get_sym('tag')
     def find_tag( stack, tag ):
+        if stack==None:
+            return Exception( "Tag not found: %s" % tag, None )
+        elif not stack.fn.islisp:
+            return find_tag(stack.parent,tag)
         body = stack.fn.body #assumed to be LispCode
         goto_ptr = None
         while body:
@@ -65,10 +72,8 @@ def goto( self, stack, tag ):
                 body = body.cdr
         if goto_ptr:
             return (stack,goto_ptr)
-        elif stack.parent:
-            return find_tag(stack.parent,tag)
         else:
-            return Exception( "Tag not found: %s" % tag, None )
+            return find_tag(stack.parent,tag)
             
     stack = stack.parent #clearing the PyCode stack
     ret = find_tag(stack,tag)
@@ -103,9 +108,6 @@ def call( self, stack, f, args ):
     stack.received_args = args.reverse() if args!=None else None
     stack.avoid_arg_check = True #CRITICAL
     return f
-    
-    ### DONT FUCK UP
-
 Cass = PyCode( call, 'call')
 
 def cons_fn( self, stack, car, cdr ):
@@ -143,12 +145,12 @@ def leq( self, stack, a, b ):
 Leq = PyCode(leq,'<=')
 
 def gt( self, stack, a, b ):
-    return a < b
-Gt = PyCode(gt,'<')
+    return a > b
+Gt = PyCode(gt,'>')
 
 def geq( self, stack, a, b ):
-    return a <= b
-Geq = PyCode(geq,'<=')
+    return a >= b
+Geq = PyCode(geq,'>=')
 
 def plus( self, stack, *args ):
     return sum(args)
@@ -179,7 +181,9 @@ def remainder( self, stack, a, b ):
     return a%b
 Remainder = PyCode(remainder,'%')
 
-def put( self, stack, val ):
-    print val if val!=None else '()'
-    return val
+def put( self, stack, *vals ):
+    for i in vals:
+        print i if i!=None else '()',
+    print
+    return vals[-1]
 Put = PyCode(put,'put')
