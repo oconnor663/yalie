@@ -4,6 +4,15 @@
 
 (set-locally ls (fn (:r rest) rest))
 
+(set-locally append (fn (:r rest)
+  (if (= nil rest)
+      ()
+      (if (not (isls (car rest)))
+	  (cons (car rest) (call append (cdr rest)))
+          (if (= nil (car rest))
+	      (call append (cdr rest))
+	      (cons (car (car rest)) (call append (cons (cdr (car rest)) (cdr rest)))))))))
+
 (set-locally map (fn (f args)
   (if (= args nil)
       nil
