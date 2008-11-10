@@ -115,41 +115,50 @@ def cons_fn( self, stack, car, cdr ):
 ConsFn = PyCode(cons_fn,'cons')
 
 def car( self, stack, cell ):
-    return cell.car
+    if not iscons(cell):
+        return Exception("Car received non-cons object %s"%cell, None)
+    else:
+        return cell.car
 Car = PyCode(car,'car')
 
 def cdr( self, stack, cell ):
-    return cell.cdr
+    if not iscons(cell):
+        return Exception("Car received non-cons object %s"%cell, None)
+    else:
+        return cell.cdr
 Cdr = PyCode(cdr,'cdr')
 
+def lisp_bool( fn, bool ):
+    return fn.env.get_sym("T") if bool else None
+
 def isls( self, stack, x ):
-    return isinstance(x,Cons) or x==None
+    return lisp_bool(self, isinstance(x,Cons) or x==None)
 Isls = PyCode(isls,'isls')
 
 def lisp_not( self, stack, val ):
-    return not val
+    return lisp_bool(self,not val)
 Not = PyCode(lisp_not,'not')
 
 ### AND and OR need to be special forms
 
 def equals( self, stack, a, b ):
-    return a==b
+    return lisp_bool(self,a==b)
 Equals = PyCode(equals,'=')
 
 def lt( self, stack, a, b ):
-    return a < b
+    return lisp_bool(self,a < b)
 Lt = PyCode(lt,'<')
 
 def leq( self, stack, a, b ):
-    return a <= b
+    return lisp_bool(self,a <= b)
 Leq = PyCode(leq,'<=')
 
 def gt( self, stack, a, b ):
-    return a > b
+    return lisp_bool(self,a > b)
 Gt = PyCode(gt,'>')
 
 def geq( self, stack, a, b ):
-    return a >= b
+    return lisp_bool(self,a >= b)
 Geq = PyCode(geq,'>=')
 
 def plus( self, stack, *args ):
