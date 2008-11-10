@@ -1,7 +1,7 @@
 import sys,readline,string,os
 from core import *
 
-PREFIX = ( '`', ',', ';' )
+PREFIX = ( '`', ',', ';', '~' )
 BINARY = ( '@', )
 DELIMITERS = ('(',')')
 TOKENS = PREFIX + BINARY + DELIMITERS
@@ -9,6 +9,7 @@ TOKENS = PREFIX + BINARY + DELIMITERS
 SYNTAX = { '`':"semiquote",
            ',':"unquote",
            ';':"unquote-splice",
+           '~':"not",
            '@':"ref" }
 
 HISTORY = os.path.expanduser('~/.lispyhistory')

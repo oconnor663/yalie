@@ -1,7 +1,7 @@
 Things to do immediately:
     input (DONE!)
-    quoting/unquoting
-    function parameters!!!
+    quoting/unquoting (DONE!)
+    function parameters (DONE!)
     exceptions (Done, but see below)
     stack unwinding (Working! but no protect yet)
     classes
