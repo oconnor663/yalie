@@ -93,7 +93,17 @@ def lisp_raise( self, stack, message ):
 LispRaise = PyCode(lisp_raise,'raise')
 
 def call( self, stack, f, args ):
-
+    test = legal_args(args,f)
+    if iserror(test):
+        return test
+    stack.isdone = False
+    stack.has_fn = False
+    stack.receiving_fn = True #note return at end
+    stack.has_args = False
+    stack.received_args = args.reverse() if args!=None else None
+    stack.avoid_arg_check = True #CRITICAL
+    return f
+    
     ### DONT FUCK UP
 
 Cass = PyCode( call, 'call')

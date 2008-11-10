@@ -12,6 +12,7 @@ class Callstack():
         self.received_args = None
         self.arg_ptr = expr.cdr
         self.arg_index = 0 #for selective evaluation
+        self.avoid_arg_check = False #used by call
         self.receiving_body = False
         ## fn, pos_args, kw_args, used_kwds, body_ptr, and eval_ret will be added by lisp_eval
 

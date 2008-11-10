@@ -5,9 +5,6 @@
 (set-locally ls (fn (:r rest) rest))
 
 (set-locally map (fn (f args)
-  (put "here")
-  (put args)
-  (put (car args))
   (if (= args nil)
       nil
       (cons (call f (ls (car args))) (map f (cdr args))))))

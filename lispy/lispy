@@ -68,9 +68,9 @@ def lisp_eval( expr, Global_Env ):
                     cur_stack.receiving_fn = False
                     cur_stack.has_fn = True
                     test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
-                    if iserror(test):
+                    if not cur_stack.avoid_arg_check and iserror(test):
                         cur_stack.isdone = True
-                        ret = test
+                        ret = Exception("In %s:" % expr, test)
                     else:
                         if cur_stack.fn.islisp:
                             cur_stack.body_ptr = cur_stack.fn.body
@@ -84,7 +84,7 @@ def lisp_eval( expr, Global_Env ):
                 test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
                 if iserror(test):
                     cur_stack.isdone = True
-                    ret = test
+                    ret = Exception("In %s:"%expr,test)
                 else:
                     if cur_stack.fn.islisp:
                         cur_stack.body_ptr = cur_stack.fn.body
@@ -103,7 +103,7 @@ def lisp_eval( expr, Global_Env ):
                     test = legal_args(cur_stack.arg_ptr,cur_stack.fn)
                     if iserror(test):
                         cur_stack.isdone = True
-                        ret = test
+                        ret = Exception( "In %s:" % expr, test )
                     else:
                         if cur_stack.fn.islisp:
                             cur_stack.body_ptr = cur_stack.fn.body
@@ -209,11 +209,10 @@ def lisp_eval( expr, Global_Env ):
 
             else:  # a form/func written in Python
 
+                cur_stack.isdone = True # allows the call to change this...
                 ret = apply( cur_stack.fn.call, [cur_stack.fn,cur_stack]+cur_stack.env.lookup("rest").py_list() )
                 if iserror(ret):
                     ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
-                # and whether or not there was an error...
-                cur_stack.isdone = True
 
 
 def main():
