@@ -3,7 +3,7 @@ Things to do immediately:
     quoting/unquoting
     function parameters!!!
     exceptions (Done, but see below)
-    stack unwinding
+    stack unwinding (Working! but no protect yet)
     classes
 
 Idiosyncratic rules:

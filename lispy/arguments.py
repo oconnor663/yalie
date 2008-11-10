@@ -117,6 +117,7 @@ def legal_args( args_list, fn ):
             kwds.append(kw_args.car.name)
         else:
             kwds.append(kw_args.car.car.name)
+        kw_args = kw_args.cdr
 
     length = 0
     while args_list:
@@ -133,7 +134,7 @@ def legal_args( args_list, fn ):
             args_list = args_list.cdr
     
     if length < min or (max!=-1 and length>max):
-        return Exception( "Wrong number of args", None )
+        return Exception( "Wrong number of args.", None )
     else:
         return True
 
@@ -165,7 +166,18 @@ def make_bindings( vals, fn, env ):
     while vals:
         if issymbol(vals.car) and vals.car.iskeyword:
             ret[vals.car.kw2sym(env).name] = vals.cdr.car
-            used_kwds.append(vals.car)
+            used_kwds.append(vals.car.name[1:])
+            tmp = kw_args
+            while tmp:
+                if issymbol(tmp.car):
+                    if tmp.car.name==vals.var.name[1:]:
+                        break
+                else:
+                    if tmp.car.car.name==vals.car.name[1:]:
+                        if third(tmp.car):
+                            ret[third(tmp.car).name] = True
+                    break
+                tmp = tmp.cdr
             vals = vals.cdr.cdr
         else:
             if pos_args:
@@ -184,7 +196,7 @@ def make_bindings( vals, fn, env ):
     
     if rest_bound:
         ret[rest_arg.name] = ret[rest_arg.name].reverse()
-    else:
+    elif rest_arg:
         ret[rest_arg.name] = None
                 
     while pos_args:
@@ -194,8 +206,9 @@ def make_bindings( vals, fn, env ):
         pos_args = pos_args.cdr
 
     while kw_args:
-        if first(kw_args.car) not in used_kwds:
-            ret[first(kw_args.car).name] = kw_args.car.cdr.car
+        if first(kw_args.car).name not in used_kwds:
+            if iscons(kw_args.car):
+                ret[first(kw_args.car).name] = kw_args.car.cdr.car
             if third(kw_args.car):
                 ret[third(kw_args.car).name] = False
         kw_args = kw_args.cdr

@@ -62,7 +62,7 @@ def lisp_eval( expr, Global_Env ):
             if cur_stack.receiving_fn:
                 if iserror(ret):
                     cur_stack.isdone = True
-                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
                 else:
                     cur_stack.fn = ret   # ret is set when cur_stack returns, see below
                     cur_stack.receiving_fn = False
@@ -123,7 +123,7 @@ def lisp_eval( expr, Global_Env ):
             if cur_stack.receiving_arg:   # analogous to the section above
                 if iserror(ret):
                     cur_stack.isdone = True
-                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
                 else:
                     cur_stack.received_args = Cons(ret,cur_stack.received_args)
                 cur_stack.receiving_arg = False
@@ -183,7 +183,7 @@ def lisp_eval( expr, Global_Env ):
                 cur_stack.receiving_body = False
                 if iserror(ret):
                     cur_stack.isdone = True
-                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )                
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )                
 
             elif cur_stack.fn.islisp:
 
@@ -196,7 +196,7 @@ def lisp_eval( expr, Global_Env ):
                     ret = cur_stack.env.lookup(cur_stack.body_ptr.car)
                     if iserror(ret):
                         cur_stack.isdone = True
-                        ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                        ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
                     else:
                         cur_stack.body_ptr = cur_stack.body_ptr.cdr
                 else:
@@ -211,7 +211,7 @@ def lisp_eval( expr, Global_Env ):
 
                 ret = apply( cur_stack.fn.call, [cur_stack.fn,cur_stack]+cur_stack.env.lookup("rest").py_list() )
                 if iserror(ret):
-                    ret = Exception( "In "+lisp_repr(cur_stack.expr.car)+':', ret )
+                    ret = Exception( "In "+lisp_repr(cur_stack.expr)+':', ret )
                 # and whether or not there was an error...
                 cur_stack.isdone = True
 
@@ -220,7 +220,7 @@ def main():
     E = Environment(None)
 
     ### First read-in builtin lisp functions
-    input = Input(open("./rc.lisp","r"),E)
+    input = Input(open("./builtins.lisp","r"),E)
     while True:
         expr = input.read()
         if iserror(expr) and expr.string=='EOF':
@@ -244,7 +244,7 @@ def main():
                 print val if val!=None else '()'
             if isinstance(val,Exception) and not sys.stdin.isatty():
                 return 2
-        except KeyboardInterrupt:
+        except RuntimeError:#KeyboardInterrupt:
             print "\nKeyboardInterrupt"
     if input.input == sys.stdin:
         print

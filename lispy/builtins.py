@@ -52,7 +52,51 @@ def set_locally( self, stack, sym, val ):
     return val
 SetLocally = PyCode(set_locally,'set-locally',False,False,[1]) #note the eval-index
 
+def goto( self, stack, tag ):
+    tag_sym = stack.env.get_sym('tag')
+    def find_tag( stack, tag ):
+        body = stack.fn.body #assumed to be LispCode
+        goto_ptr = None
+        while body:
+            if iscons(body.car) and body.car.car==tag_sym and body.car.cdr.car==tag:
+                goto_ptr = body
+                break
+            else:
+                body = body.cdr
+        if goto_ptr:
+            return (stack,goto_ptr)
+        elif stack.parent:
+            return find_tag(stack.parent,tag)
+        else:
+            return Exception( "Tag not found: %s" % tag, None )
+            
+    stack = stack.parent #clearing the PyCode stack
+    ret = find_tag(stack,tag)
+    if iserror(ret):
+        return ret
+    while stack!=ret[0]:
+        stack.isdone = True
+        stack.eval_ret = False
+        stack = stack.parent
+    stack.body_ptr = ret[1]
+    return None
+Goto = PyCode(goto, 'goto', False, False)
+
+def lisp_if( self, stack, cond, a, b ):
+    return a if cond else b
+LispIf = PyCode(lisp_if,'if',False,True,[0])
+
 ########## Functions ##########
+
+def lisp_raise( self, stack, message ):
+    return Exception(message,None)
+LispRaise = PyCode(lisp_raise,'raise')
+
+def call( self, stack, f, args ):
+
+    ### DONT FUCK UP
+
+Cass = PyCode( call, 'call')
 
 def cons_fn( self, stack, car, cdr ):
     return Cons(car,cdr)
@@ -65,6 +109,10 @@ Car = PyCode(car,'car')
 def cdr( self, stack, cell ):
     return cell.cdr
 Cdr = PyCode(cdr,'cdr')
+
+def isls( self, stack, x ):
+    return isinstance(x,Cons) or x==None
+Isls = PyCode(isls,'isls')
 
 def lisp_not( self, stack, val ):
     return not val

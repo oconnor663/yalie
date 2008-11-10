@@ -1,20 +1,19 @@
 class Callstack():
     def __init__( self, expr, parent, env ):
-        self.expr = expr
+        self.expr = expr # assumed to be an s-expr
         self.parent = parent
         self.env = env
         self.isdone = False
         self.eval_ret = False
-        if iscons(expr):
-            self.has_fn = False
-            self.receiving_fn = False
-            self.has_args = False
-            self.receiving_arg = False
-            self.received_args = None
-            self.arg_ptr = expr.cdr
-            self.arg_index = 0 #for selective evaluation
-            self.receiving_body = False
-            ## fn, pos_args, kw_args, used_kwds, body_ptr, and eval_ret will be added by lisp_eval
+        self.has_fn = False
+        self.receiving_fn = False
+        self.has_args = False
+        self.receiving_arg = False
+        self.received_args = None
+        self.arg_ptr = expr.cdr
+        self.arg_index = 0 #for selective evaluation
+        self.receiving_body = False
+        ## fn, pos_args, kw_args, used_kwds, body_ptr, and eval_ret will be added by lisp_eval
 
 class Exception():
     def __init__(self, string, child ):
@@ -100,7 +99,7 @@ class Symbol():
     def __repr__( self ):
         if type(self.name)!=type(''):
             raise RuntimeError, "Moooo..."
-        return "SYM"+self.name
+        return self.name
     def kw2sym( self, env ):
         if not self.iskeyword:
             raise RuntimeError, "Keyword Moo..."
