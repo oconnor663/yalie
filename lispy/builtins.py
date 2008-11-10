@@ -192,7 +192,7 @@ Remainder = PyCode(remainder,'%')
 
 def put( self, stack, *vals ):
     for i in vals:
-        print i if i!=None else '()',
+        print i if i!=None else NIL_REPR,
     print
     return vals[-1]
 Put = PyCode(put,'put')

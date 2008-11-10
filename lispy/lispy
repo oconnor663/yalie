@@ -244,7 +244,7 @@ def main():
                 break
             val = lisp_eval( expr, E )
             if input.input == sys.stdin:
-                print val if val!=None else '()'
+                print val if val!=None else NIL_REPR
             if isinstance(val,Exception) and not sys.stdin.isatty():
                 return 2
         except KeyboardInterrupt:

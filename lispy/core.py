@@ -1,5 +1,8 @@
 import string
 
+# A global variable to handle how () is printed
+NIL_REPR = 'nil'
+
 class Callstack():
     def __init__( self, expr, parent, env ):
         self.expr = expr # assumed to be an s-expr
@@ -145,7 +148,7 @@ class Cons():
 
 def lisp_repr( expr ):
     if expr==None:
-        return '()'
+        return NIL_REPR
     else:
         return repr(expr)
 
