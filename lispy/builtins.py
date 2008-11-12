@@ -87,7 +87,7 @@ def goto( self, stack, tag ):
     return None
 Goto = PyCode(goto, 'goto', False, False)
 
-def lisp_if( self, stack, cond, a, b ):
+def lisp_if( self, stack, cond, a, b=None ):
     return a if cond else b
 LispIf = PyCode(lisp_if,'if',False,True,[0])
 

@@ -208,3 +208,4 @@ class LispCode():
             self.env = lexical_env
         self.eval_ret = (lexical_env==None)
         self.eval_args = (lexical_env!=None)
+        self.no_scope = False # for the "do" construct

@@ -40,7 +40,6 @@
 	      (do (set-locally ret nil)
 	      	  (tag chop)
 		  (if (= (car x) nil)
-		      ### DONT FUCK UP
 		      (set-locally ret (cons (ls (quote ls) nil) ret))
  		      (if (not (isls (car x)))
 		      	  (set-locally ret (cons (ls (quote semiquote) (car x)) ret))

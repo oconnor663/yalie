@@ -22,11 +22,19 @@ Other symbols to make use of:
     & (bitwise and?)
     $ 
     [ ]
-    { }
-    |
+    { } (used as an alternative delimiter for body expressions?)
+    | (replacement for dotted lists?!?!)
     \
     ~ (special syntax for "not"?)   
-    
+
+
+Scrap the :b keyword arguments to functions. Instead allow {}
+delimiters to be substituded for () whenever the expression will
+contain a body. This is a sufficient signal to indenters, and it makes
+missing parentheses much easier for the interpreter to identify in
+error messages.
+
+Could a continuation-passing style allow for a recursive eval function?
 
 When everything is a pointer in C, it becomes easier to make
 everything an object. Use the enum type.
