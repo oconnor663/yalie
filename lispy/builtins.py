@@ -31,6 +31,8 @@ Quote = PyCode(quote,'quote', False, False)
 
 def fn( self, stack, *args ):
     p = parse_args(args[0])
+    if iserror(p):
+        return p
     body = list2cons(args[1:])
     if not iscode(body):
         return Exception("fn received malformed body: %s"%body,None)
@@ -40,6 +42,8 @@ Fn = PyCode(fn,'fn', False, False)
 
 def form( self, stack, *args ):
     p = parse_args(args[0])
+    if iserror(p):
+        return p
     body = list2cons(args[1:])
     if not iscode(body):
         return Exception("fn received malformed body: %s"%body,None)
@@ -90,6 +94,12 @@ Goto = PyCode(goto, 'goto', False, False)
 def lisp_if( self, stack, cond, a, b=None ):
     return a if cond else b
 LispIf = PyCode(lisp_if,'if',False,True,[0])
+
+def do( self, stack, *args ):
+    ret = apply(form, (self,stack,None)+args)
+    ret.no_scope = True
+    return Cons(ret,None)
+Do = PyCode(do,'do',False,True)
 
 ########## Functions ##########
 

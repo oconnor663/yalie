@@ -25,7 +25,6 @@
 			      (r-helper (cdr l1) (cons (car l1) l2)))))
   (r-helper list ())))
 	  
-
 (set-locally semiquote (form (x)
   (if (= x nil)
       nil
@@ -37,7 +36,7 @@
  		  (if (not (= (cdr (cdr x)) nil))
 		      (raise "Too many args to unquote")
 		      (car (cdr x))))
-	      (do (set-locally ret nil)
+	      ((fn () (set-locally ret nil)
 	      	  (tag chop)
 		  (if (= (car x) nil)
 		      (set-locally ret (cons (ls (quote ls) nil) ret))
@@ -54,11 +53,10 @@
  		  (if (not (= x nil))
 		      (goto chop)
 		      nil)
- 		  (ls (quote call) (quote append) (cons (quote ls) (reverse ret)))))))))
+ 		  (ls (quote call) (quote append) (cons (quote ls) (reverse ret))))))))))
+
 
 (set-locally tag (form (x) ()))
-
-(set-locally do (form (:b body) (ls (cons (quote fn) (cons () body)))))
 
 (set-locally deform (form (args :b body)
 	     	      (if (not (isls args))
