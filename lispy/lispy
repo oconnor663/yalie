@@ -13,6 +13,8 @@ def lisp_eval( expr, Global_Env ):
     ### allows the lisp callstack to be exposed.
     
     ## Begin with simple cases (not S-expressions)
+    if iserror(expr):
+        return expr #a parsing error
     if isatom(expr):
         return expr
     if issymbol(expr):
@@ -238,20 +240,24 @@ def main():
 
     input.close()
     input = Input(sys.stdin,E)
-    print "Lispy v0.2\nPress Ctrl-D to exit."
+    if input.input.isatty(): 
+        print "Lispy v0.2\nPress Ctrl-D to exit."
     while True:
         try:
             expr = input.read()
             if iserror(expr) and expr.string=='EOF':
                 break
             val = lisp_eval( expr, E )
-            if input.input == sys.stdin:
+            if input.input.isatty():
                 print val if val!=None else NIL_REPR
-            if isinstance(val,Exception) and not sys.stdin.isatty():
+            if iserror(val) and not sys.stdin.isatty():
+                print val
                 return 2
         except KeyboardInterrupt:
             print "\nKeyboardInterrupt"
-    if input.input == sys.stdin:
+            if not input.input.isatty():
+                return 3
+    if input.input.isatty():
         print
     input.close()
 

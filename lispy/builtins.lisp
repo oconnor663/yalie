@@ -1,5 +1,5 @@
-(set-locally T (quote T))
-(set-locally F () )
+(set-locally true (quote true))
+(set-locally false () )
 (set-locally nil () )
 
 (set-locally ls (fn (:r rest) rest))
@@ -36,7 +36,7 @@
  		  (if (not (= (cdr (cdr x)) nil))
 		      (raise "Too many args to unquote")
 		      (car (cdr x))))
-	      ((fn () (set-locally ret nil)
+	      ((fn () (set-locally ret nil)  ## Why the hell is it this way?
 	      	  (tag chop)
 		  (if (= (car x) nil)
 		      (set-locally ret (cons (ls (quote ls) nil) ret))
@@ -83,3 +83,25 @@
       `(if ,(car rest)
       	   T
  	   (or ;(cdr rest)))))
+
+(deform (while cond :b body)
+  `(do (tag loop)
+       ;body
+       (if ,cond
+	   (goto loop)
+	   nil)))
+
+(def (len list)
+     (if ~(isls list)
+       (raise "Not a list...")
+       (if (= list ())
+	   0
+	   (+ 1 (len (cdr list))))))
+
+(def (sum list)
+     (if ~(isls list)
+       (raise "Not a list...")
+       (if (= list ())
+	   0
+	   (+ (car list) (sum (cdr list))))))
+
