@@ -3,7 +3,7 @@ from core import *
 
 PREFIX = ( '`', ',', ';', '~' )
 BINARY = ( '@', )
-DELIMITERS = ('(',')')
+DELIMITERS = ('(',')','{','}')
 TOKENS = PREFIX + BINARY + DELIMITERS
 
 SYNTAX = { '`':"semiquote",
@@ -70,46 +70,47 @@ class Input():
         else:
             return None
 
-    def read( self, in_sexp=False ):
+    def read( self, in_sexp=False, closer=None ):
         t = self.get_token(in_sexp)
         if iserror(t):
             ret = t
-        elif t=='(':
+        elif t in ('(','{'):
+            new_closer = ')' if t=='(' else '}'
             if in_sexp:
-                inside = self.read(True)
+                inside = self.read(True,new_closer)
                 if iserror(inside):
                     ret = inside
                 else:
-                    outside = self.read(True)
+                    outside = self.read(True,closer)
                     if iserror(outside):
                         ret = outside
                     else:
                         ret = Cons(inside,outside)
             else:
                 self.expr_start = self.linenum
-                ret = self.read(True)
-        elif t==')':
-            if in_sexp:
+                ret = self.read(True,new_closer)
+        elif t in (')','}'):
+            if in_sexp and t==closer:
                 ret = None
             else:
                 ret = Exception( "Mismatched paren.", None )
         elif t in PREFIX:
             # Note the "False" arguments to self.read() in here.
             peek = self.peek_token()
-            if peek in (None, ')', '@'):
+            if peek in (None, ')', '}', '@'):
                 ret = Exception( "Misplaced syntax.", None )
             elif not in_sexp:
-                next = self.read(False)
+                next = self.read(False,closer)
                 if iserror(next):
                     ret = next
                 else:
                     ret = Cons( self.env.get_sym(SYNTAX[t]), Cons( next, None ) )
             else:
-                inside = self.read(False)
+                inside = self.read(False,closer)
                 if iserror(inside):
                     ret = inside
                 else:
-                    outside = self.read(True)
+                    outside = self.read(True,closer)
                     if iserror(outside):
                         ret = outside
                     else:
@@ -118,7 +119,7 @@ class Input():
         else:
             val = triage(t,self.env)
             if in_sexp and not iserror(val):
-                next = self.read(True)
+                next = self.read(True,closer)
                 if iserror(next):
                     ret = next
                 else:
