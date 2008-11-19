@@ -1,10 +1,17 @@
+__Symbols__
+Contain a cons list of lookup envs?
+Can't be envs because parse is at runtime.
+Cons list must contain other symbols. (Remember that even imported Global envs share symbols with the main)
+How to print? Easy, now that it contains symbols.
+Now environments must contain the symbols to append to new symbols they generate.
+
 Things to do immediately:
     input (DONE!)
     quoting/unquoting (DONE!)
     function parameters (DONE!)
     exceptions (Done, but see below)
     stack unwinding (Working! but no protect yet)
-    classes
+    imports, classes
 
 Idiosyncratic rules:
     symbols may not begin with a digit (this restriction has been lifted)
@@ -19,7 +26,7 @@ Syntax:
     "/' strings/raw
 
 Other symbols to make use of:
-    & (bitwise and?)
+    & (binary operator for and?)
     $ 
     [ ]
     { } (used as an alternative delimiter for body expressions?)
@@ -55,6 +62,8 @@ file error'?)
 NO! Require that prefix and postfix syntax be on the same line as the
 values they operate on. Enforce this rule both in the REPL and in text
 code. Use the peek_token() function to enable this.
+HERE: The REPL should only accept single forms on any given line. The parser
+should parse entire files before starting evaluation.
 
 Exceptions need to be built from the entire stack. They should be
 built in place without being passed up the stack. If nothing "catches"
