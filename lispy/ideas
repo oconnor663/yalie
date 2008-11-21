@@ -1,9 +1,31 @@
 __Symbols__
 Contain a cons list of lookup envs?
 Can't be envs because parse is at runtime.
-Cons list must contain other symbols. (Remember that even imported Global envs share symbols with the main)
+Cons list must contain other symbols.
+(Remember that even imported Global envs share symbols with the main)
 How to print? Easy, now that it contains symbols.
-Now environments must contain the symbols to append to new symbols they generate.
+Now environments must contain the symbols
+    to append to new symbols they generate.
+NO: what if environments didn't modify their
+    symbols at all? Does that cause any problems?
+Symbols need a cons list of other symbols? That's not symmetric...
+Symbols rather need a cons list of strings.
+How does all this interact with globals...?
+THERE SHOULD BE NO SPECIAL GLOBALS. ALL LEXICAL!!! 
+(This would be limiting...)
+Should environments have a special parent for the builtins...?
+Toplevel envs (including imported ones) should.
+Then they can only shadow builtins locally.
+How will globals work on import?
+ALL envs share the symbols list, but lexically
+    related envs can share a globals list.
+Symbol lookup: globals->lexical(->builtins)
+WAIT!!! Can symbols hold their own bindings? That would be WAY
+	faster for lookups. 
+INTERESTING THOUGHT: Symbol identity can be used to distinguish between
+same-named symbols that refer to different environments.
+	   This would allow symbols to hold their own
+	   bindings somewhat better.
 
 Things to do immediately:
     input (DONE!)

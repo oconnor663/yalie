@@ -32,11 +32,11 @@ class Exception():
             return self.string
 
 class Environment():
-    def __init__( self, parent, bindings = {} ):
+    def __init__( self, parent, symbols, bindings ):
         self.parent = parent
+        self.symbols = symbols
         self.bindings = bindings
         if parent==None:
-            self.symbols = {}
             self.unique_counter = 0
             self.import_python("builtins")
     def lookup( self, sym ):
@@ -63,8 +63,6 @@ class Environment():
             return Exception( "Not a legal symbol name: %s" % name, None )
         elif name[0]==':':
             return Symbol(name) #keywords aren't interned
-        elif self.parent:
-            return self.parent.get_sym(name)
         elif name in self.symbols:
             return self.symbols[name]
         else:
