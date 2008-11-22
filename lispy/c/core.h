@@ -2,8 +2,9 @@
 #define core_h_
 
 enum type {
-  Symbol,
+  Nil,
   Cons,
+  Symbol,
   Int
 };
 
