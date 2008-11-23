@@ -1,8 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "core.h"
-
+#include "repr.h"
 
 char* strapp( char* a, char* b )
 {
@@ -15,57 +14,78 @@ char* strapp( char* a, char* b )
   return ret;
 }
 
-char* repr( val_t val )
+char* repr_nil( val_t val )
 {
-  if (val->type==Symbol)
-    return strdup( (char*)val->obj );
-  else if (val->type==Nil)
-    return strdup("()");
-  else if (val->type==Cons) {
-    char* ret = strdup("(");
-    ret = strapp(ret,repr(car(val->obj)));
-    val = cdr(val->obj);
-    while (1) {
-      if (val->type==Nil) {
-	ret = strapp(ret,strdup(")"));
-	break;
-      }
-      else if ( ((val_t)cdr(val->obj))->type!=Cons &&
-		((val_t)cdr(val->obj))->type!=Nil ) {
-	ret = strapp(ret, strdup(" "));
-	ret = strapp(ret,repr(car(val->obj)));
-	ret = strapp(ret,strdup(" . "));
-	ret = strapp(ret,repr(cdr(val->obj)));
-	ret = strapp(ret,strdup(")"));
-	break;
-      }
-      else {
-	ret = strapp(ret,strdup(" "));
-	ret = strapp(ret,repr(car(val->obj)));
-	val = cdr(val->obj);
-      }
-    }
-    return ret;
-  }
-  else
-    return "?????";
+  return strdup("()");
 }
 
+char* repr_sym( val_t val )
+{
+  return sym_name(val->obj);
+}
+
+char* repr_cons( val_t val )
+{
+  char* ret = strdup("(");
+  ret = strapp( ret, repr(car(val->obj)) );
+  val = cdr(val->obj);
+  while (1) {
+    if (val->type==Nil) {
+      ret = strapp(ret,strdup(")"));
+      break;
+    }
+    else if ( ((val_t)cdr(val->obj))->type!=Cons &&
+	      ((val_t)cdr(val->obj))->type!=Nil ) {
+      ret = strapp(ret, strdup(" "));
+      ret = strapp(ret,repr(car(val->obj)));
+      ret = strapp(ret,strdup(" . "));
+      ret = strapp(ret,repr(cdr(val->obj)));
+      ret = strapp(ret,strdup(")"));
+      break;
+    }
+    else {
+      ret = strapp(ret,strdup(" "));
+      ret = strapp(ret,repr(car(val->obj)));
+      val = cdr(val->obj);
+    }
+  }
+  return ret;
+}
+
+char* repr( val_t val )
+{
+  switch (val->type) {
+  case Nil:
+    return repr_nil(val);
+  case Symbol:
+    return repr_sym(val);
+  case Cons:
+    return repr_cons(val);
+  default:
+    fprintf( stderr, "Error encountered in repr()\n" );
+    return strdup("???");
+  }
+}
+
+/*
 main()
 {
-  val_t sym = new_val( "SYM", Symbol );
+  sym_t sym = new_sym("SyM");
+  val_t s = new_val( sym, Symbol );
   val_t nil = new_val( NULL, Nil );
-  cons_t c1 = new_cons(sym,nil);
+  cons_t c1 = new_cons(s,nil);
   val_t C1 = new_val(c1,Cons);
-  cons_t c2 = new_cons(sym, C1);
+  cons_t c2 = new_cons(s, C1);
   val_t val = new_val( c2, Cons );
   char* ret = repr(val);
   printf( "%s\n", ret );
-  free(sym);
+  free_sym(sym);
+  free(s);
   free(nil);
-  free(c1);
+  free_cons(c1);
   free(C1);
-  free(c2);
+  free_cons(c2);
   free(val);
   free(ret);
 }
+*/
