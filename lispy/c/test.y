@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "repr.h"
  
+#define YYSTYPE val_t
+
 void yyerror(const char *str)
 {
         fprintf(stderr,"error: %s\n",str);

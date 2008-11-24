@@ -1,6 +1,7 @@
 %{
-	#include "test.tab.h"
 	#include "core.h"
+	#define YYSTYPE val_t
+	#include "test.tab.h"
 %}
 
 white [ \t\n]
