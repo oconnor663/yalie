@@ -27,6 +27,14 @@ same-named symbols that refer to different environments.
 	   This would allow symbols to hold their own
 	   bindings somewhat better.
 
+----------THE IDEA-------------: There is a meta-global list of symbol
+namestrings by which symbols can be compared. The symbol object stores
+its bound value. These objects are created at readtime by referencing
+a simple list of already-instantiated symbols. This list is the
+lexical environment. A "global" directive a la Python allows symbols
+to be pulled down from higher scopes. DOES THIS POSE A PROBLEM FOR
+RESOLVING IMPORT SCOPES, WHICH CAN CHANGE AT RUNTIME?
+
 Things to do immediately:
     input (DONE!)
     quoting/unquoting (DONE!)
