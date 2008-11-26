@@ -1,0 +1,4 @@
+gcc -c toload.c
+gcc -shared toload.o -o toload.so
+gcc dload.c -ldl
+./a.out
