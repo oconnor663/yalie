@@ -1,11 +1,10 @@
-FILES = main.c core.c input.c
-HEADERS = core.h input.h
-
 parser:
-	bison -d test.y && \
-	flex test.lex && \
-	cc lex.yy.c test.tab.c core.c repr.c
+	bison -d input.y && \
+	flex input.lex && \
+	cc lex.yy.c input.tab.c core.c repr.c
 
-readline:
-	gcc ${FILES} -lreadline
+edit:
+	gcc input.c edit.c -lreadline
 
+clean:
+	rm a.out lex.yy.c input.tab.h input.tab.c

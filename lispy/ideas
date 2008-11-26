@@ -33,7 +33,14 @@ its bound value. These objects are created at readtime by referencing
 a simple list of already-instantiated symbols. This list is the
 lexical environment. A "global" directive a la Python allows symbols
 to be pulled down from higher scopes. DOES THIS POSE A PROBLEM FOR
-RESOLVING IMPORT SCOPES, WHICH CAN CHANGE AT RUNTIME?
+RESOLVING IMPORT SCOPES, WHICH CAN CHANGE AT RUNTIME? Take another cue
+from Python: imports create genuine userspace objects, not new
+symbols. Referencing an object in a module is no different from
+referencing an index from a list. But that ruins the gain from having
+symbols hold their own values. To have this work, imported modules
+must NOT be in userspace, so that symbols within them can be resolved
+at readtime. On the other hand, the main speed advantage is in
+compiling individual functions, not in looking them up.
 
 Things to do immediately:
     input (DONE!)
