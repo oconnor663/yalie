@@ -17,7 +17,7 @@ int yywrap()
 main()
 {
         yyparse();
-} 
+}
 
 %}
 

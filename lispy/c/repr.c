@@ -14,14 +14,9 @@ char* strapp( char* a, char* b )
   return ret;
 }
 
-char* repr_nil( val_t val )
+char* repr_nil()
 {
   return strdup("()");
-}
-
-char* repr_sym( val_t val )
-{
-  return sym_name(val->obj);
 }
 
 char* repr_cons( val_t val )
@@ -56,11 +51,13 @@ char* repr( val_t val )
 {
   switch (val->type) {
   case Nil:
-    return repr_nil(val);
+    return repr_nil();
   case Symbol:
-    return repr_sym(val);
+    return repr_sym(val->obj); //core.h
   case Cons:
-    return repr_cons(val);
+    return repr_cons(val); //note the arg type
+  case Int:
+    return repr_int(val->obj); //core.h
   default:
     fprintf( stderr, "Error encountered in repr()\n" );
     return strdup("???");
