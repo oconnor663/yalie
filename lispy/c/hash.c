@@ -16,8 +16,8 @@ struct Table {
   int size;
   int num_vals;
   cons_t * values;
-  //a null terminated cons list whose car elements are themselves cons
-  //pairs (key . val)
+  // each element of values is a null(not nil)-terminated cons list.
+  // the contents of these lists are (key.val) cons pairs
 };
 
 table_t new_table()
@@ -51,6 +51,30 @@ void free_table( table_t table )
   free(table);
 }
 
+void resize_table( table_t table, int new_size )
+{
+  int i;
+  cons_t* new_values = malloc( new_size*sizeof(cons_t) );
+  for (i=0; i<new_size; i++)
+    new_values[i] = NULL;
+
+  cons_t tmp1, tmp2;
+  for (i=0; i<table->size; i++) {
+    tmp1 = table->values[i];
+    while (tmp1!=NULL) {
+      int new_hash = hash( car(car(tmp1)), new_size );
+      tmp2 = tmp1;
+      tmp1 = cdr(tmp1);
+      set_cdr(tmp2,new_values[new_hash]);
+      new_values[new_hash] = tmp2;
+    }
+  }
+  cons_t* tmp = table->values;
+  table->values = new_values;
+  table->size = new_size;
+  free(tmp);
+}
+
 void table_insert( table_t table, val_t key, val_t val )
 {
   int h = hash( key, table->size );
@@ -65,6 +89,9 @@ void table_insert( table_t table, val_t key, val_t val )
     add_ref(key);
     add_ref(val);
     table->values[h] = new_cons( new_cons(key,val), table->values[h] );
+    table->num_vals++;
+    if (table->num_vals > table->size/2)
+      resize_table(table,2*table->size);
   }
   else {
     del_ref( cdr(car(tmp)) );
@@ -73,13 +100,30 @@ void table_insert( table_t table, val_t key, val_t val )
   }
 }
 
+val_t table_lookup( table_t table, val_t key )
+{
+  /* returns NULL on a failed lookup */
+  int h = hash( key, table->size );
+  cons_t tmp = table->values[h];
+  while (tmp!=NULL) {
+    if ( equal_p( key, car(car(tmp)) ) )
+      break;
+    else
+      tmp = cdr(tmp);
+  }
+  if (tmp==NULL)
+    return NULL;
+  else
+    return cdr(car(tmp));
+}
+
+/*
 #include <stdio.h>
 #include "repr.h"
-
 void print_table( table_t table )
 {
   int i;
-  printf( "Table:\n" );
+  printf( "\nTable:\n" );
   for (i=0; i<table->size; i++) {
     printf( "%2i:", i );
     cons_t tmp = table->values[i];
@@ -102,19 +146,37 @@ main()
   int_t j = new_int_z(2);
 
   val_t a = new_val(sa, Symbol);
-  val_t b = new_val(i, Int );
-  val_t c = new_val(j, Int );
+  val_t b = new_val(sb, Symbol);
+  val_t c = new_val(i, Int );
+  val_t d = new_val(j, Int );
+
+  char* astr;
 
   table_t t = new_table();
   print_table(t);
-  table_insert(t,a,b);
+  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  printf( "a is: %s\n", astr );
+  free(astr);
+  table_insert(t,a,c);
+  print_table(t);
+  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  printf( "a is: %s\n", astr );
+  free(astr);
+  table_insert(t,b,d);
+  print_table(t);
+  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  printf( "a is: %s\n", astr );
+  free(astr);
+  table_insert(t,a,d);
+  print_table(t);
+  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  printf( "a is: %s\n", astr );
+  free(astr);
   free_table(t);
-
-  free_sym(sa);
-  free_sym(sb);
-  free_int(i);
-  free_int(j);
-  free(a);
-  free(b);
-  free(c);
+  
+  del_ref(a);
+  del_ref(b);
+  del_ref(c);
+  del_ref(d);
 }
+*/

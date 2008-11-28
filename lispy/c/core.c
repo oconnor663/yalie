@@ -22,7 +22,34 @@ void del_ref( val_t val )
 {
   val->ref_count--;
   if (val->ref_count==0)
-    fprintf( stderr, "Deleting!\n" );
+    switch (val->type) {
+
+    case Nil:
+      free(val);
+      break;
+
+    case Cons:
+      del_ref(car(val->obj));
+      del_ref(cdr(val->obj));
+      free_cons(val->obj);
+      free(val);
+      break;
+
+    case Symbol:
+      free_sym(val->obj);
+      free(val);
+      break;
+
+    case Int:
+      free_int(val->obj);
+      free(val);
+      break;
+
+    default:
+      fprintf( stderr, "del_ref() encountered unknown type.\n" );
+      free(val);
+      break;
+    }
 }
 
 struct Cons {
@@ -53,12 +80,12 @@ void* cdr( cons_t cell )
   return cell->dr;
 }
 
-void set_car( cons_t cell, val_t val )
+void set_car( cons_t cell, void* val )
 {
   cell->ar = val;
 }
 
-void set_cdr( cons_t cell, val_t val )
+void set_cdr( cons_t cell, void* val )
 {
   cell->dr = val;
 }
