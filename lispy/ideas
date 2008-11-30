@@ -1,3 +1,14 @@
+YALIE: Yet Another Lisp Interpreting Experiment
+
+POTENTIALLY EARTH SHATTERING CONCEPT:
+Create a Yalie library that mimics the functionality of Lex and Yacc.
+Eliminate the need for code walkers. Forms can be lisp macros on steroids.
+
+Python-like global scoping can be achieved by pointing directly to the
+(key.val) pair in a containing scope. Very clean. Does that present
+problems for freeing? Envs will need to keep a list of globalized
+variables not to free.
+
 __Symbols__
 Contain a cons list of lookup envs?
 Can't be envs because parse is at runtime.
@@ -244,3 +255,19 @@ len
 map
 append
 ret
+
+
+Concepts:
+- Lisp-1.
+  - First element need only evaluate to a function, and functs are atoms.
+    - equivalent: (eval `(+ 1 1)) (eval (ls `+ 1 1)) (eval (ls + 1 1))
+  - Compensation for shadowing drawbacks:
+    - Pervasive use of methods and namespaces
+    - Shortened function names, like "ls" for "list"
+- Python-like object orientation: dict-based classes, scopes, and modules
+- Python-like full lexical scoping. Globals reference a containing lexical scope.
+- Builtin data structures: cons/list, array, dictionary (others in libraries?)
+- Fully polymorphic base functions, everything is an object
+- clean C API, dynamic .so importing
+- ()/{} syntax, "/' strings, and readtime translation of `,; operators (~!|?)
+- Yacc-like functionality available for implementing forms

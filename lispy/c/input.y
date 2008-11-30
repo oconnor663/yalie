@@ -1,22 +1,37 @@
 %{
 #include <stdio.h>
+#include <readline/readline.h>
+#include <stdbool.h>
+#include "core.h"
 #include "repr.h"
  
 #define YYSTYPE val_t
 
 void yyerror(const char *str)
 {
-        fprintf(stderr,"error: %s\n",str);
+  fprintf(stderr,"Parse error: %s\n",str);
 }
  
 int yywrap()
 {
-        return 1;
+  return 1;
 } 
-  
+
+#define PROMPT ">>> "
+#define REPROMPT "... "
+
+char* getline( bool new_expr )
+{
+  char* line = readline( new_expr?PROMPT:REPROMPT );
+  if (line && line[0]!='\0')
+    add_history(line);
+  return line;
+}
+
 main()
 {
-        yyparse();
+  extern FILE* yyin;
+  yyparse();
 }
 
 %}
