@@ -113,37 +113,32 @@ char* repr_sym( sym_t sym )
 }
 
 struct Int {
-  mpz_t integer;
+  mpz_t bignum;
 };
 
 int_t new_int_z( long int i )
 {
   int_t ret = malloc(sizeof(struct Int));
-  mpz_init_set_si(ret->integer,i);
+  mpz_init_set_si(ret->bignum,i);
   return ret;
 }
 
 int_t new_int_s( char* str, int base )
 {
   int_t ret = malloc(sizeof(struct Int));
-  mpz_init_set_str( ret->integer, str, base );
+  mpz_init_set_str( ret->bignum, str, base );
   return ret;
 }
 
 void free_int( int_t i )
 {
-  mpz_clear(i->integer);
+  mpz_clear(i->bignum);
   free(i);
 }
 
 char* repr_int( int_t i )
 {
   char* ret;
-  int size;
-  FILE* stream;
-  stream = (FILE*)open_memstream(&ret,&size);
-  //WHY DO I NEED TO MAKE THAT CAST???
-  mpz_out_str( stream, 10, i->integer );
-  fclose(stream);
+  gmp_asprintf( &ret, "%Zd", i->bignum );
   return ret;
 }

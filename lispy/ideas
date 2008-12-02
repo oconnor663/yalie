@@ -9,6 +9,13 @@ Python-like global scoping can be achieved by pointing directly to the
 problems for freeing? Envs will need to keep a list of globalized
 variables not to free.
 
+A new thought on symbols: Perhaps symbols can hold their own values
+indexed (in an internal dict) by scope. The scopes will be globally
+unique, so they can just be compared by pointer. Each symbol will then
+have its own hash table, but that's ok because all that overhead is
+managed at readtime. Does looking up every env in the symbol save any
+time over looking up the symbol in every env?
+
 __Symbols__
 Contain a cons list of lookup envs?
 Can't be envs because parse is at runtime.
