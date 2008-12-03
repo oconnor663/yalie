@@ -38,4 +38,3 @@ void set_cdr( cons_t cell, void* val )
 {
   cell->dr = val;
 }
-

@@ -1,13 +1,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "hash.h"
 
-int hash( val_t val, int size )
+int hash( void* val, int size )
 {
   return 0;
 }
 
-bool equal_p( val_t a, val_t b )
+bool is_p( void* a, void* b )
 {
   return a==b;
 }
@@ -41,8 +42,6 @@ void free_table( table_t table )
     while (tmp1!=NULL) {
       tmp2 = tmp1;
       tmp1 = cdr(tmp1);
-      del_ref(car(car(tmp2))); //the key
-      del_ref(cdr(car(tmp2))); //the val
       free_cons(car(tmp2)); //the (key.val) pair
       free_cons(tmp2); //the linked list link
     }
@@ -75,38 +74,46 @@ void resize_table( table_t table, int new_size )
   free(tmp);
 }
 
-void table_insert( table_t table, val_t key, val_t val )
+void* table_insert( table_t table,
+		    int (*hash)(void*, int),
+		    bool (*is_p)(void*,void*),
+		    void* key,
+		    void* val )
+// Returns the old value if one existed, or NULL if key is new.
 {
+  assert( key!=NULL && val != NULL );
   int h = hash( key, table->size );
   cons_t tmp = table->values[h];
   while (tmp!=NULL) {
-    if ( equal_p( key, car(car(tmp)) ) )
+    if ( is_p( key, car(car(tmp)) ) )
       break;
     else
       tmp = cdr(tmp);
   }
   if (tmp==NULL) {
-    add_ref(key);
-    add_ref(val);
     table->values[h] = new_cons( new_cons(key,val), table->values[h] );
     table->num_vals++;
     if (table->num_vals > table->size/2)
       resize_table(table,2*table->size);
+    return NULL;
   }
   else {
-    del_ref( cdr(car(tmp)) );
-    add_ref( val );
+    void* ret = cdr(car(tmp));
     set_cdr( car(tmp), val );
+    return ret;
   }
 }
 
-val_t table_lookup( table_t table, val_t key )
+void* table_lookup( table_t table,
+		    int (*hash)(void*, int),
+		    bool (*is_p)(void*,void*),
+		    void* key )
+// Returns NULL on a failed lookup
 {
-  /* returns NULL on a failed lookup */
   int h = hash( key, table->size );
   cons_t tmp = table->values[h];
   while (tmp!=NULL) {
-    if ( equal_p( key, car(car(tmp)) ) )
+    if ( is_p( key, car(car(tmp)) ) )
       break;
     else
       tmp = cdr(tmp);
@@ -117,9 +124,8 @@ val_t table_lookup( table_t table, val_t key )
     return cdr(car(tmp));
 }
 
-/*
+
 #include <stdio.h>
-#include "repr.h"
 void print_table( table_t table )
 {
   int i;
@@ -154,22 +160,22 @@ main()
 
   table_t t = new_table();
   print_table(t);
-  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
   printf( "a is: %s\n", astr );
   free(astr);
-  table_insert(t,a,c);
+  table_insert(t,hash,is_p,a,c);
   print_table(t);
-  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
   printf( "a is: %s\n", astr );
   free(astr);
-  table_insert(t,b,d);
+  table_insert(t,hash,is_p,b,d);
   print_table(t);
-  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
   printf( "a is: %s\n", astr );
   free(astr);
-  table_insert(t,a,d);
+  table_insert(t,hash,is_p,a,d);
   print_table(t);
-  astr = repr(table_lookup(t,a)?table_lookup(t,a):"None");
+  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
   printf( "a is: %s\n", astr );
   free(astr);
   free_table(t);
@@ -179,4 +185,4 @@ main()
   del_ref(c);
   del_ref(d);
 }
-*/
+
