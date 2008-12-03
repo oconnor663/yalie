@@ -1,3 +1,6 @@
+test:
+	cc test.c types.c types/*.c -lgmp
+
 parser:
 	bison -d input.y && \
 	flex input.lex && \

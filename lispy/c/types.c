@@ -1,9 +1,61 @@
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include "repr.h"
+#include <stdlib.h>
+#include <string.h>
+#include "types.h"
 
-char* strapp( char* a, char* b )
+val_t new_val( void* obj, enum type type )
+{
+  val_t ret = malloc(sizeof(struct Val));
+  ret->obj = obj;
+  ret->type = type;
+  ret->ref_count = 1;
+  return ret;
+}
+
+void add_ref( val_t val )
+{
+  val->ref_count++;
+}
+
+void del_ref( val_t val )
+{
+  val->ref_count--;
+  if (val->ref_count==0)
+    switch (val->type) {
+
+    case Nil:
+      free(val);
+      break;
+
+    case Cons:
+      del_ref(car(val->obj));
+      del_ref(cdr(val->obj));
+      free_cons(val->obj);
+      free(val);
+      break;
+
+    case Symbol:
+      free_sym(val->obj);
+      free(val);
+      break;
+
+    case Int:
+      free_int(val->obj);
+      free(val);
+      break;
+
+    default:
+      fprintf( stderr, "del_ref() encountered unknown type.\n" );
+      free(val);
+      break;
+    }
+}
+
+/*
+ * Below are all functions for printing.
+ */
+
+static char* strapp( char* a, char* b )
 {
   char* ret = malloc( (strlen(a)+strlen(b)+1)*sizeof(char) );
   char* tmp = ret;
@@ -14,12 +66,12 @@ char* strapp( char* a, char* b )
   return ret;
 }
 
-char* repr_nil()
+static char* repr_nil()
 {
   return strdup("()");
 }
 
-char* repr_cons( val_t val )
+static char* repr_cons( val_t val )
 {
   char* ret = strdup("(");
   ret = strapp( ret, repr(car(val->obj)) );
@@ -63,22 +115,3 @@ char* repr( val_t val )
     return strdup("???");
   }
 }
-
-/*
-main()
-{
-  sym_t sym = new_sym("SyM");
-  val_t s = new_val( sym, Symbol );
-  int_t bigint = new_int_z( 554 );
-  val_t i = new_val(bigint,Int);
-  val_t nil = new_val( NULL, Nil );
-  cons_t c1 = new_cons(s,nil);
-  val_t C1 = new_val(c1,Cons);
-  cons_t c2 = new_cons(i, C1);
-  val_t val = new_val( c2, Cons );
-  char* ret = repr(val);
-  printf( "%s\n", ret );
-  del_ref(val);
-  free(ret);
-}
-*/
