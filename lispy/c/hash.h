@@ -19,4 +19,9 @@ void* table_lookup( table_t table,
 		    bool (*is_p)(void*,void*),
 		    void* key );
 
+void* table_remove( table_t table,
+		    int (*hash)(void*, int),
+		    bool (*is_p)(void*,void*),
+		    void* key );
+
 #endif

@@ -1,5 +1,5 @@
 test:
-	cc test.c types.c types/*.c -lgmp
+	cc test.c hash.c types.c types/*.c -lgmp
 
 parser:
 	bison -d input.y && \

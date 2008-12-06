@@ -1,8 +1,38 @@
-YALIE: Yet Another Lisp Interpreting Experiment
+Yalie: Yet Another Lisp Interpreting Experiment
+
+a la Ruby: all funtctions are actually methods. Normal functions are
+actually methods of an implicit global object.
+
+Syntax idea: when (not) is passed multiple arguments, it puts a
+function call together and negates the return. For instance:
+(not = x 10) --> (not (= x 10))
+
+Put everything on hold: all this needs to be implemented top-down as
+objects inheriting from classes.
+
+What is the distinction between a class and a member of that class?
+Should we prohibit inheriting from C types? Perhaps only prohibit
+multiple-inheriting from C types.
+
+struct Class {
+  ns_t namespace;
+}
+
+struct Object {
+  int num_parents;
+  val_t* parents; // the classes (val_t for references)
+  void* internal; // for builtins and their inheritors
+  ns_t namespace;
+};
 
 POTENTIALLY EARTH SHATTERING CONCEPT:
 Create a Yalie library that mimics the functionality of Lex and Yacc.
-Eliminate the need for code walkers. Forms can be lisp macros on steroids.
+Eliminate the need for code walkers. Forms can be lisp macros on
+steroids.
+
+An even newer thought on symbols: symbols should hold their own values
+indexed by THREAD. These can be stacks of (scope.val) pairs, so that
+when climbing the stack the appropriate value can be restored.
 
 Python-like global scoping can be achieved by pointing directly to the
 (key.val) pair in a containing scope. Very clean. Does that present
@@ -45,20 +75,21 @@ same-named symbols that refer to different environments.
 	   This would allow symbols to hold their own
 	   bindings somewhat better.
 
-----------THE IDEA-------------: There is a meta-global list of symbol
-namestrings by which symbols can be compared. The symbol object stores
-its bound value. These objects are created at readtime by referencing
-a simple list of already-instantiated symbols. This list is the
-lexical environment. A "global" directive a la Python allows symbols
-to be pulled down from higher scopes. DOES THIS POSE A PROBLEM FOR
-RESOLVING IMPORT SCOPES, WHICH CAN CHANGE AT RUNTIME? Take another cue
-from Python: imports create genuine userspace objects, not new
-symbols. Referencing an object in a module is no different from
-referencing an index from a list. But that ruins the gain from having
-symbols hold their own values. To have this work, imported modules
-must NOT be in userspace, so that symbols within them can be resolved
-at readtime. On the other hand, the main speed advantage is in
-compiling individual functions, not in looking them up.
+----------THE IDEA-------------:
+There is a meta-global list of symbol namestrings by which symbols can
+be compared. The symbol object stores its bound value. These objects
+are created at readtime by referencing a simple list of
+already-instantiated symbols. This list is the lexical environment. A
+"global" directive a la Python allows symbols to be pulled down from
+higher scopes. DOES THIS POSE A PROBLEM FOR RESOLVING IMPORT SCOPES,
+WHICH CAN CHANGE AT RUNTIME? Take another cue from Python: imports
+create genuine userspace objects, not new symbols. Referencing an
+object in a module is no different from referencing an index from a
+list. But that ruins the gain from having symbols hold their own
+values. To have this work, imported modules must NOT be in userspace,
+so that symbols within them can be resolved at readtime. On the other
+hand, the main speed advantage is in compiling individual functions,
+not in looking them up.
 
 Things to do immediately:
     input (DONE!)
@@ -83,11 +114,11 @@ Syntax:
 Other symbols to make use of:
     & (binary operator for and?)
     $ 
-    [ ]
+    [ ] (implicit ls?)
     { } (used as an alternative delimiter for body expressions?)
     | (replacement for dotted lists?!?!)
     \
-    ~ (special syntax for "not"?)   
+    ~ (special syntax for "not"? NO! "not" is given new semantics above)
 
 
 Scrap the :b keyword arguments to functions. Instead allow {}
@@ -113,12 +144,11 @@ just a goto statement inside the predefined loops
 
 FORBID TOPLEVEL [] SYNTAX! (Brilliant!) (Terrible?) (just reset the
 input after complete lines, so as to trigger a 'no [ at beginning of
-file error'?) 
-NO! Require that prefix and postfix syntax be on the same line as the
-values they operate on. Enforce this rule both in the REPL and in text
-code. Use the peek_token() function to enable this.
-HERE: The REPL should only accept single forms on any given line. The parser
-should parse entire files before starting evaluation.
+file error'?)  NO! Require that prefix and postfix syntax be on the
+same line as the values they operate on. Enforce this rule both in the
+REPL and in text code. Use the peek_token() function to enable this.
+HERE: The REPL should only accept single forms on any given line. The
+parser should parse entire files before starting evaluation.
 
 Exceptions need to be built from the entire stack. They should be
 built in place without being passed up the stack. If nothing "catches"
@@ -133,9 +163,9 @@ There needs to be a function for generating a fresh global scope
 containing all builtin functions and constants. These will be used as
 base Env objects for imported namespaces.
 
-Everything an object? Yes!
-How does python handle "a = 7 ; if x: ..." for printint value? Answer: poorly.
-Are python functions/classes objects themselves?
+Everything an object? Yes!  How does python handle "a = 7 ; if x: ..."
+for printint value? Answer: poorly.  Are python functions/classes
+objects themselves?
 
 Symbols referenced from an imported module do not actually have to be
 the exact same objects as the originals. The Global environment can
@@ -205,6 +235,9 @@ class Lispy_Class():
    (
 
 
+Argument list syntax:
+Graham uses a dot '.' for &rest.
+
 TYPES:
 Cons
 Atom:
@@ -271,10 +304,12 @@ Concepts:
   - Compensation for shadowing drawbacks:
     - Pervasive use of methods and namespaces
     - Shortened function names, like "ls" for "list"
-- Python-like object orientation: dict-based classes, scopes, and modules
-- Python-like full lexical scoping. Globals reference a containing lexical scope.
-- Builtin data structures: cons/list, array, dictionary (others in libraries?)
+- Python-like namespaces: dict-based classes, scopes, and modules
+- Python-like full lexical scoping.
+- Builtin types: int, float, string
+- Builtin data structures: cons, array, dictionary (others in libraries?)
 - Fully polymorphic base functions, everything is an object
 - clean C API, dynamic .so importing
 - ()/{} syntax, "/' strings, and readtime translation of `,; operators (~!|?)
+- New forms of "if" (Paul Graham), "not", "let", "for"
 - Yacc-like functionality available for implementing forms

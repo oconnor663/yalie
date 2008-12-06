@@ -4,6 +4,11 @@
 
 (set-locally ls (fn (:r rest) rest))
 
+(set-locally not (form (:r rest)
+		   (if (= nil (cdr rest))
+		       (ls (quote unary-not) (car rest))
+		       (ls (quote unary-not) rest))))
+
 (set-locally append (fn (:r rest)
   (if (= nil rest)
       ()

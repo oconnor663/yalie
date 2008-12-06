@@ -139,7 +139,7 @@ def cdr( self, stack, cell ):
 Cdr = PyCode(cdr,'cdr')
 
 def lisp_bool( fn, bool ):
-    return fn.env.get_sym("T") if bool else None
+    return fn.env.get_sym("true") if bool else None
 
 def isls( self, stack, x ):
     return lisp_bool(self, isinstance(x,Cons) or x==None)
@@ -147,7 +147,7 @@ Isls = PyCode(isls,'isls')
 
 def lisp_not( self, stack, val ):
     return lisp_bool(self,not val)
-Not = PyCode(lisp_not,'not')
+Not = PyCode(lisp_not,'unary-not')
 
 ### AND and OR need to be special forms
 

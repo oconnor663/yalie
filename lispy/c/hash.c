@@ -3,16 +3,6 @@
 #include <assert.h>
 #include "hash.h"
 
-int hash( void* val, int size )
-{
-  return 0;
-}
-
-bool is_p( void* a, void* b )
-{
-  return a==b;
-}
-
 struct Table {
   int size;
   int num_vals;
@@ -52,6 +42,8 @@ void free_table( table_t table )
 
 void resize_table( table_t table, int new_size )
 {
+  assert(new_size < 1025);
+
   int i;
   cons_t* new_values = malloc( new_size*sizeof(cons_t) );
   for (i=0; i<new_size; i++)
@@ -124,65 +116,59 @@ void* table_lookup( table_t table,
     return cdr(car(tmp));
 }
 
+void* table_remove( table_t table,
+		    int (*hash)(void*, int),
+		    bool (*is_p)(void*,void*),
+		    void* key )
+// Returns old value, or NULL if none existed
+{
+  int h = hash( key, table->size );
+  cons_t tmp = table->values[h];
+  cons_t prev = NULL;
+  while (tmp!=NULL) {
+    if ( is_p( key, car(car(tmp)) ) )
+      break;
+    else {
+      prev = tmp;
+      tmp = cdr(tmp);
+    }
+  }
+  if (tmp==NULL)
+    return NULL;
+  else {
+    table->num_vals--;
+    if (prev==NULL)
+      table->values[h] = cdr(tmp);
+    else
+      set_cdr(prev,cdr(tmp));
+    
+    void* ret = cdr(car(tmp));
+    free_cons(car(tmp));
+    free_cons(tmp);
+    return ret;
+  }
+}
 
+/*
+ * For testing purposes.
+ */
 #include <stdio.h>
 void print_table( table_t table )
 {
   int i;
   printf( "\nTable:\n" );
   for (i=0; i<table->size; i++) {
-    printf( "%2i:", i );
     cons_t tmp = table->values[i];
-    while(tmp) {
-      char* s1 = repr(car(car(tmp)));
-      char* s2 = repr(cdr(car(tmp)));
-      printf( " %s:%s", s1, s2 );
-      free(s1); free(s2);
-      tmp = cdr(tmp);
+    if (tmp) {
+      printf( "%2i:", i );
+      while(tmp) {
+	char* s1 = repr(car(car(tmp)));
+	char* s2 = repr(cdr(car(tmp)));
+	printf( " %s:%s", s1, s2 );
+	free(s1); free(s2);
+	tmp = cdr(tmp);
+      }
+      printf( "\n" );
     }
-    printf( "\n" );
   }
 }
-
-main()
-{
-  sym_t sa = new_sym("a");
-  sym_t sb = new_sym("b");
-  int_t i = new_int_z(1);
-  int_t j = new_int_z(2);
-
-  val_t a = new_val(sa, Symbol);
-  val_t b = new_val(sb, Symbol);
-  val_t c = new_val(i, Int );
-  val_t d = new_val(j, Int );
-
-  char* astr;
-
-  table_t t = new_table();
-  print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
-  printf( "a is: %s\n", astr );
-  free(astr);
-  table_insert(t,hash,is_p,a,c);
-  print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
-  printf( "a is: %s\n", astr );
-  free(astr);
-  table_insert(t,hash,is_p,b,d);
-  print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
-  printf( "a is: %s\n", astr );
-  free(astr);
-  table_insert(t,hash,is_p,a,d);
-  print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
-  printf( "a is: %s\n", astr );
-  free(astr);
-  free_table(t);
-  
-  del_ref(a);
-  del_ref(b);
-  del_ref(c);
-  del_ref(d);
-}
-
