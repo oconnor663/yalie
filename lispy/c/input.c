@@ -12,4 +12,3 @@ char* getline( bool new_expr )
     add_history(line);
   return line;
 }
-
