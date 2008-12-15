@@ -2,8 +2,7 @@
 #include <stdio.h>
 #include <readline/readline.h>
 #include <stdbool.h>
-#include "core.h"
-#include "repr.h"
+#include "types.h"
  
 #define YYSTYPE val_t
 

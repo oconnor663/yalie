@@ -1,7 +1,41 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+"for" loop:
+(for i to 10 ls i) -> (1 ... 10)
+(for i len 10 ls i)-> (0 ... 9)
+(for i is 4 to 10 ls i) -> (4 ... 10)
+(for i is 4 len 10 ls i) -> (4 ... 13)
+(for i is 4 len 10 step -2 ls i) -> (4 2 ... -14)
+(for i in `(1 2 3) if (> i 1) do (put i)) ->  "2\n3\n" to stdout
+ 
+
+Arithmetic syntax?!!? We could totally expand 3+4*5 to (add 3 (mult 4
+5)). That would remove arithmetic symbols from names
+though. +-*/^&|<>=.  An alternative solution would be to only do it
+when there's full whitespace separation. As in "foo-bar" is a name,
+but "foo - bar" is "(minus foo bar)".
+
+Syntax that needs to exist:
+  1. Function calls
+  2. Object message passing
+  3. Container references (array, dict, and even list)
+
+Should passing a message to an object return a function? For instance,
+(a.foo 1 5) expands to ((msg a foo) 1 5). Sounds like a good
+idea. Then function calls and container references can differentiate
+based on the type of object involved.
+
+Allow class redeclarations to extend the existing class, not replace
+it.
+
+Eval definitely needs to be rewritten recursively, so that special
+forms can call it. Use continuations or something to allow goto.
+
 a la Ruby: all funtctions are actually methods. Normal functions are
-actually methods of an implicit global object.
+actually methods of an implicit global object. Also, because of the
+smalltalk-like semantics, there are no member references. Thus, there
+is no need for a member operator: everything can be done with (obj
+msg). NOT TRUE if I want to have normal sounding functions :p
 
 Syntax idea: when (not) is passed multiple arguments, it puts a
 function call together and negates the return. For instance:

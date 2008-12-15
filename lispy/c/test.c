@@ -8,7 +8,7 @@ int hash( void* val, int size )
   return 0;
 }
 
-bool is_p( void* a, void* b )
+bool eq_p( void* a, void* b )
 {
   return a==b;
 }
@@ -29,35 +29,43 @@ void test_hash()
 
   char* astr;
 
-  table_t t = new_table();
-  table_insert(t,hash,is_p,a,c);
+  table_t t = new_table( hash, eq_p );
+  val_t tmp;
+
+  table_insert(t,a,c,(void*)&tmp);
   print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
+  table_lookup(t,a,(void*)&tmp);
+  astr = repr(tmp);
   printf( "a is: %s\n", astr );
   free(astr);
-  table_insert(t,hash,is_p,b,d);
+  table_insert(t,b,d,(void*)&tmp);
   print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
+  table_lookup(t,a,(void*)&tmp);
+  astr = repr(tmp);
   printf( "a is: %s\n", astr );
   free(astr);
-  table_insert(t,hash,is_p,a,d);
+  table_insert(t,a,d,(void*)&tmp);
   print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
+  table_lookup(t,a,(void*)&tmp);
+  astr = repr(tmp);
   printf( "a is: %s\n", astr );
   free(astr);
-  table_insert(t,hash,is_p,e,c);
+  table_insert(t,e,c,(void*)&tmp);
   print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
+  table_lookup(t,a,(void*)&tmp);
+  astr = repr(tmp);
   printf( "a is: %s\n", astr );
   free(astr);
-  table_remove(t,hash,is_p,b);
+  table_remove(t,b,(void*)&tmp);
   print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
+  table_lookup(t,a,(void*)&tmp);
+  astr = repr(tmp);
   printf( "a is: %s\n", astr );
   free(astr);
-  table_remove(t,hash,is_p,e);
+  table_remove(t,e,(void*)&tmp);
   print_table(t);
-  astr = repr(table_lookup(t,hash,is_p,a)?table_lookup(t,hash,is_p,a):"None");
+  table_lookup(t,a,(void*)&tmp);
+  astr = repr(tmp);
   printf( "a is: %s\n", astr );
   free(astr);
   free_table(t);
