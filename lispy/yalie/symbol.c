@@ -20,7 +20,12 @@ void free_sym( sym_t sym )
   free(sym);
 }
 
-char* repr_sym( sym_t sym )
+char* sym_repr( sym_t sym )
 {
   return strdup(sym->name);
+}
+
+bool sym_eq( sym_t a, sym_t b )
+{
+  return a==b; //symbols expect to be unique
 }

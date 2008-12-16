@@ -149,6 +149,8 @@ int table_remove( table_t table, void* key, void** ret )
 /*
  * For testing purposes.
  */
+
+/*
 #include <stdio.h>
 void print_table( table_t table )
 {
@@ -168,4 +170,5 @@ void print_table( table_t table )
       printf( "\n" );
     }
   }
-}
+}  
+*/

@@ -26,7 +26,7 @@ void free_int( int_t i )
   free(i);
 }
 
-char* repr_int( int_t i )
+char* int_repr( int_t i )
 {
   char* ret;
   gmp_asprintf( &ret, "%Zd", i->bignum );
