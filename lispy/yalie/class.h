@@ -11,7 +11,7 @@ enum Type {
   Cons,
   Array,
   Dict,
-  Function,
+  Method,
   Class,
   Instance
 };

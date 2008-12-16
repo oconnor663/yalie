@@ -1,5 +1,18 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+If everything is to be a method, every scope will have to be
+associated with a class. Thus, the global scope will in fact be
+implicitly redefining the overarching Object class. But what about
+"let" scopes and "fn" scopes etc.? No, that clearly won't work. Scopes
+and functions need to be treated normally. Classes should be separate.
+
+Method syntax: the dot '.' is parsed differently based on its position
+in an s-expression. As the first element, a method call envelops the
+rest of the expression, as so:
+(a.foo b c d) ==> (msg a foo b c d)
+Anywhere else, the method call is assumed to have no arguments:
+(f a.foo b) ==> (f (msg a foo) b)
+
 "for" loop:
 (for i to 10 ls i) -> (1 ... 10)
 (for i len 10 ls i)-> (0 ... 9)
@@ -7,7 +20,6 @@ Yalie: Yet Another Lisp Interpreting Experiment
 (for i is 4 len 10 ls i) -> (4 ... 13)
 (for i is 4 len 10 step -2 ls i) -> (4 2 ... -14)
 (for i in `(1 2 3) if (> i 1) do (put i)) ->  "2\n3\n" to stdout
- 
 
 Arithmetic syntax?!!? We could totally expand 3+4*5 to (add 3 (mult 4
 5)). That would remove arithmetic symbols from names
