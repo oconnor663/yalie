@@ -1,5 +1,4 @@
 %{
-  #include "types.h"
   #define YYSTYPE val_t
   #include "input.tab.h"
   

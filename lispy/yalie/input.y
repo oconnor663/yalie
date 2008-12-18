@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <readline/readline.h>
 #include <stdbool.h>
-#include "types.h"
   
 #define YYSTYPE val_t
   
