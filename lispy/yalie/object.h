@@ -9,6 +9,4 @@ void obj_del_ref( val_t val );
 
 void* obj_guts( obj_t obj );
 
-
-
 #endif

@@ -70,7 +70,7 @@ void resize_table( table_t table, int new_size )
   free(tmp);
 }
 
-int table_insert( table_t table, void* key, void* val, void** ret )
+int table_add( table_t table, void* key, void* val, void** ret )
 // Returns 0 if key is new, or 1 if key was old (and sets ret to
 // previous value)
 {
@@ -97,7 +97,7 @@ int table_insert( table_t table, void* key, void* val, void** ret )
   }
 }
 
-int table_lookup( table_t table, void* key, void** ret )
+int table_ref( table_t table, void* key, void** ret )
 // Returns 0 on a failed lookup, 1 and sets ret on success
 {
   int h = table->hash( key, table->size );
@@ -116,7 +116,7 @@ int table_lookup( table_t table, void* key, void** ret )
   }
 }
 
-int table_remove( table_t table, void* key, void** ret )
+int table_del( table_t table, void* key, void** ret )
 // Returns 0 on failure, 1 and sets ret to old val on success
 {
   int h = table->hash( key, table->size );

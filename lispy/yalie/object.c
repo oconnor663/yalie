@@ -5,7 +5,7 @@ struct Obj {
   enum Type type;
   obj_t class;
   void* guts;
-  table_t members;
-  table_t methods;
-  int ref_count;
+  obj_t members; //two dicts
+  obj_t methods; //
+  unsigned long int ref_count;
 };

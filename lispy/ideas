@@ -1,5 +1,10 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+Types, stored by classes, should be a const char*. They will be
+compared by pointer when testing for type equality, so they should
+never be modified. This will make it easier for user-defined types to
+be added, and also for printing out type information. A SYMBOL?!?
+
 If everything is to be a method, every scope will have to be
 associated with a class. Thus, the global scope will in fact be
 implicitly redefining the overarching Object class. But what about
