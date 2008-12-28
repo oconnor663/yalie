@@ -57,8 +57,8 @@ void free_sym_table( table_t table )
 const char* get_sym( table_t sym_table, char* name )
 {
   char* ret;
-  int test = table_ref( sym_table, name, (void**)&ret );
-  if (test==1)
+  bool test = table_ref( sym_table, name, (void**)&ret );
+  if (test)
     return (const char*) ret;
   else {
     char* new_sym = strdup(name);

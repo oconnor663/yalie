@@ -1,5 +1,5 @@
 #include "class.h"
-#include "symbol.h"
+
 
 struct Class {
   /*
@@ -8,12 +8,11 @@ struct Class {
    *  in C code, but it also requires that we keep track of
    *  pointer and avoid modifying its contents.
    */
-  table_t methods;
-  class_t parent;
-  obj_t parent_obj; // allows the class to hold a reference
-};                  // with respect to garbage collection
+  scope_t methods;
+  obj_t parent; // allows the class to hold a reference
+};              // with respect to garbage collection
 
-class_t new_class( class_t parent, obj_t parent_obj );
+class_t new_class( obj_t parent )
 {
   class_t ret = malloc(sizeof(struct Class));
   ret->parent = parent;

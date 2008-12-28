@@ -45,6 +45,16 @@ void free_table( table_t table )
   free(table);
 }
 
+int table_ptr_hash( void* ptr, int size )
+{
+  return ((long int)ptr / sizeof(void*)) % size;
+}
+
+bool table_ptr_eq( void* a, void* b )
+{
+  return a==b;
+}
+
 int table_len( table_t table )
 {
   return table->num_vals;
@@ -76,7 +86,7 @@ static void resize_table( table_t table, int new_size )
   free(tmp);
 }
 
-int table_add( table_t table, void* key, void* val, void** ret )
+bool table_add( table_t table, void* key, void* val, void** ret )
 // Returns 0 if key is new, or 1 if key was old (and sets ret to
 // previous value)
 {
@@ -103,7 +113,7 @@ int table_add( table_t table, void* key, void* val, void** ret )
   }
 }
 
-int table_ref( table_t table, void* key, void** ret )
+bool table_ref( table_t table, void* key, void** ret )
 // Returns 0 on a failed lookup, 1 and sets ret on success
 {
   int h = table->hash( key, table->size );
@@ -122,7 +132,7 @@ int table_ref( table_t table, void* key, void** ret )
   }
 }
 
-int table_del( table_t table, void* key, void** ret )
+bool table_del( table_t table, void* key, void** ret )
 // Returns 0 on failure, 1 and sets ret to old val on success
 {
   int h = table->hash( key, table->size );
