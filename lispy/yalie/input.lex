@@ -6,21 +6,19 @@
 %}
 
 white [ \t\n]
+delim [)(}{]
 punct [`,;~(){}]
 
 %%
 
-[ \t\n]+     ; //skip whitespace
+{white}+     ; //skip whitespace
 
 \(          { yynesting++; return *yytext; }
-
 \)          { yynesting--; return *yytext; }
-
 \{          { yynesting++; return *yytext; }
-
 \}          { yynesting--; return *yytext; }
 
-[^(){} \t\n]+	 {
-                   yylval = new_val( new_sym(yytext), Symbol );
-		   return SYMBOL;
-		 }
+[^{white}{delim}]+	 {
+                            yylval = new_val( new_sym(yytext), Symbol );
+			    return SYMBOL;
+                         }

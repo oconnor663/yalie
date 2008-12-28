@@ -43,6 +43,12 @@ void* array_ref( array_t array, unsigned long int index )
   return array->contents[index];
 }
 
+void array_set( array_t array, unsigned long int index, void* val )
+{
+  assert( index < array->length );
+  array->contents[index] = val;
+}
+
 void array_push( array_t array, unsigned long int index, void* val )
 {
   //Pushing onto the index equal to the array length

@@ -1,5 +1,25 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+Priorities:
+  Message passing only - automatic get/set methods for members
+  
+
+Issues:
+  message resolution
+  method scoping
+  modifying variables in a higher scope
+  collisions with members and methods
+  allowing the global scope to be a class def
+  inheritance resolution
+
+Alternatively, members can have a $ prefix by convention. Thus, the
+actual variable name would refer only to the reference function,
+avoiding the name collision issue entirely.
+
+Classes can use layered scopes to achieve local variables. Only
+functions are visible in the external scope, but the lexical scope of
+those functions themselves is a closure on the class.
+
 Types, stored by classes, should be a const char*. They will be
 compared by pointer when testing for type equality, so they should
 never be modified. This will make it easier for user-defined types to

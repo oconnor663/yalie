@@ -1,7 +1,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "hash.h"
+#include "table.h"
+#include "cons.h"
 
 struct Table {
   int size;
@@ -44,7 +45,12 @@ void free_table( table_t table )
   free(table);
 }
 
-void resize_table( table_t table, int new_size )
+int table_len( table_t table )
+{
+  return table->num_vals;
+}
+
+static void resize_table( table_t table, int new_size )
 {
   assert(new_size < 1025);
 
@@ -57,7 +63,7 @@ void resize_table( table_t table, int new_size )
   for (i=0; i<table->size; i++) {
     tmp1 = table->values[i];
     while (tmp1!=NULL) {
-      int new_hash = hash( car(car(tmp1)), new_size );
+      int new_hash = table->hash( car(car(tmp1)), new_size );
       tmp2 = tmp1;
       tmp1 = cdr(tmp1);
       set_cdr(tmp2,new_values[new_hash]);
@@ -144,6 +150,34 @@ int table_del( table_t table, void* key, void** ret )
     free_cons(tmp);
     return 1;
   }
+}
+
+array_t table_keys( table_t table )
+{
+  array_t ret = new_array(0,NULL);
+  int i;
+  for (i=0; i<table->size; i++) {
+    cons_t tmp = table->values[i];
+    while (tmp) {
+      array_push( ret, array_len(ret), car(car(tmp)) );
+      tmp = cdr(tmp);
+    }
+  }
+  return ret;
+}
+
+array_t table_vals( table_t table )
+{
+  array_t ret = new_array(0,NULL);
+  int i;
+  for (i=0; i<table->size; i++) {
+    cons_t tmp = table->values[i];
+    while (tmp) {
+      array_push( ret, array_len(ret), cdr(car(tmp)) ); //note difference
+      tmp = cdr(tmp);                                   //from above
+    }
+  }
+  return ret;
 }
 
 /*
