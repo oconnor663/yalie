@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <gmp.h>
-#include "int.h"
+#include "num.h"
 
 struct Int {
   mpz_t bignum;
