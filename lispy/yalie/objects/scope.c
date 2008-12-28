@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdbool.h>
 #include "scope.h"
 #include "../guts/table.h"
@@ -15,31 +16,43 @@ scope_t new_scope( scope_t parent )
   ret->parent = parent;
 }
 
-void scope_add( scope_t scope, sym_t name, obj_t obj )
+void free_scope( scope_t scope )
+{
+  array_t vals = table_vals( scope->table );
+  int i;
+  for (i=0; i<array_len(vals); i++)
+    obj_del_ref( array_ref( vals, i ) );
+  free_array(vals);
+  free_table(scope->table);
+  free(scope);
+}
+
+void scope_add( scope_t scope, sym_t key, obj_t val )
 {
   obj_t tmp;
-  bool test = table_add( scope->table, name, obj, &tmp );
+  bool test = table_add( scope->table, key, val, (void*)&tmp );
+  obj_add_ref(val);
   if (test)
     obj_del_ref(tmp);
 }
 
-obj_t scope_ref( scope_t scope, sym_t name )
+obj_t scope_ref( scope_t scope, sym_t key )
 // Returns NULL on a failed lookup
 {
   obj_t ret;
-  bool test = table_ret( scope->table, name, &ret );
+  bool test = table_ret( scope->table, key, &ret );
   if (test)
     return ret;
   else if (scope->parent!=NULL)
-    return scope_ref( scope->parent, name );
+    return scope_ref( scope->parent, key );
   else
     return NULL;
 }
 
-void scope_del( scope_t scope, sym_t name )
+void scope_del( scope_t scope, sym_t key )
 {
   obj_t tmp;
-  bool test = table_del( scope->table, name, &tmp );
+  bool test = table_del( scope->table, key, (void*)&tmp );
   if (test)
     obj_del_ref(tmp);
 }

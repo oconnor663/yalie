@@ -1,4 +1,4 @@
-Yalie: input.tab.c input.tab.h lex.yy.c
+yalie: input.tab.c input.tab.h lex.yy.c
 	cc -o yalie lex.yy.c input.tab.c -lreadline -ll
 
 input.tab.h: input.y

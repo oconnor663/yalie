@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "table.h"
 
-typedef const char* sym_t;
+typedef char* sym_t;
 
 //sym_t new_sym( char* name ); //will duplicate name
 //void free_sym( sym_t sym );  //frees owned duplicate

@@ -11,7 +11,7 @@ void free_int( int_t i );
 
 char* int_repr( int_t i );
 
-bool int_eq( int_t a, int_t b )
+bool int_eq( int_t a, int_t b );
 
 int_t int_add( int_t a, int_t b );
 int_t int_sub( int_t a, int_t b );

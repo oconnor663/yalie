@@ -8,10 +8,13 @@
  * references to those objects.
  */
 
+#include "../guts/symbol.h"
+#include "object.h"
+
 typedef struct Scope * scope_t;
 
-scope_t new_scope();
-scope_t free_scope();
+scope_t new_scope( scope_t parent );
+void free_scope( scope_t scope );
 
 void scope_add( scope_t scope, sym_t name, obj_t obj );
 obj_t scope_ref( scope_t scope, sym_t name ); //NULL on fail

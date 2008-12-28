@@ -69,7 +69,7 @@ const char* get_sym( table_t sym_table, char* name )
 
 char* sym_repr( sym_t sym )
 {
-  return strdup(sym_t);
+  return strdup(sym);
 }
 
 // FOR TESTING

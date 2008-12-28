@@ -1,8 +1,14 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+Class/object scoping concept: Class contains a method scope (with
+inheritance). Object contains both a method scope and a member scope,
+hierarchically unrelated. message lookups calls resolve the method
+from the method scope, but method execution is resolved in the member
+scope (with temporary bindings for its arguments), which is a child of
+the lexical environment of the class declaration.
+
 Priorities:
   Message passing only - automatic get/set methods for members
-  
 
 Issues:
   message resolution
