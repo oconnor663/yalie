@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "object.h"
 #include "scope.h"
 
@@ -8,13 +9,14 @@ struct Object {
   void* guts;
   scope_t members;
   scope_t methods;
-  int ref_count;
+  unsigned long int ref_count;
 };
 
 struct Class {
   scope_t methods;
-  obj_t parent; // allows the class to hold a reference
-};              // to the parent with respect to garbage collection
+  class_t parent;
+  obj_t parent_obj;
+};
 
 
 /*
@@ -38,20 +40,20 @@ obj_t new_obj( class_t class, obj_t class_obj )
    */
 }
 
-obj_t obj_add_ref( obj_t obj )
+void obj_add_ref( obj_t obj )
 {
   obj->ref_count++;
 }
 
-obj_t obj_del_ref( obj_t obj )
+void obj_del_ref( obj_t obj )
 {
   obj->ref_count--;
-  if (obj_t->ref_count == 0) {
+  if (obj->ref_count == 0) {
     fprintf( stderr, "Would call `del' method on %p\n", obj );
     if (obj->class_obj!=NULL)
       obj_del_ref( obj->class_obj );
-    free_scope(ret->methods);
-    free_scope(ret->members);
+    free_scope(obj->methods);
+    free_scope(obj->members);
     free(obj);
   }
 }
@@ -66,19 +68,21 @@ void* obj_guts( obj_t obj )
  * -----------------------------------------------------------
  */
 
-class_t new_class( obj_t parent )
+class_t new_class( class_t parent, obj_t parent_obj )
 {
   class_t ret = malloc(sizeof(struct Class));
   ret->parent = parent;
-  if (parent!=NULL)
-    obj_add_ref(parent);
+  ret->parent_obj = parent_obj;
+  if (parent_obj!=NULL)
+    obj_add_ref(parent_obj);
   ret->methods = new_scope( parent->methods );
   return ret;
 }
 
 void free_class( class_t class )
 {
-  obj_del_ref(class->parent);
+  if (class->parent_obj!=NULL)
+    obj_del_ref(class->parent_obj);
   free_scope(class->methods);
   free(class);
 }

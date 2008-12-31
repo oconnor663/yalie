@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <stdbool.h>
 #include "scope.h"
 #include "../guts/table.h"
 #include "../guts/symbol.h"
@@ -36,11 +35,29 @@ void scope_add( scope_t scope, sym_t key, obj_t val )
     obj_del_ref(tmp);
 }
 
+bool scope_set( scope_t scope, sym_t key, obj_t val )
+//returns false on failure
+{
+  obj_t tmp;
+  // finds the highest scope with an existing binding
+  while ( ! table_ref(scope->table,key,(void*)&tmp) ) {
+    if (scope->parent==NULL)
+      return false;
+    else
+      scope = scope->parent;
+  }
+
+  table_add( scope->table, key, val, (void*)&tmp );
+  obj_add_ref(val);
+  obj_del_ref(tmp);
+  return true;
+}
+
 obj_t scope_ref( scope_t scope, sym_t key )
 // Returns NULL on a failed lookup
 {
   obj_t ret;
-  bool test = table_ret( scope->table, key, &ret );
+  bool test = table_ref( scope->table, key, (void*)&ret );
   if (test)
     return ret;
   else if (scope->parent!=NULL)

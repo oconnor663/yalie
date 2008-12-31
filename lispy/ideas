@@ -1,5 +1,17 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+def
+defmethod
+defclass
+deflocal
+
+Two birds with one stone: return to declaring variables with
+`let'. Allow (let x `foo) to extend for the duration of the current
+scope. Assignment then works like normal, except now it can modify
+variables in higher scopes (as with C). This will make it trivial for
+methods to modify variables in the member scope. This would make it
+much easier to insert declaration optimizations later, as well.
+
 Class/object scoping concept: Class contains a method scope (with
 inheritance). Object contains both a method scope and a member scope,
 hierarchically unrelated. message lookups calls resolve the method

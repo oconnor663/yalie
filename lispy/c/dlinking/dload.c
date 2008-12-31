@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <dlfcn.h>
 
+void resolveme()
+{
+  printf( "SUCCESS!\n" );
+}
+
 main()
 {
   void* handle = dlopen("./toload.so", RTLD_LAZY );
