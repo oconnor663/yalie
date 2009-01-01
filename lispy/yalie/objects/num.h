@@ -1,7 +1,29 @@
 #ifndef int_h_
 #define int_h_
 
-#include <stdbool.h>
+#include "class.h"
+#include "object.h"
+
+obj_t Integer_Class;
+
+void Init_Integer_Class();
+
+obj_t new_int_z( long int i );
+obj_t new_int_s( char* i );
+
+char* int_repr( obj_t i );
+
+
+obj_t Float_Class
+
+void Init_Float_Class();
+
+obj_t new_float_f( double x );
+obj_t new_float_s( char* x );
+
+char* float_repr( obj_t x );
+
+
 
 typedef struct Int * int_t;
 
@@ -16,10 +38,12 @@ bool int_eq( int_t a, int_t b );
 int_t int_add( int_t a, int_t b );
 int_t int_sub( int_t a, int_t b );
 int_t int_neg( int_t i );
+int_t int_abs( int_t i );
 
 int_t int_mul( int_t a, int_t b );
 int_t int_div( int_t a, int_t b );
 int_t int_exp( int_t a, int_t b );
+int_t int_mod( int_t a, int_t b );
 
 int_t int_and( int_t a, int_t b );
 int_t int_or( int_t a, int_t b );
