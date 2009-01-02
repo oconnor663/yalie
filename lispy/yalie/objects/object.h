@@ -12,6 +12,8 @@ obj_t new_obj( obj_t class );
 void obj_add_ref( obj_t obj );
 void obj_del_ref( obj_t obj );
 
+class_t obj_class( obj_t obj );
+
 void* obj_guts( obj_t obj );
 void obj_set_guts( obj_t obj, void* guts );
 

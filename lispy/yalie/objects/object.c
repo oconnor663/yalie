@@ -58,6 +58,11 @@ void obj_del_ref( obj_t obj )
   }
 }
 
+class_t obj_class( obj_t obj )
+{
+  return obj->class;
+}
+
 void* obj_guts( obj_t obj )
 {
   return obj->guts;
@@ -131,10 +136,10 @@ void free_class( class_t class )
 
 bool inherits_p( class_t child, class_t parent )
 {
-  while (parent!=NULL) {
+  while (child!=NULL) {
     if (child==parent)
       return true;
-    parent = parent->parent;
+    child = child->parent;
   }
   return false;
 }

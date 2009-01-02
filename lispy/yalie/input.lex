@@ -3,6 +3,7 @@
   #include "objects/object.h"
   #include "objects/cons_class.h"
   #include "objects/symbol_class.h"
+  #include "objects/num.h"
 
   #include "input.tab.h"
   
@@ -24,8 +25,14 @@ punct [`,;~(){}]
 \{          { yynesting++; return *yytext; }
 \}          { yynesting--; return *yytext; }
 
-[^ \t\n(){}]+	 {
-                            printf( "found: \"%s\"\n", yytext );
+-?[0-9]*    { printf( "integer: %s\n", yytext );
+	      yylval = new_int_s(yytext);
+	      return OBJECT;
+	    }
+	      
+
+[^ \t\n(){}]+		 {
+                            printf( "symbol: %s\n", yytext );
                             yylval = new_symbol_obj(yytext);
-			    return SYMBOL;
+			    return OBJECT;
                          }

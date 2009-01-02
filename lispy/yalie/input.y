@@ -7,27 +7,31 @@
 #include "objects/object.h"
 #include "objects/cons_class.h"
 #include "objects/symbol_class.h"
+#include "objects/num.h"
+#include "guts/cons.h"
   
 #define YYSTYPE obj_t
   
   void yyerror( const char* str );
   
   extern yynesting;
+  
+  void repr( obj_t obj, bool at_start );
 %}
 
-%token SYMBOL
+%token OBJECT
 
 %%
 
 program:
-	program expr		{ printf("Got one.\n"); }
+        program expr		{ repr($2, true); }
 	|
 	;
 
 expr:
 	paren_s_expr		{ $$ = $1; }
 	| brace_s_expr		{ $$ = $1; }
-	| SYMBOL		{ $$ = $1; }
+	| OBJECT		{ $$ = $1; }
 	;
 
 paren_s_expr:
@@ -99,6 +103,38 @@ int yywrap()
   return 1;
 } 
 
+void repr_cons( obj_t cons, bool at_start )
+{
+  if (at_start) {
+    printf( "(" );
+    repr( car(obj_guts(cons)), false );
+    repr_cons( cdr(obj_guts(cons)), false );
+  }
+  else if (is_nil_p(cons))
+    printf( ")" );
+  else {
+    printf( " " );
+    repr( car(obj_guts(cons)), false );
+    repr_cons( cdr(obj_guts(cons)), false );
+  }
+}
+
+void repr( obj_t obj, bool at_start )
+{
+  if (is_int_p(obj))
+    printf( int_repr(obj) );
+  else if (is_symbol_p(obj))
+    printf( obj_guts(obj) );
+  else if (is_nil_p(obj))
+    printf( "()" );
+  else if (is_cons_p(obj))
+    repr_cons( obj, true );
+  else
+    fprintf( stderr, "Weird object?\n" );
+  if (at_start)
+    printf( "\n" );
+}
+
 main()
 {
   Init_Base_Classes();
@@ -106,6 +142,7 @@ main()
   Init_Symbol_Class();
   Init_Nil_Class();
   Init_Cons_Class();
+  Init_Int_Class();
 
   while (true) {
     yyline = getline(true);
