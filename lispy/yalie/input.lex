@@ -1,7 +1,13 @@
 %{
-  #define YYSTYPE val_t
+  #define YYSTYPE obj_t
+  #include "objects/object.h"
+  #include "objects/cons_class.h"
+  #include "objects/symbol_class.h"
+
   #include "input.tab.h"
   
+  YYSTYPE yylval;
+
   int yynesting = 0;
 %}
 
@@ -11,14 +17,15 @@ punct [`,;~(){}]
 
 %%
 
-{white}+     ; //skip whitespace
+[ \t\n]+     ; //skip whitespace
 
 \(          { yynesting++; return *yytext; }
 \)          { yynesting--; return *yytext; }
 \{          { yynesting++; return *yytext; }
 \}          { yynesting--; return *yytext; }
 
-[^{white}{delim}]+	 {
-                            yylval = new_val( new_sym(yytext), Symbol );
+[^ \t\n(){}]+	 {
+                            printf( "found: \"%s\"\n", yytext );
+                            yylval = new_symbol_obj(yytext);
 			    return SYMBOL;
                          }

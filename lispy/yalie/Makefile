@@ -1,14 +1,10 @@
-yalie: input.tab.c input.tab.h lex.yy.c
-	cc -o yalie lex.yy.c input.tab.c -lreadline -ll
+FILES =	guts/cons.c guts/symbol.c guts/table.c guts/array.c \
+	objects/object.c objects/cons_class.c objects/symbol_class.c objects/scope.c
 
-input.tab.h: input.y
+yalie: input.lex input.y ${FILES}
 	bison -d input.y
-
-input.tab.c: input.y
-	bison -d input.y
-
-lex.yy.c:
 	flex input.lex
+	cc -g -o yalie lex.yy.c input.tab.c ${FILES} -lreadline -ll
 
 clean:
 	rm yalie lex.yy.c input.tab.*

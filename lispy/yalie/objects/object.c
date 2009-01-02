@@ -33,10 +33,11 @@ obj_t new_obj( obj_t class )
   ret->methods = new_scope( ret->class->methods );
   ret->members = new_scope( NULL );
   ret->ref_count = 1;
-  fprintf( stderr, "Would call `new' method on %p\n", ret );
+  //fprintf( stderr, "Would call `new' method on %p\n", ret );
   /*
    * Check for errors on the return.
    */
+  return ret;
 }
 
 void obj_add_ref( obj_t obj )
@@ -48,7 +49,7 @@ void obj_del_ref( obj_t obj )
 {
   obj->ref_count--;
   if (obj->ref_count == 0) {
-    fprintf( stderr, "Would call `del' method on %p\n", obj );
+    //fprintf( stderr, "Would call `del' method on %p\n", obj );
     if (obj->class_obj!=NULL)
       obj_del_ref( obj->class_obj );
     free_scope(obj->methods);
@@ -107,14 +108,16 @@ void obj_del_member( obj_t obj, sym_t name )
 class_t new_class( obj_t parent )
 {
   class_t ret = malloc(sizeof(struct Class));
-  ret->parent = obj_guts(parent);
-  ret->parent_obj = parent;
+    ret->parent_obj = parent;
   if (parent!=NULL) {
     obj_add_ref(parent);
+    ret->parent = obj_guts(parent);
     ret->methods = new_scope( parent->methods );
   }
-  else
+  else {
+    ret->parent = NULL;
     ret->methods = new_scope( NULL );
+  }
   return ret;
 }
 
@@ -193,6 +196,6 @@ obj_t new_class_obj( class_t class )
 // however that object will contain the class argument. Complicated :p
 {
   obj_t ret = new_obj( Class_Class );
-  set_obj_guts( ret, class );
+  obj_set_guts( ret, class );
   return ret;
 }

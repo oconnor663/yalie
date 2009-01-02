@@ -54,16 +54,16 @@ void free_sym_table( table_t table )
   free_array( names );
 }
 
-const char* get_sym( table_t sym_table, char* name )
+sym_t get_sym( table_t sym_table, char* name )
 {
-  char* ret;
+  sym_t ret;
   bool test = table_ref( sym_table, name, (void**)&ret );
   if (test)
-    return (const char*) ret;
+    return ret;
   else {
-    char* new_sym = strdup(name);
+    sym_t new_sym = strdup(name);
     table_add(sym_table, new_sym, new_sym, NULL);
-    return (const char*)new_sym;
+    return new_sym;
   }
 }
 

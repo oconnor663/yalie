@@ -3,8 +3,12 @@
 #include <stdlib.h>
 #include <readline/readline.h>
 #include <stdbool.h>
+
+#include "objects/object.h"
+#include "objects/cons_class.h"
+#include "objects/symbol_class.h"
   
-#define YYSTYPE val_t
+#define YYSTYPE obj_t
   
   void yyerror( const char* str );
   
@@ -16,7 +20,7 @@
 %%
 
 program:
-	program expr		{ printf("%s\n", repr($2)); }
+	program expr		{ printf("Got one.\n"); }
 	|
 	;
 
@@ -31,8 +35,8 @@ paren_s_expr:
 	;
 
 paren_s_expr_rest:
-	expr paren_s_expr_rest	{ $$ = new_val( new_cons($1,$2), Cons ); }
-	| ')'  			{ $$ = new_val( NULL, Nil ); }
+	expr paren_s_expr_rest	{ $$ = new_cons_obj($1,$2); }
+        | ')'  			{ $$ = new_nil_obj(); }
 	;
 
 brace_s_expr:
@@ -40,8 +44,8 @@ brace_s_expr:
 	;
 
 brace_s_expr_rest:
-	expr brace_s_expr_rest	{ $$ = new_val( new_cons($1,$2), Cons ); }
-	| '}'  			{ $$ = new_val( NULL, Nil); }
+	expr brace_s_expr_rest	{ $$ = new_cons_obj($1,$2); }
+	| '}'  			{ $$ = new_nil_obj(); }
 	;
 
 %%
@@ -60,6 +64,7 @@ char* getline( bool new_expr )
 char* yyline;
 FILE* yystream;
 bool yyabort = false;
+extern FILE* yyin;
 
 void yyerror(const char *str)
 {
@@ -70,8 +75,6 @@ void yyerror(const char *str)
  
 int yywrap()
 {
-  extern FILE* yyin;
-
   if (yynesting>0) {
     free(yyline);
     fclose(yystream);
@@ -98,8 +101,12 @@ int yywrap()
 
 main()
 {
-  extern FILE* yyin;
-  
+  Init_Base_Classes();
+  Init_Global_Symbol_Table();
+  Init_Symbol_Class();
+  Init_Nil_Class();
+  Init_Cons_Class();
+
   while (true) {
     yyline = getline(true);
     if (yyline==NULL) {
