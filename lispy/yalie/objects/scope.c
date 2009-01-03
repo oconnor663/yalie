@@ -13,6 +13,7 @@ scope_t new_scope( scope_t parent )
   scope_t ret = malloc( sizeof(struct Scope) );
   ret->table = new_table( table_ptr_hash, table_ptr_eq );
   ret->parent = parent;
+  return ret;
 }
 
 void free_scope( scope_t scope )

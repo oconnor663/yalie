@@ -1,6 +1,7 @@
 #ifndef table_h_
 #define table_h_
 
+#include <stdlib.h>
 #include <stdbool.h>
 #include "array.h"
 
@@ -12,13 +13,13 @@ typedef struct Table * table_t;
  * bookkeeping, etc.
  */
 
-table_t new_table( int (*hash)(void*, int), bool (*eq_p)(void*,void*) );
+table_t new_table( size_t (*hash)(void*, size_t), bool (*eq_p)(void*,void*) );
 void free_table( table_t table );
 
-int table_ptr_hash( void* ptr, int size );
-bool table_ptr_eq( void* a, void* b );
+size_t pointer_hash( void* ptr, size_t size );
+bool pointer_eq( void* a, void* b );
 
-int table_len( table_t table );
+size_t table_len( table_t table );
 
 // Each of these functions returns 0 on a lookup failure, and
 // 1 on success. In the case of add and del, they also set ret

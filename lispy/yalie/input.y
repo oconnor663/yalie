@@ -54,12 +54,13 @@ brace_s_expr_rest:
 
 %%
 
-#define PROMPT ">>> "
-#define REPROMPT "... "
+char* PROMPT = ">>> ";
+char* REPROMPT = "... ";
 
 char* getline( bool new_expr )
 {
   char* line = readline( new_expr?PROMPT:REPROMPT );
+  
   if (line && line[0]!='\0')
     add_history(line);
   return line;
@@ -75,6 +76,7 @@ void yyerror(const char *str)
   if (!yyabort)
     fprintf(stderr,"Parse error: %s\n",str);
   yynesting = 0;
+
 }
  
 int yywrap()
@@ -148,15 +150,20 @@ main()
     yyline = getline(true);
     if (yyline==NULL) {
       printf("\n");
+      yyabort = true;
       break;
     }
     while (yyline[0]=='\0') {
+      free(yyline);
       yyline = getline(true);
       if (yyline==NULL) {
 	printf( "\n" );
+	yyabort = true;
 	break;
       }
     }
+    if (yyabort)
+      break;
     yystream = (FILE*)fmemopen( yyline, strlen(yyline), "r" ); //WHY THIS CAST?
     yyin = yystream;
     yyparse();

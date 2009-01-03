@@ -21,7 +21,7 @@ void free_scope( scope_t scope );
 void scope_add( scope_t scope, sym_t name, obj_t val );
 
 //Modifies the highest level existing binding. false on failure
-bool scope_set( scope_t scopt, sym_t name, obj_t val );
+bool scope_set( scope_t scope, sym_t name, obj_t val );
 
 //References the highest level existing binding
 //Returns NULL on failure

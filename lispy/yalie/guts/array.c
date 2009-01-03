@@ -1,21 +1,20 @@
-#include <stdlib.h>
 #include <assert.h>
 #include "array.h"
 
 struct Array {
   void** contents;
-  unsigned long int length; //# of elements
-  unsigned long int size;   //allocated space
+  size_t length; //# of elements
+  size_t size;   //allocated space
 };
 
-array_t new_array( unsigned long int length, void* val )
+array_t new_array( size_t length, void* val )
 {
   array_t ret = malloc( sizeof(struct Array) );
   ret->length = length;
   //minimum size: 8
   ret->size = length>8 ? length : 8;
   ret->contents = malloc( ret->size*sizeof(void*) );
-  unsigned long int i;
+  size_t i;
   for (i=0; i<length; i++)
     ret->contents[i] = val;
   return ret;
@@ -32,24 +31,24 @@ void free_array( array_t array )
   free( array );
 }
 
-unsigned long int array_len( array_t array )
+size_t array_len( array_t array )
 {
   return array->length;
 }
 
-void* array_ref( array_t array, unsigned long int index )
+void* array_ref( array_t array, size_t index )
 {
   assert( index < array->length );
   return array->contents[index];
 }
 
-void array_set( array_t array, unsigned long int index, void* val )
+void array_set( array_t array, size_t index, void* val )
 {
   assert( index < array->length );
   array->contents[index] = val;
 }
 
-void array_push( array_t array, unsigned long int index, void* val )
+void array_push( array_t array, size_t index, void* val )
 {
   //Pushing onto the index equal to the array length
   //appends an element to the back. Anything greater
@@ -57,7 +56,7 @@ void array_push( array_t array, unsigned long int index, void* val )
   assert( index <= array->length );
 
   if (array->length < array->size) {
-    unsigned long int i;
+    size_t i;
     for (i=array->length; i>index; i--)
       array->contents[i] = array->contents[i-1];
     array->contents[index] = val;
@@ -67,7 +66,7 @@ void array_push( array_t array, unsigned long int index, void* val )
   else {
     array->size *= 2;
     void** new_contents = malloc( array->size*sizeof(void*) );
-    unsigned long int i;
+    size_t i;
     for (i=0; i<index; i++)
       new_contents[i] = array->contents[i];
     for (i=array->length; i>index; i--)
@@ -79,13 +78,13 @@ void array_push( array_t array, unsigned long int index, void* val )
   }
 }
 
-void* array_pop( array_t array, unsigned long int index )
+void* array_pop( array_t array, size_t index )
 {
   assert( index < array->length );
 
   void* ret = array->contents[index];
 
-  unsigned long int i;
+  size_t i;
   for (i=index; i<array->length-1; i++)
     array->contents[i] = array->contents[i+1];
   array->length--;

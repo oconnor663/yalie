@@ -4,14 +4,14 @@
 #include <stdbool.h>
 #include "table.h"
 
+extern table_t GlobalSymbolTable = NULL;
+
+table_t new_sym_table(); //implicit in get_sym()
+void free_sym_table( table_t table );
+
 typedef char* sym_t;
 
-//sym_t new_sym( char* name ); //will duplicate name
-//void free_sym( sym_t sym );  //frees owned duplicate
-
-table_t new_sym_table();
-void free_sym_table( table_t table );
-sym_t get_sym( table_t table, char* name );
+sym_t get_sym( char* name );
 
 char* sym_repr( sym_t sym );
 

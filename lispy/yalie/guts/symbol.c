@@ -3,26 +3,9 @@
 #include <string.h>
 #include "symbol.h"
 
-/*
-struct Symbol {
-  char* name;
-};
+table_t GlobalSymbolTable;
 
-sym_t new_sym( char* name )
-{
-  sym_t ret = malloc(sizeof(struct Symbol));
-  ret->name = strdup(name);
-  return ret;
-}
-
-void free_sym( sym_t sym )
-{
-  free(sym->name);
-  free(sym);
-}
-*/
-
-static int hash_char_star( void* name, int modulus )
+static int char_star_hash( void* name, int modulus )
 {
   char* name_str = name;
   int ret = 0;
@@ -40,7 +23,7 @@ static bool char_star_eq( void* a, void* b )
 
 table_t new_sym_table()
 {
-  table_t ret = new_table( hash_char_star, char_star_eq );
+  table_t ret = new_table( char_star_hash, char_star_eq );
   return ret;
 }
 
@@ -54,8 +37,11 @@ void free_sym_table( table_t table )
   free_array( names );
 }
 
-sym_t get_sym( table_t sym_table, char* name )
+sym_t get_sym( char* name )
 {
+  if (GlobalSymbolTable==NULL)
+    GlobalSymbolTable = new_sym_table();
+
   sym_t ret;
   bool test = table_ref( sym_table, name, (void**)&ret );
   if (test)

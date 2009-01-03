@@ -1,26 +1,25 @@
 #include <stdbool.h>
-#include <stdlib.h>
 #include <assert.h>
 #include "table.h"
 #include "cons.h"
 
 struct Table {
-  int size;
-  int num_vals;
+  size_t size;
+  size_t num_vals;
   cons_t * values;
   // each element of values is a null(not nil)-terminated cons list.
   // the contents of these lists are (key.val) cons pairs
-  int (*hash)(void*,int);
+  size_t (*hash)(void*,size_t);
   bool (*eq_p)(void*,void*);
 };
 
-table_t new_table( int (*hash)(void*, int), bool (*eq_p)(void*,void*) )
+table_t new_table( size_t (*hash)(void*, size_t), bool (*eq_p)(void*,void*) )
 {
   table_t ret = malloc( sizeof(struct Table) );
   ret->size = 16;
   ret->num_vals = 0;
   ret->values = malloc( ret->size * sizeof(cons_t) );
-  int i;
+  size_t i;
   for (i=0; i<ret->size; i++)
     ret->values[i] = NULL;
   ret->hash = hash;
@@ -30,7 +29,7 @@ table_t new_table( int (*hash)(void*, int), bool (*eq_p)(void*,void*) )
 
 void free_table( table_t table )
 {
-  int i;
+  size_t i;
   cons_t tmp1, tmp2;
   for (i=0; i<table->size; i++) {
     tmp1 = table->values[i];
@@ -45,9 +44,9 @@ void free_table( table_t table )
   free(table);
 }
 
-int table_ptr_hash( void* ptr, int size )
+size_t table_ptr_hash( void* ptr, size_t size )
 {
-  return ((long int)ptr / sizeof(void*)) % size;
+  return ((size_t)ptr / sizeof(void*)) % size;
 }
 
 bool table_ptr_eq( void* a, void* b )
@@ -55,16 +54,14 @@ bool table_ptr_eq( void* a, void* b )
   return a==b;
 }
 
-int table_len( table_t table )
+size_t table_len( table_t table )
 {
   return table->num_vals;
 }
 
-static void resize_table( table_t table, int new_size )
+static void resize_table( table_t table, size_t new_size )
 {
-  assert(new_size < 1025);
-
-  int i;
+  size_t i;
   cons_t* new_values = malloc( new_size*sizeof(cons_t) );
   for (i=0; i<new_size; i++)
     new_values[i] = NULL;
@@ -73,7 +70,7 @@ static void resize_table( table_t table, int new_size )
   for (i=0; i<table->size; i++) {
     tmp1 = table->values[i];
     while (tmp1!=NULL) {
-      int new_hash = table->hash( car(car(tmp1)), new_size );
+      size_t new_hash = table->hash( car(car(tmp1)), new_size );
       tmp2 = tmp1;
       tmp1 = cdr(tmp1);
       set_cdr(tmp2,new_values[new_hash]);
@@ -91,7 +88,7 @@ bool table_add( table_t table, void* key, void* val, void** ret )
 // previous value)
 {
   assert( key!=NULL && val != NULL );
-  int h = table->hash( key, table->size );
+  size_t h = table->hash( key, table->size );
   cons_t tmp = table->values[h];
   while (tmp!=NULL) {
     if ( table->eq_p( key, car(car(tmp)) ) )
@@ -116,7 +113,7 @@ bool table_add( table_t table, void* key, void* val, void** ret )
 bool table_ref( table_t table, void* key, void** ret )
 // Returns 0 on a failed lookup, 1 and sets ret on success
 {
-  int h = table->hash( key, table->size );
+  size_t h = table->hash( key, table->size );
   cons_t tmp = table->values[h];
   while (tmp!=NULL) {
     if ( table->eq_p( key, car(car(tmp)) ) )
@@ -135,7 +132,7 @@ bool table_ref( table_t table, void* key, void** ret )
 bool table_del( table_t table, void* key, void** ret )
 // Returns 0 on failure, 1 and sets ret to old val on success
 {
-  int h = table->hash( key, table->size );
+  size_t h = table->hash( key, table->size );
   cons_t tmp = table->values[h];
   cons_t prev = NULL;
   while (tmp!=NULL) {
@@ -165,7 +162,7 @@ bool table_del( table_t table, void* key, void** ret )
 array_t table_keys( table_t table )
 {
   array_t ret = new_array(0,NULL);
-  int i;
+  size_t i;
   for (i=0; i<table->size; i++) {
     cons_t tmp = table->values[i];
     while (tmp) {
@@ -179,7 +176,7 @@ array_t table_keys( table_t table )
 array_t table_vals( table_t table )
 {
   array_t ret = new_array(0,NULL);
-  int i;
+  size_t i;
   for (i=0; i<table->size; i++) {
     cons_t tmp = table->values[i];
     while (tmp) {
@@ -198,7 +195,7 @@ array_t table_vals( table_t table )
 #include <stdio.h>
 void print_table( table_t table )
 {
-  int i;
+  size_t i;
   printf( "\nTable:\n" );
   for (i=0; i<table->size; i++) {
     cons_t tmp = table->values[i];
