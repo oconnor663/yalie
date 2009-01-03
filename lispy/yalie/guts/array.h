@@ -5,7 +5,7 @@
 
 typedef struct Array * array_t;
 
-array_t new_array( unsigned long int length, void* val );
+array_t new_array( size_t length, void* val );
 void free_array( array_t array );
 
 size_t array_len( array_t array );

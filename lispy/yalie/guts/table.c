@@ -44,12 +44,12 @@ void free_table( table_t table )
   free(table);
 }
 
-size_t table_ptr_hash( void* ptr, size_t size )
+size_t pointer_hash( void* ptr, size_t size )
 {
   return ((size_t)ptr / sizeof(void*)) % size;
 }
 
-bool table_ptr_eq( void* a, void* b )
+bool pointer_eq( void* a, void* b )
 {
   return a==b;
 }

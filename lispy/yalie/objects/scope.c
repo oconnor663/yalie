@@ -11,7 +11,7 @@ struct Scope {
 scope_t new_scope( scope_t parent )
 {
   scope_t ret = malloc( sizeof(struct Scope) );
-  ret->table = new_table( table_ptr_hash, table_ptr_eq );
+  ret->table = new_table( pointer_hash, pointer_eq );
   ret->parent = parent;
   return ret;
 }

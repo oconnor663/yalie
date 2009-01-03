@@ -1,5 +1,5 @@
 #include "object.h"
-#include "cons_class.h"
+#include "cons_obj.h"
 #include "../guts/cons.h"
 
 obj_t Cons_Class;

@@ -1,5 +1,5 @@
-#ifndef cons_class_h_
-#define cons_class_h_
+#ifndef cons_obj_h_
+#define cons_obj_h_
 
 #include <stdbool.h>
 #include "object.h"

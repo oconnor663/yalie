@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 #include "objects/object.h"
-#include "objects/cons_class.h"
-#include "objects/symbol_class.h"
+#include "objects/cons_obj.h"
+#include "objects/symbol_obj.h"
 #include "objects/num.h"
 #include "guts/cons.h"
   
@@ -140,7 +140,6 @@ void repr( obj_t obj, bool at_start )
 main()
 {
   Init_Base_Classes();
-  Init_Global_Symbol_Table();
   Init_Symbol_Class();
   Init_Nil_Class();
   Init_Cons_Class();

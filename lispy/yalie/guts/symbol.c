@@ -3,12 +3,12 @@
 #include <string.h>
 #include "symbol.h"
 
-table_t GlobalSymbolTable;
+table_t GlobalSymbolTable = NULL;
 
-static int char_star_hash( void* name, int modulus )
+static size_t char_star_hash( void* name, size_t modulus )
 {
   char* name_str = name;
-  int ret = 0;
+  size_t ret = 0;
   while (*name_str) {
     ret += *name_str;
     name_str++;
@@ -30,7 +30,7 @@ table_t new_sym_table()
 void free_sym_table( table_t table )
 {
   array_t names = table_keys(table); //the vals are just the same ptrs
-  int i;
+  size_t i;
   for (i=0; i<array_len(names); i++)
     free( array_ref(names,i) );
   free_table( table );
@@ -43,12 +43,12 @@ sym_t get_sym( char* name )
     GlobalSymbolTable = new_sym_table();
 
   sym_t ret;
-  bool test = table_ref( sym_table, name, (void**)&ret );
+  bool test = table_ref( GlobalSymbolTable, name, (void**)&ret );
   if (test)
     return ret;
   else {
     sym_t new_sym = strdup(name);
-    table_add(sym_table, new_sym, new_sym, NULL);
+    table_add(GlobalSymbolTable, new_sym, new_sym, NULL);
     return new_sym;
   }
 }

@@ -1,5 +1,5 @@
 FILES =	guts/cons.c guts/symbol.c guts/table.c guts/array.c \
-	objects/object.c objects/cons_class.c objects/symbol_class.c \
+	objects/object.c objects/cons_obj.c objects/symbol_obj.c \
 	objects/scope.c objects/num.c
 
 yalie: input.lex input.y ${FILES}

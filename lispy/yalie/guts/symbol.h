@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "table.h"
 
-extern table_t GlobalSymbolTable = NULL;
+extern table_t GlobalSymbolTable;
 
 table_t new_sym_table(); //implicit in get_sym()
 void free_sym_table( table_t table );

@@ -1,5 +1,5 @@
 #include "object.h"
-#include "symbol_class.h"
+#include "symbol_obj.h"
 #include "../guts/symbol.h"
 
 table_t Global_Symbol_Table;
@@ -20,7 +20,7 @@ void Init_Symbol_Class()
 obj_t new_symbol_obj( char* name )
 {
   obj_t ret = new_obj( Symbol_Class );
-  obj_set_guts( ret, get_sym(Global_Symbol_Table,name) );
+  obj_set_guts( ret, get_sym(name) );
   return ret;
 }
 

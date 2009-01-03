@@ -1,8 +1,8 @@
 %{
   #define YYSTYPE obj_t
   #include "objects/object.h"
-  #include "objects/cons_class.h"
-  #include "objects/symbol_class.h"
+  #include "objects/cons_obj.h"
+  #include "objects/symbol_obj.h"
   #include "objects/num.h"
 
   #include "input.tab.h"

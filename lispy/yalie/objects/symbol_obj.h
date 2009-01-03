@@ -1,12 +1,8 @@
-#ifndef symbol_class_h_
-#define symbol_class_h_
+#ifndef symbol_obj_h_
+#define symbol_obj_h_
 
 #include <stdbool.h>
 #include "object.h"
-
-extern table_t Global_Symbol_Table;
-
-void Init_Global_Symbol_Table();
 
 extern obj_t Symbol_Class;
 
