@@ -2,34 +2,21 @@
 #include "symbol_obj.h"
 #include "../guts/symbol.h"
 
-table_t Global_Symbol_Table;
+obj_t SymClass;
 
-void Init_Global_Symbol_Table()
+void init_sym_class()
 {
-  Global_Symbol_Table = new_sym_table();
+  SymClass = new_class_obj();
 }
 
-obj_t Symbol_Class;
-
-void Init_Symbol_Class()
+obj_t new_sym_obj( char* name )
 {
-  class_t symbol_class = new_class( Object_Class );
-  Symbol_Class = new_class_obj( symbol_class );
-}
-
-obj_t new_symbol_obj( char* name )
-{
-  obj_t ret = new_obj( Symbol_Class );
+  obj_t ret = new_obj( SymClass );
   obj_set_guts( ret, get_sym(name) );
   return ret;
 }
 
-char* symbol_obj_repr( obj_t sym )
+char* sym_obj_repr( obj_t sym )
 {
   return sym_repr( obj_guts(sym) );
-}
-
-bool is_symbol_p( obj_t obj )
-{
-  return inherits_p( obj_class(obj), obj_guts(Symbol_Class) );
 }

@@ -1,5 +1,7 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+put in at least some support for array programming
+
 def
 defmethod
 defclass

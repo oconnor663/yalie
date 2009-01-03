@@ -9,14 +9,19 @@
 #include "objects/symbol_obj.h"
 #include "objects/num.h"
 #include "guts/cons.h"
+#include "objects/parse.h"
+#include "guts/array.h"
   
 #define YYSTYPE obj_t
   
   void yyerror( const char* str );
   
-  extern yynesting;
-  
-  void repr( obj_t obj, bool at_start );
+  extern int yynesting;
+  char* yyline;
+  FILE* yystream;
+  bool yydorepl = false;
+  extern FILE* yyin;
+  array_t yyret;
 %}
 
 %token OBJECT
@@ -24,7 +29,7 @@
 %%
 
 program:
-        program expr		{ repr($2, true); }
+        program expr		{ array_push(yyret, array_len(yyret), $2); }
 	|
 	;
 
@@ -54,10 +59,11 @@ brace_s_expr_rest:
 
 %%
 
-char* PROMPT = ">>> ";
-char* REPROMPT = "... ";
+static char* PROMPT = ">>> ";
+static char* REPROMPT = "... ";
 
-char* getline( bool new_expr )
+/*
+static char* getline( bool new_expr )
 {
   char* line = readline( new_expr?PROMPT:REPROMPT );
   
@@ -65,36 +71,28 @@ char* getline( bool new_expr )
     add_history(line);
   return line;
 }
-
-char* yyline;
-FILE* yystream;
-bool yyabort = false;
-extern FILE* yyin;
+*/
 
 void yyerror(const char *str)
 {
-  if (!yyabort)
-    fprintf(stderr,"Parse error: %s\n",str);
+  fprintf(stderr,"Parse error: %s\n",str);
   yynesting = 0;
-
 }
- 
+
 int yywrap()
 {
-  if (yynesting>0) {
+  if (yydorepl && yynesting>0) {
     free(yyline);
     fclose(yystream);
     yyline = getline(false);
     if (yyline==NULL) {
       printf("\n");
-      yyabort = true;
       return 1;
     }
     while (yyline[0]=='\0') {
       yyline = getline(false);
       if (yyline==NULL) {
 	printf("\n");
-	yyabort = true;
 	return 1;
       }
     }
@@ -105,6 +103,7 @@ int yywrap()
   return 1;
 } 
 
+/*
 void repr_cons( obj_t cons, bool at_start )
 {
   if (at_start) {
@@ -112,7 +111,7 @@ void repr_cons( obj_t cons, bool at_start )
     repr( car(obj_guts(cons)), false );
     repr_cons( cdr(obj_guts(cons)), false );
   }
-  else if (is_nil_p(cons))
+  else if (is_instance(cons, NilClass))
     printf( ")" );
   else {
     printf( " " );
@@ -121,29 +120,27 @@ void repr_cons( obj_t cons, bool at_start )
   }
 }
 
-void repr( obj_t obj, bool at_start )
+obj_t repr( obj_t obj, bool at_start )
 {
-  if (is_int_p(obj))
+  if (is_instance(obj, IntClass))
     printf( int_repr(obj) );
-  else if (is_symbol_p(obj))
+  else if (is_instance(obj, SymClass))
     printf( obj_guts(obj) );
-  else if (is_nil_p(obj))
+  else if (is_instance(obj, NilClass))
     printf( "()" );
-  else if (is_cons_p(obj))
+  else if (is_instance(obj, ConsClass))
     repr_cons( obj, true );
   else
     fprintf( stderr, "Weird object?\n" );
   if (at_start)
     printf( "\n" );
+
+  return obj;
 }
 
 main()
 {
-  Init_Base_Classes();
-  Init_Symbol_Class();
-  Init_Nil_Class();
-  Init_Cons_Class();
-  Init_Int_Class();
+  init_base_classes();
 
   while (true) {
     yyline = getline(true);
@@ -172,3 +169,4 @@ main()
     fclose(yystream);
   }
 }
+*/

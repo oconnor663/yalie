@@ -33,6 +33,6 @@ punct [`,;~(){}]
 
 [^ \t\n(){}]+		 {
                             printf( "symbol: %s\n", yytext );
-                            yylval = new_symbol_obj(yytext);
+                            yylval = new_sym_obj(yytext);
 			    return OBJECT;
                          }

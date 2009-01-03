@@ -4,13 +4,11 @@
 #include <stdbool.h>
 #include "object.h"
 
-extern obj_t Symbol_Class;
+extern obj_t SymClass;
 
-void Init_Symbol_Class();
-obj_t new_symbol_obj( char* name );
+void init_sym_class();
+obj_t new_sym_obj( char* name );
 
-char* symbol_obj_repr( obj_t sym );
-
-bool is_symbol_p( obj_t obj );
+char* sym_obj_repr( obj_t sym );
 
 #endif

@@ -4,21 +4,19 @@
 #include <stdbool.h>
 #include "object.h"
 
-extern obj_t Integer_Class;
+extern obj_t IntClass;
 
-void Init_Int_Class();
+void init_int_class();
 
 obj_t new_int_z( long int i );
 obj_t new_int_s( char* i );
 
 char* int_repr( obj_t i );
 
-bool is_int_p( obj_t obj );
-
 /*
-extern obj_t Float_Class;
+extern obj_t FloatClass;
 
-void Init_Float_Class();
+void init_float_class();
 
 obj_t new_float_f( double x );
 obj_t new_float_s( char* x );

@@ -1,11 +1,11 @@
 FILES =	guts/cons.c guts/symbol.c guts/table.c guts/array.c \
 	objects/object.c objects/cons_obj.c objects/symbol_obj.c \
-	objects/scope.c objects/num.c
+	objects/scope.c objects/num.c objects/parse.c
 
-yalie: input.lex input.y ${FILES}
+yalie: main.c input.lex input.y ${FILES}
 	bison -d input.y
 	flex input.lex
-	cc -g -o yalie lex.yy.c input.tab.c ${FILES} -lreadline -lgmp
+	cc -g -o yalie main.c lex.yy.c input.tab.c ${FILES} -lreadline -lgmp
 
 clean:
 	rm yalie lex.yy.c input.tab.*

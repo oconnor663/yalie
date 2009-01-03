@@ -58,22 +58,20 @@ char* sym_repr( sym_t sym )
   return strdup(sym);
 }
 
-// FOR TESTING
 
+// FOR TESTING
 /*
 main()
 {
-  table_t t = new_sym_table();
-
   char* a = "foo";
   char* b = "foo";
 
   if (a!=b);
     printf( "Not eq.\n" );
       
-  if (get_sym(t,a)==get_sym(t,b))
+  if (get_sym(a)==get_sym(b))
     printf( "These are, though.\n" );
 
-  free_sym_table(t);
+  free_sym_table(GlobalSymbolTable);
 }
 */

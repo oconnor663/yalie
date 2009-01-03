@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include "object.h"
 #include "scope.h"
+#include "cons_obj.h"
+#include "symbol_obj.h"
+#include "num.h"
 
 struct Object {
   class_t class;
@@ -134,8 +137,11 @@ void free_class( class_t class )
   free(class);
 }
 
-bool inherits_p( class_t child, class_t parent )
+bool is_instance( obj_t obj, obj_t class )
 {
+  class_t child = obj_class( obj );
+  class_t parent = obj_guts( class );
+
   while (child!=NULL) {
     if (child==parent)
       return true;
@@ -165,10 +171,10 @@ void class_del_method( class_t class, sym_t name )
  * -------------------------------------------------
  */
 
-obj_t Object_Class;  //these two are externally visible
-obj_t Class_Class;
+obj_t ObjectClass;  //these two are externally visible
+obj_t ClassClass;
 
-void Init_Base_Classes()
+void init_base_classes()
 // This has to be done "by hand" because the inheritance structure
 // of the Class class and the base Object class is all tangled up.
 {
@@ -177,30 +183,36 @@ void Init_Base_Classes()
 
   class_class->methods = new_scope(object_class->methods);
   class_class->parent = object_class;
-  class_class->parent_obj = Object_Class;
+  class_class->parent_obj = ObjectClass;
 
-  Object_Class = malloc(sizeof(struct Object));
-  Object_Class->class_obj = Class_Class;
-  Object_Class->class = class_class;
-  Object_Class->guts = object_class; //NOTE
-  Object_Class->members = new_scope(NULL);
-  Object_Class->methods = new_scope(class_class->methods);
-  Object_Class->ref_count = 1;
+  ObjectClass = malloc(sizeof(struct Object));
+  ObjectClass->class_obj = ClassClass;
+  ObjectClass->class = class_class;
+  ObjectClass->guts = object_class; //NOTE
+  ObjectClass->members = new_scope(NULL);
+  ObjectClass->methods = new_scope(class_class->methods);
+  ObjectClass->ref_count = 1;
   
-  Class_Class = malloc(sizeof(struct Object));
-  Class_Class->class_obj = Class_Class;
-  Class_Class->class = class_class;
-  Class_Class->guts = class_class; //NOTE
-  Class_Class->members = new_scope(NULL);
-  Class_Class->methods = new_scope(class_class->methods);
-  Class_Class->ref_count = 1;
+  ClassClass = malloc(sizeof(struct Object));
+  ClassClass->class_obj = ClassClass;
+  ClassClass->class = class_class;
+  ClassClass->guts = class_class; //NOTE
+  ClassClass->members = new_scope(NULL);
+  ClassClass->methods = new_scope(class_class->methods);
+  ClassClass->ref_count = 1;
+
+  init_cons_class();
+  init_nil_class();
+  init_sym_class();
+  init_int_class();
 }
 
-obj_t new_class_obj( class_t class )
+obj_t new_class_obj()
 // Understand: the class of the returned object will be the Class class,
 // however that object will contain the class argument. Complicated :p
 {
-  obj_t ret = new_obj( Class_Class );
-  obj_set_guts( ret, class );
+  class_t ret_class = new_class(ObjectClass);
+  obj_t ret = new_obj( ClassClass );
+  obj_set_guts( ret, ret_class );
   return ret;
 }
