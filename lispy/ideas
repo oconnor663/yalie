@@ -1,6 +1,9 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
-put in at least some support for array programming
+
+
+put in at least some support for array programming. also, generators
+(python style) allow for lazy evaluation.
 
 def
 defmethod
