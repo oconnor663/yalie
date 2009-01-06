@@ -10,6 +10,7 @@ extern array_t yyret;
 extern bool yydorepl;
 extern char* yyline;
 extern FILE* yystream;
+extern bool yyfailed;
 bool yyeof;
 
 static char* PROMPT = ">>> ";
@@ -30,10 +31,14 @@ char* getline( bool new_expr )
 obj_t parse_string( char* str )
 {
   yydorepl = false;
+  yyfailed = false;
   yyin = (FILE*)fmemopen( str, strlen(str), "r" ); //why cast?!?!
   yyret = new_array(0,0);
   yyparse();
   fclose(yyin);
+
+  if (yyfailed)
+    return NULL;
 
   if (array_len(yyret)!=1) {
     if (array_len(yyret) > 1)
@@ -48,10 +53,14 @@ obj_t parse_string( char* str )
 
 obj_t parse_file( FILE* file )
 {
+  yyfailed = false;
   yydorepl = false;
   yyin = file;
   yyret = new_array(0,0);
   yyparse();
+
+  if (yyfailed)
+    return NULL;
 
   if (array_len(yyret)!=1) {
     if (array_len(yyret) > 1)
@@ -66,6 +75,8 @@ obj_t parse_file( FILE* file )
 
 obj_t parse_repl()
 {
+  yyfailed = false;
+  yynesting = 0;
   yyret = new_array(0,0);
   yydorepl = true;
   yyeof = false;
@@ -92,6 +103,9 @@ obj_t parse_repl()
 
   free(yyline);
   fclose(yystream);
+
+  if (yyfailed)
+    return NULL;
 
   if (array_len(yyret)!=1) {
     if (array_len(yyret) > 1)

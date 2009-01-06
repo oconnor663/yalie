@@ -17,17 +17,17 @@ typedef struct Scope * scope_t;
 scope_t new_scope( scope_t parent );
 void free_scope( scope_t scope );
 
-//Adds/overwrites a binding on the toplevel
+//Adds/overwrites a binding on the bottom level
 void scope_add( scope_t scope, sym_t name, obj_t val );
 
-//Modifies the highest level existing binding. false on failure
+//Modifies the bottommost existing binding. false on failure
 bool scope_set( scope_t scope, sym_t name, obj_t val );
 
-//References the highest level existing binding
+//References the bottommost existing binding
 //Returns NULL on failure
 obj_t scope_ref( scope_t scope, sym_t name );
 
-//Removes a toplevel binding
+//Removes a bottom level binding only
 void scope_del( scope_t scope, sym_t name );
 
 #endif

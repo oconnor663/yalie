@@ -1,17 +1,17 @@
 #ifndef int_h_
 #define int_h_
 
-#include <stdbool.h>
+#include<stdbool.h>
 #include "object.h"
 
-extern obj_t IntClass;
-
-void init_int_class();
+obj_t IntClass();
 
 obj_t new_int_z( long int i );
 obj_t new_int_s( char* i );
 
 char* int_repr( obj_t i );
+
+bool is_int( obj_t obj );
 
 /*
 extern obj_t FloatClass;

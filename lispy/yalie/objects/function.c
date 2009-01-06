@@ -1,47 +1,52 @@
+#include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include "function.h"
 #include "parse.h"
 
-/*
- *  All C functions intended for exposure into userspace should be of
- *  the form obj_t f( obj_t context, int argc, obj_t* argv ). For
- *  function calls, the lexical scope will be passed in an object
- *  wrapper. For special forms, the dynamic scope will be passed. For
- *  method calls, the calling object will be passed. These functions
- *  can signal an error by returning an exception object.
- */
+typedef struct Function {
+  obj_t args;
+  func_ptr_t body;
+} * func_s;
 
-struct CallParams {
-  obj_t args; //a lisp list of the function parameters
-              //provided in userspace or generated from
-              //a char* string representation
-  
-  bool eval_args;  //generally true
-  bool eval_ret;   //generally false
-};
+obj_t GlobalFuncClass = NULL;
 
-struct CFunction {
-  struct CallParams params;
-  body_ptr_t body;
-};
-
-c_func_t new_c_func( body_ptr_t body, char* args )
+static void init_func_class()
 {
-  c_func_t ret = malloc( sizeof(struct CFunction) );
-  ret->params.eval_args = true;
-  ret->params.eval_ret = false;
-  ret->params.args = parse_string( args ); //already has one reference count
-  ret->body = body;
+  GlobalFuncClass = new_class_obj();
 }
 
-void free_c_func( c_func_t f )
+obj_t FuncClass()
 {
-  obj_del_ref( f->params.args );
-  free(f);
+  if (GlobalFuncClass==NULL)
+    init_func_class();
+
+  return GlobalFuncClass;
 }
 
-obj_t apply_c_func( c_func_t f, obj_t context, int argc, obj_t* argv )
+obj_t new_func( func_ptr_t body, char* args )
 {
-  return f->body( context, argc, argv );
+  obj_t ret = new_obj( FuncClass() );
+  func_s ret_guts = malloc(sizeof(struct Function));
+  ret_guts->args = parse_string(args);
+  ret_guts->body = body;
+  obj_set_guts( ret, ret_guts );
+  return ret;
+}
+
+obj_t func_apply( obj_t func, int argc, obj_t* argv )
+{
+  return ((func_s)obj_guts(func))->body( argc, argv );
+}
+
+char* func_repr( obj_t func )
+{
+  char* ret;
+  asprintf( &ret, "<function %p>", func );
+  return ret;
+}
+
+bool is_func( obj_t obj )
+{
+  return is_instance( obj, FuncClass() );
 }

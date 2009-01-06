@@ -4,12 +4,15 @@
   #include "objects/cons_obj.h"
   #include "objects/symbol_obj.h"
   #include "objects/num.h"
+  #include "objects/string.h"
 
   #include "input.tab.h"
   
   YYSTYPE yylval;
 
   int yynesting = 0;
+
+  void strip_quotes( char* str );
 %}
 
 white [ \t\n]
@@ -18,6 +21,10 @@ punct [`,;~(){}]
 
 %%
 
+\"a\"        { yylval = new_string(yytext);
+     	       return OBJECT;
+	     }
+
 [ \t\n]+     ; //skip whitespace
 
 \(          { yynesting++; return *yytext; }
@@ -25,14 +32,18 @@ punct [`,;~(){}]
 \{          { yynesting++; return *yytext; }
 \}          { yynesting--; return *yytext; }
 
--?[0-9]*    { printf( "integer: %s\n", yytext );
-	      yylval = new_int_s(yytext);
+-?[0-9]*    { yylval = new_int_s(yytext);
 	      return OBJECT;
 	    }
 	      
 
-[^ \t\n(){}]+		 {
-                            printf( "symbol: %s\n", yytext );
+[^ \t\n(){}\"]+		 {
                             yylval = new_sym_obj(yytext);
 			    return OBJECT;
                          }
+
+[^ \t\n]		 {
+			   return ERROR;
+			 }
+
+%%

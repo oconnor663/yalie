@@ -171,10 +171,10 @@ void class_del_method( class_t class, sym_t name )
  * -------------------------------------------------
  */
 
-obj_t ObjectClass;  //these two are externally visible
-obj_t ClassClass;
+obj_t GlobalObjectClass = NULL;
+obj_t GlobalClassClass = NULL;
 
-void init_base_classes()
+static void init_base_classes()
 // This has to be done "by hand" because the inheritance structure
 // of the Class class and the base Object class is all tangled up.
 {
@@ -183,36 +183,50 @@ void init_base_classes()
 
   class_class->methods = new_scope(object_class->methods);
   class_class->parent = object_class;
-  class_class->parent_obj = ObjectClass;
+  class_class->parent_obj = GlobalObjectClass;
 
-  ObjectClass = malloc(sizeof(struct Object));
-  ObjectClass->class_obj = ClassClass;
-  ObjectClass->class = class_class;
-  ObjectClass->guts = object_class; //NOTE
-  ObjectClass->members = new_scope(NULL);
-  ObjectClass->methods = new_scope(class_class->methods);
-  ObjectClass->ref_count = 1;
+  GlobalObjectClass = malloc(sizeof(struct Object));
+  GlobalObjectClass->class_obj = GlobalClassClass;
+  GlobalObjectClass->class = class_class;
+  GlobalObjectClass->guts = object_class; //NOTE
+  GlobalObjectClass->members = new_scope(NULL);
+  GlobalObjectClass->methods = new_scope(class_class->methods);
+  GlobalObjectClass->ref_count = 1;
   
-  ClassClass = malloc(sizeof(struct Object));
-  ClassClass->class_obj = ClassClass;
-  ClassClass->class = class_class;
-  ClassClass->guts = class_class; //NOTE
-  ClassClass->members = new_scope(NULL);
-  ClassClass->methods = new_scope(class_class->methods);
-  ClassClass->ref_count = 1;
+  GlobalClassClass = malloc(sizeof(struct Object));
+  GlobalClassClass->class_obj = GlobalClassClass;
+  GlobalClassClass->class = class_class;
+  GlobalClassClass->guts = class_class; //NOTE
+  GlobalClassClass->members = new_scope(NULL);
+  GlobalClassClass->methods = new_scope(class_class->methods);
+  GlobalClassClass->ref_count = 1;
+}
 
-  init_cons_class();
-  init_nil_class();
-  init_sym_class();
-  init_int_class();
+obj_t ObjectClass()
+{
+  if (GlobalObjectClass==NULL)
+    init_base_classes();
+  return GlobalObjectClass;
+}
+
+obj_t ClassClass()
+{
+  if (GlobalClassClass==NULL)
+    init_base_classes();
+  return GlobalClassClass;
+}
+
+bool is_class( obj_t obj )
+{
+  return is_instance( obj, ClassClass() );
 }
 
 obj_t new_class_obj()
 // Understand: the class of the returned object will be the Class class,
 // however that object will contain the class argument. Complicated :p
 {
-  class_t ret_class = new_class(ObjectClass);
-  obj_t ret = new_obj( ClassClass );
+  class_t ret_class = new_class( ObjectClass() );
+  obj_t ret = new_obj( ClassClass() );
   obj_set_guts( ret, ret_class );
   return ret;
 }

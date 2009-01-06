@@ -22,9 +22,11 @@
   bool yydorepl = false;
   extern FILE* yyin;
   array_t yyret;
+  bool yyfailed;
 %}
 
 %token OBJECT
+%token ERROR
 
 %%
 
@@ -37,6 +39,7 @@ expr:
 	paren_s_expr		{ $$ = $1; }
 	| brace_s_expr		{ $$ = $1; }
 	| OBJECT		{ $$ = $1; }
+	| ERROR			{ yyerror( "Lex error." ); }
 	;
 
 paren_s_expr:
@@ -62,21 +65,11 @@ brace_s_expr_rest:
 static char* PROMPT = ">>> ";
 static char* REPROMPT = "... ";
 
-/*
-static char* getline( bool new_expr )
-{
-  char* line = readline( new_expr?PROMPT:REPROMPT );
-  
-  if (line && line[0]!='\0')
-    add_history(line);
-  return line;
-}
-*/
-
 void yyerror(const char *str)
 {
   fprintf(stderr,"Parse error: %s\n",str);
   yynesting = 0;
+  yyfailed = true;
 }
 
 int yywrap()
@@ -102,71 +95,3 @@ int yywrap()
   }
   return 1;
 } 
-
-/*
-void repr_cons( obj_t cons, bool at_start )
-{
-  if (at_start) {
-    printf( "(" );
-    repr( car(obj_guts(cons)), false );
-    repr_cons( cdr(obj_guts(cons)), false );
-  }
-  else if (is_instance(cons, NilClass))
-    printf( ")" );
-  else {
-    printf( " " );
-    repr( car(obj_guts(cons)), false );
-    repr_cons( cdr(obj_guts(cons)), false );
-  }
-}
-
-obj_t repr( obj_t obj, bool at_start )
-{
-  if (is_instance(obj, IntClass))
-    printf( int_repr(obj) );
-  else if (is_instance(obj, SymClass))
-    printf( obj_guts(obj) );
-  else if (is_instance(obj, NilClass))
-    printf( "()" );
-  else if (is_instance(obj, ConsClass))
-    repr_cons( obj, true );
-  else
-    fprintf( stderr, "Weird object?\n" );
-  if (at_start)
-    printf( "\n" );
-
-  return obj;
-}
-
-main()
-{
-  init_base_classes();
-
-  while (true) {
-    yyline = getline(true);
-    if (yyline==NULL) {
-      printf("\n");
-      yyabort = true;
-      break;
-    }
-    while (yyline[0]=='\0') {
-      free(yyline);
-      yyline = getline(true);
-      if (yyline==NULL) {
-	printf( "\n" );
-	yyabort = true;
-	break;
-      }
-    }
-    if (yyabort)
-      break;
-    yystream = (FILE*)fmemopen( yyline, strlen(yyline), "r" ); //WHY THIS CAST?
-    yyin = yystream;
-    yyparse();
-    if (yyabort)
-      break;
-    free(yyline);
-    fclose(yystream);
-  }
-}
-*/

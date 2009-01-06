@@ -12,9 +12,9 @@ typedef struct Cons * cons_t;
 
 cons_t new_cons( void* ar, void* dr );
 void free_cons( cons_t cell );
-void* car( cons_t cell );
-void* cdr( cons_t cell );
-void set_car( cons_t cell, void* val );
-void set_cdr( cons_t cell, void* val );
+void* cons_car( cons_t cell );
+void* cons_cdr( cons_t cell );
+void cons_set_car( cons_t cell, void* val );
+void cons_set_cdr( cons_t cell, void* val );
 
 #endif

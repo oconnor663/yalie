@@ -7,7 +7,6 @@
 typedef struct Object * obj_t;
 typedef struct Class * class_t;
 
-
 obj_t new_obj( obj_t class );
 void obj_add_ref( obj_t obj );
 void obj_del_ref( obj_t obj );
@@ -36,10 +35,10 @@ obj_t class_ref_method( class_t class, sym_t name );
 void class_del_method( class_t class, sym_t name );
 
 
-extern obj_t ObjectClass;
-extern obj_t ClassClass;
+obj_t ObjectClass();
+obj_t ClassClass();
 
-void init_base_classes();
+bool is_class( obj_t obj );
 
 obj_t new_class_obj(); //inherits from ObjectClass
 

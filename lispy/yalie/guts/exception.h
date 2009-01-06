@@ -6,7 +6,7 @@ typedef struct Exception * excep_t;
 excep_t new_excep( char* error );
 void free_excep( excep_t excep );
 
-void excep_add_context( excep_t excep, char* context );
+void excep_add( excep_t excep, char* context );
 
 char* excep_repr( excep_t excep );
 

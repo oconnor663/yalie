@@ -22,14 +22,14 @@ void free_excep( excep_t excep )
   free( excep->error );
   while ( excep->context != NULL ) {
     cons_t tmp = excep->context;
-    excep->context = cdr(excep->context);
-    free( car(tmp) );
+    excep->context = cons_cdr(excep->context);
+    free( cons_car(tmp) );
     free_cons( tmp );
   }
   free(excep);
 }
 
-void excep_add_context( excep_t excep, char* context )
+void excep_add( excep_t excep, char* context )
 {
   excep->context = new_cons( strdup(context), excep->context );
 }
@@ -42,10 +42,10 @@ char* excep_repr( excep_t excep )
 
   cons_t tmp_context = excep->context;
   while ( tmp_context != NULL ) {
-    fprintf( stream, "%s\n", car(tmp_context) );
-    tmp_context = cdr(tmp_context);
+    fprintf( stream, "%s\n", cons_car(tmp_context) );
+    tmp_context = cons_cdr(tmp_context);
   }
-  fprintf( stream, "%s\n", excep->error );
+  fprintf( stream, "%s", excep->error );
   
   fclose(stream);
   return ret;
@@ -57,8 +57,8 @@ char* excep_repr( excep_t excep )
 main()
 {
   excep_t e = new_excep( "MASSIVE ERROR!!!" );
-  excep_add_context( e, "In problem:" );
-  excep_add_context( e, "In broader problem:" );
+  excep_add( e, "In problem:" );
+  excep_add( e, "In broader problem:" );
   
   char* repr = excep_repr( e );
   printf( "%s", repr );

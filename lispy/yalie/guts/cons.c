@@ -19,22 +19,22 @@ void free_cons( cons_t cell )
   free(cell);
 }
 
-void* car( cons_t cell )
+void* cons_car( cons_t cell )
 {
   return cell->ar;
 }
 
-void* cdr( cons_t cell )
+void* cons_cdr( cons_t cell )
 {
   return cell->dr;
 }
 
-void set_car( cons_t cell, void* val )
+void cons_set_car( cons_t cell, void* val )
 {
   cell->ar = val;
 }
 
-void set_cdr( cons_t cell, void* val )
+void cons_set_cdr( cons_t cell, void* val )
 {
   cell->dr = val;
 }

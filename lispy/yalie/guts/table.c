@@ -35,8 +35,8 @@ void free_table( table_t table )
     tmp1 = table->values[i];
     while (tmp1!=NULL) {
       tmp2 = tmp1;
-      tmp1 = cdr(tmp1);
-      free_cons(car(tmp2)); //the (key.val) pair
+      tmp1 = cons_cdr(tmp1);
+      free_cons(cons_car(tmp2)); //the (key.val) pair
       free_cons(tmp2); //the linked list link
     }
   }
@@ -70,10 +70,10 @@ static void resize_table( table_t table, size_t new_size )
   for (i=0; i<table->size; i++) {
     tmp1 = table->values[i];
     while (tmp1!=NULL) {
-      size_t new_hash = table->hash( car(car(tmp1)), new_size );
+      size_t new_hash = table->hash( cons_car(cons_car(tmp1)), new_size );
       tmp2 = tmp1;
-      tmp1 = cdr(tmp1);
-      set_cdr(tmp2,new_values[new_hash]);
+      tmp1 = cons_cdr(tmp1);
+      cons_set_cdr(tmp2,new_values[new_hash]);
       new_values[new_hash] = tmp2;
     }
   }
@@ -91,10 +91,10 @@ bool table_add( table_t table, void* key, void* val, void** ret )
   size_t h = table->hash( key, table->size );
   cons_t tmp = table->values[h];
   while (tmp!=NULL) {
-    if ( table->eq_p( key, car(car(tmp)) ) )
+    if ( table->eq_p( key, cons_car(cons_car(tmp)) ) )
       break;
     else
-      tmp = cdr(tmp);
+      tmp = cons_cdr(tmp);
   }
   if (tmp==NULL) {
     table->values[h] = new_cons( new_cons(key,val), table->values[h] );
@@ -104,8 +104,8 @@ bool table_add( table_t table, void* key, void* val, void** ret )
     return 0;
   }
   else {
-    *ret = cdr(car(tmp));
-    set_cdr( car(tmp), val );
+    *ret = cons_cdr(cons_car(tmp));
+    cons_set_cdr( cons_car(tmp), val );
     return 1;
   }
 }
@@ -116,15 +116,15 @@ bool table_ref( table_t table, void* key, void** ret )
   size_t h = table->hash( key, table->size );
   cons_t tmp = table->values[h];
   while (tmp!=NULL) {
-    if ( table->eq_p( key, car(car(tmp)) ) )
+    if ( table->eq_p( key, cons_car(cons_car(tmp)) ) )
       break;
     else
-      tmp = cdr(tmp);
+      tmp = cons_cdr(tmp);
   }
   if (tmp==NULL)
     return 0;
   else {
-    *ret = cdr(car(tmp));
+    *ret = cons_cdr(cons_car(tmp));
     return 1;
   }
 }
@@ -136,11 +136,11 @@ bool table_del( table_t table, void* key, void** ret )
   cons_t tmp = table->values[h];
   cons_t prev = NULL;
   while (tmp!=NULL) {
-    if ( table->eq_p( key, car(car(tmp)) ) )
+    if ( table->eq_p( key, cons_car(cons_car(tmp)) ) )
       break;
     else {
       prev = tmp;
-      tmp = cdr(tmp);
+      tmp = cons_cdr(tmp);
     }
   }
   if (tmp==NULL)
@@ -148,12 +148,12 @@ bool table_del( table_t table, void* key, void** ret )
   else {
     table->num_vals--;
     if (prev==NULL)
-      table->values[h] = cdr(tmp);
+      table->values[h] = cons_cdr(tmp);
     else
-      set_cdr(prev,cdr(tmp));
+      cons_set_cdr(prev,cons_cdr(tmp));
     
-    *ret = cdr(car(tmp));
-    free_cons(car(tmp));
+    *ret = cons_cdr(cons_car(tmp));
+    free_cons(cons_car(tmp));
     free_cons(tmp);
     return 1;
   }
@@ -166,8 +166,8 @@ array_t table_keys( table_t table )
   for (i=0; i<table->size; i++) {
     cons_t tmp = table->values[i];
     while (tmp) {
-      array_push( ret, array_len(ret), car(car(tmp)) );
-      tmp = cdr(tmp);
+      array_push( ret, array_len(ret), cons_car(cons_car(tmp)) );
+      tmp = cons_cdr(tmp);
     }
   }
   return ret;
@@ -180,8 +180,8 @@ array_t table_vals( table_t table )
   for (i=0; i<table->size; i++) {
     cons_t tmp = table->values[i];
     while (tmp) {
-      array_push( ret, array_len(ret), cdr(car(tmp)) ); //note difference
-      tmp = cdr(tmp);                                   //from above
+      array_push( ret, array_len(ret), cons_cdr(cons_car(tmp)) ); //note difference
+      tmp = cons_cdr(tmp);                                   //from above
     }
   }
   return ret;
@@ -202,11 +202,11 @@ void print_table( table_t table )
     if (tmp) {
       printf( "%2i:", i );
       while(tmp) {
-	char* s1 = repr(car(car(tmp)));
-	char* s2 = repr(cdr(car(tmp)));
+	char* s1 = repr(cons_car(cons_car(tmp)));
+	char* s2 = repr(cons_cdr(cons_car(tmp)));
 	printf( " %s:%s", s1, s2 );
 	free(s1); free(s2);
-	tmp = cdr(tmp);
+	tmp = cons_cdr(tmp);
       }
       printf( "\n" );
     }
