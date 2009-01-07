@@ -27,6 +27,8 @@ void free_scope( scope_t scope )
   free(scope);
 }
 
+
+extern char* yytext;
 void scope_add( scope_t scope, sym_t key, obj_t val )
 {
   obj_t tmp;

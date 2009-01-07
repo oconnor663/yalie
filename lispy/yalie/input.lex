@@ -32,7 +32,10 @@ punct [`,;~(){}]
 \{          { yynesting++; return *yytext; }
 \}          { yynesting--; return *yytext; }
 
--?[0-9]*    { yylval = new_int_s(yytext);
+-?[0-9]+    {
+	      printf( "yytext: '%s'\n", yytext );
+ 	      yylval = new_int_s(yytext);
+	      printf( "yytext: '%s'\n", yytext );
 	      return OBJECT;
 	    }
 	      

@@ -113,7 +113,7 @@ void obj_del_member( obj_t obj, sym_t name )
  * -----------------------------------------------------------
  */
 
-class_t new_class( obj_t parent )
+static class_t new_class( obj_t parent )
 {
   class_t ret = malloc(sizeof(struct Class));
     ret->parent_obj = parent;
@@ -129,7 +129,7 @@ class_t new_class( obj_t parent )
   return ret;
 }
 
-void free_class( class_t class )
+static void free_class( class_t class )
 {
   if (class->parent_obj!=NULL)
     obj_del_ref(class->parent_obj);
@@ -150,20 +150,20 @@ bool is_instance( obj_t obj, obj_t class )
   return false;
 }
 
-void class_add_method( class_t class, sym_t name, obj_t method )
+void class_add_method( obj_t class, sym_t name, obj_t method )
 {
-  scope_add( class->methods, name, method );
+  scope_add( ((class_t)obj_guts(class))->methods, name, method );
 }
 
-obj_t class_ref_method( class_t class, sym_t name )
+obj_t class_ref_method( obj_t class, sym_t name )
 {
   //will return NULL on fail
-  return scope_ref( class->methods, name );
+  return scope_ref( ((class_t)obj_guts(class))->methods, name );
 }
 
-void class_del_method( class_t class, sym_t name )
+void class_del_method( obj_t class, sym_t name )
 {
-  scope_del( class->methods, name );
+  scope_del( ((class_t)obj_guts(class))->methods, name );
 }
 
 /* 

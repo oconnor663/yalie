@@ -27,12 +27,9 @@ void obj_del_member( obj_t obj, sym_t name );
 bool is_instance( obj_t obj, obj_t class ); //hierarchical
 
 
-class_t new_class( obj_t parent );
-void free_class( class_t class );
-
-void class_add_method( class_t class, sym_t name, obj_t method );
-obj_t class_ref_method( class_t class, sym_t name );
-void class_del_method( class_t class, sym_t name );
+void class_add_method( obj_t class, sym_t name, obj_t method );
+obj_t class_ref_method( obj_t class, sym_t name );
+void class_del_method( obj_t class, sym_t name );
 
 
 obj_t ObjectClass();
