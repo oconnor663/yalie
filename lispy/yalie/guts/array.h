@@ -15,4 +15,7 @@ void array_set( array_t array, size_t index, void* val );
 void array_push( array_t array, size_t index, void* val );
 void* array_pop( array_t array, size_t index );
 
+void array_push_back( array_t array, void* val );
+void* array_pop_back( array_t array );
+
 #endif

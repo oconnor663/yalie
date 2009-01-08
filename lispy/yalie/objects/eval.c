@@ -1,12 +1,7 @@
 #include <stdio.h>
 
-#include "object.h"
-#include "scope.h"
-#include "cons_obj.h"
-#include "symbol_obj.h"
-#include "exception_obj.h"
+#include "builtins.h"
 #include "../guts/array.h"
-#include "function.h"
 
 static obj_t error( char* message )
 {
@@ -48,9 +43,7 @@ obj_t eval( scope_t scope, obj_t code )
       array_t evald_args = new_array(0,0);
       obj_t passed_args = cons_obj_cdr(code);
       while (!is_nil(passed_args)) {
-	array_push(evald_args,
-		   array_len(evald_args),
-		   eval( scope, cons_obj_car(passed_args) ));
+	array_push_back(evald_args, eval( scope, cons_obj_car(passed_args) ));
 	passed_args = cons_obj_cdr(passed_args);
       }
       int argc = array_len(evald_args);

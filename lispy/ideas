@@ -1,6 +1,9 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
-
+inheriting from builtin types risks overwriting the init and del
+methods. the programmer needs to be allowed to call the previous
+definition by referencing the parent class in some way, and calling
+those functions manually.
 
 put in at least some support for array programming. also, generators
 (python style) allow for lazy evaluation.

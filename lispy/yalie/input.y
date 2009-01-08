@@ -31,7 +31,7 @@
 %%
 
 program:
-        program expr		{ array_push(yyret, array_len(yyret), $2); }
+        program expr		{ array_push_back(yyret, $2); }
 	|
 	;
 

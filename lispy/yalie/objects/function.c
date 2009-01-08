@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "function.h"
-#include "parse.h"
+//#include "parse.h"
 
 /*
  * FUNCTION implementation
@@ -32,7 +32,7 @@ obj_t new_func( func_ptr_t body, char* args )
 {
   obj_t ret = new_obj( FuncClass() );
   func_t ret_guts = malloc(sizeof(struct Function));
-  ret_guts->args = parse_string(args);
+  //ret_guts->args = parse_string(args); HUGE BUG
   ret_guts->body = body;
   obj_set_guts( ret, ret_guts );
   return ret;
@@ -84,9 +84,7 @@ obj_t new_method( method_ptr_t body, char* args )
 {
   obj_t ret = new_obj( MethodClass() );
   method_t ret_guts = malloc(sizeof(struct Method));
-  printf( "4 yytext: '%s'\n", yytext );
-  //ret_guts->args = parse_string(args);
-  printf( "4 yytext: '%s'\n", yytext );
+  //ret_guts->args = parse_string(args); //this causes a HUGE bug
   ret_guts->body = body;
   obj_set_guts( ret, ret_guts );
   return ret;

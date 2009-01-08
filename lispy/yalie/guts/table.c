@@ -16,7 +16,7 @@ struct Table {
 table_t new_table( size_t (*hash)(void*, size_t), bool (*eq_p)(void*,void*) )
 {
   table_t ret = malloc( sizeof(struct Table) );
-  ret->size = 16;
+  ret->size = 4;
   ret->num_vals = 0;
   ret->values = malloc( ret->size * sizeof(cons_t) );
   size_t i;
@@ -166,7 +166,7 @@ array_t table_keys( table_t table )
   for (i=0; i<table->size; i++) {
     cons_t tmp = table->values[i];
     while (tmp) {
-      array_push( ret, array_len(ret), cons_car(cons_car(tmp)) );
+      array_push_back( ret, cons_car(cons_car(tmp)) );
       tmp = cons_cdr(tmp);
     }
   }
@@ -180,8 +180,8 @@ array_t table_vals( table_t table )
   for (i=0; i<table->size; i++) {
     cons_t tmp = table->values[i];
     while (tmp) {
-      array_push( ret, array_len(ret), cons_cdr(cons_car(tmp)) ); //note difference
-      tmp = cons_cdr(tmp);                                   //from above
+      array_push_back( ret, cons_cdr(cons_car(tmp)) ); //note difference
+      tmp = cons_cdr(tmp);                             //from above
     }
   }
   return ret;

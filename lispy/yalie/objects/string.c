@@ -48,6 +48,8 @@ char* string_repr( obj_t string )
       fprintf( ret_stream, "\n" );
     else if (c=='\t')
       fprintf( ret_stream, "\t" );
+    else if (c=='\\')
+      fprintf( ret_stream, "\\\\" );
     else
       fprintf( ret_stream, "%c", c );
   }

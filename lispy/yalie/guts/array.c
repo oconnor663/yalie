@@ -92,6 +92,15 @@ void* array_pop( array_t array, size_t index )
   return ret;
 }
 
+void array_push_back( array_t array, void* val )
+{
+  array_push( array, array->length, val );
+}
+
+void* array_pop_back( array_t array )
+{
+  array_pop( array, array->length );
+}
 
 //
 // FOR TESTING
