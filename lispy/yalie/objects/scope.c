@@ -32,7 +32,7 @@ extern char* yytext;
 void scope_add( scope_t scope, sym_t key, obj_t val )
 {
   obj_t tmp;
-  bool test = table_add( scope->table, key, val, (void*)&tmp );
+  bool test = table_set( scope->table, key, val, (void*)&tmp );
   obj_add_ref(val);
   if (test)
     obj_del_ref(tmp);
@@ -50,7 +50,7 @@ bool scope_set( scope_t scope, sym_t key, obj_t val )
       scope = scope->parent;
   }
 
-  table_add( scope->table, key, val, (void*)&tmp );
+  table_set( scope->table, key, val, (void*)&tmp );
   obj_add_ref(val);
   obj_del_ref(tmp);
   return true;

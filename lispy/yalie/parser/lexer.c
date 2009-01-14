@@ -6,13 +6,14 @@
 
 #include "../objects/builtins.h"
 #include "../repr.c"
+#include "lexer.h"
 
-typedef struct Lex {
+struct Lex {
   char* buffer; //NB: NOT NULL TERMINATED! (also backwards)
   size_t len;   //number of chars
   size_t size;  //space allocated
   FILE* stream; //NB: NOT OWNED (i.e. not closed)
-} * lex_t;
+};
   
 lex_t new_lex( FILE* stream )
 {
@@ -53,19 +54,6 @@ void unreadc( int c, lex_t lex )
   lex->len++;
 }
 
-enum token_type {
-  OBJ_TOK,
-  PUNC_TOK,
-  ERROR_TOK, //indicates an exception object
-  EOF_TOK
-};
-
-struct Token {
-  enum token_type type;
-  obj_t val;
-  int punc;
-};
-
 struct Token new_token( enum token_type type, obj_t val, int punc )
 {
   // Does not add or own any actual objects.
@@ -94,7 +82,8 @@ bool is_white( int c )
 
 bool is_punctuation( int c )
 {
-  return c=='.' || c==':' || c=='`' || c=='(' || c==')' || c=='{' || c=='}' ;
+  return ( c=='.' || c==':' || c=='`' || c==',' || c==';' ||
+	   c=='(' || c==')' || c=='{' || c=='}' );
 }
 
 bool is_separator( int c )
@@ -302,6 +291,7 @@ main()
 }
 */
 
+ /*
 array_t pointers; //keeping track of obj's
 
 main()
@@ -330,6 +320,7 @@ main()
     }
   }
 }
+ */
 
 /*
 main()

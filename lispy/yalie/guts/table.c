@@ -83,7 +83,7 @@ static void resize_table( table_t table, size_t new_size )
   free(tmp);
 }
 
-bool table_add( table_t table, void* key, void* val, void** ret )
+bool table_set( table_t table, void* key, void* val, void** ret )
 // Returns 0 if key is new, or 1 if key was old (and sets ret to
 // previous value)
 {

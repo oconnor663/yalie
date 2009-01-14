@@ -48,7 +48,7 @@ sym_t get_sym( char* name )
     return ret;
   else {
     sym_t new_sym = strdup(name);
-    table_add(GlobalSymbolTable, new_sym, new_sym, NULL);
+    table_set(GlobalSymbolTable, new_sym, new_sym, NULL);
     return new_sym;
   }
 }
