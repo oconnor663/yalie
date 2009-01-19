@@ -34,8 +34,10 @@ void free_lex( lex_t lex )
 int readc( lex_t lex )
 {
   int ret;
-  if (lex==NULL)
-    ret = -1;
+  if (lex==NULL) {
+    fprintf( stderr, "\nThis should never happen!\n" );
+    exit(1);
+  }
   else if (lex->len==0)
     ret = getc(lex->stream);
   else {
@@ -115,7 +117,6 @@ token_t lex_sym_and_punc( lex_t f )
 {
   int c = readc(f);
   if (is_punctuation(c)) {
-    printf( "punctuation: %c\n", c );
     return new_token( PUNC_TOK, NULL, c );
   }
   else {
@@ -129,7 +130,6 @@ token_t lex_sym_and_punc( lex_t f )
 	unreadc(c,f);
 	fclose(match_stream);
 	obj_t ret = new_sym_obj(match);
-	printf( "symbol found: ~%s~\n", match );
 	free(match);
 	return new_token( OBJ_TOK, ret, 0 );
       }
@@ -153,8 +153,8 @@ token_t lex_number( lex_t f )
       if (is_digit(c))
 	putc(c,match_stream);
       else if (is_separator(c)) {
+	unreadc(c,f);
 	fclose(match_stream);
-	printf( "integer found: ~%s~\n", match );
 	obj_t ret = new_int_s(match);
 	free(match);
 	return new_token( OBJ_TOK, ret, 0 );
@@ -249,7 +249,6 @@ token_t lex_string( lex_t f )
 	putc(c,match_stream);
 	if (!escaped) {
 	  fclose(match_stream);
-	  printf( "String found: ~%s~\n", match );
 	  char* prepared_match = prepare_string(match);
 	  obj_t ret = new_string( prepared_match );
 	  free(match);

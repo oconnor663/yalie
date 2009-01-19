@@ -37,12 +37,12 @@ obj_t cons_obj_cdr( obj_t cell )
 
 void cons_obj_set_car( obj_t cell, obj_t val )
 {
-  cons_obj_set_car( obj_guts(cell), (void*)val );
+  cons_set_car( obj_guts(cell), (void*)val );
 }
 
 void cons_obj_set_cdr( obj_t cell, obj_t val )
 {
-  cons_obj_set_cdr( obj_guts(cell), (void*)val );
+  cons_set_cdr( obj_guts(cell), (void*)val );
 }
 
 bool is_cons( obj_t obj )
