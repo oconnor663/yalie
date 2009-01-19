@@ -1,5 +1,7 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+what am I going to do about multiple infixes in a s-expr?
+
 Can the only pure function defined in C be "msg"?
 
 Punctuation:
