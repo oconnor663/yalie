@@ -99,7 +99,7 @@ void array_push_back( array_t array, void* val )
 
 void* array_pop_back( array_t array )
 {
-  array_pop( array, array->length );
+  array_pop( array, array->length - 1 );
 }
 
 //

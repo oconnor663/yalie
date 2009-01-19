@@ -5,10 +5,10 @@
 #include <stdbool.h>
 
 #include "../objects/builtins.h"
-#include "../repr.c"
+#include "../repr.h"
 #include "lexer.h"
 
-struct Lex {
+struct LexStream {
   char* buffer; //NB: NOT NULL TERMINATED! (also backwards)
   size_t len;   //number of chars
   size_t size;  //space allocated
@@ -17,7 +17,7 @@ struct Lex {
   
 lex_t new_lex( FILE* stream )
 {
-  lex_t ret = malloc( sizeof(struct Lex) );
+  lex_t ret = malloc( sizeof(struct LexStream) );
   ret->size = 4;
   ret->buffer = malloc( ret->size * sizeof(char) );
   ret->len = 0;
@@ -33,17 +33,21 @@ void free_lex( lex_t lex )
 
 int readc( lex_t lex )
 {
-  if (lex->len==0)
-    return getc(lex->stream);
+  int ret;
+  if (lex==NULL)
+    ret = -1;
+  else if (lex->len==0)
+    ret = getc(lex->stream);
   else {
     lex->len--;
-    return lex->buffer[lex->len];
+    ret = lex->buffer[lex->len];
   }
+  return ret;
 }
 
 void unreadc( int c, lex_t lex )
 {
-  assert( 0<=c && c<256 );
+  assert( -1<=c && c<256 );
 
   if (lex->len==lex->size) {
     lex->size *= 2;
@@ -54,14 +58,25 @@ void unreadc( int c, lex_t lex )
   lex->len++;
 }
 
-struct Token new_token( enum token_type type, obj_t val, int punc )
+token_t new_token( enum token_type type, obj_t obj, int punc )
+// At most one of obj or punc should be nonzero/nonnull...
+// Does not add or own any actual objects.
 {
-  // Does not add or own any actual objects.
-  struct Token ret;
-  ret.type = type;
-  ret.val = val;
-  ret.punc = punc;
+  assert( obj==NULL || punc==0 );
+
+  token_t ret = malloc( sizeof(struct Token) );
+  ret->type = type;
+  if (obj!=NULL)
+    ret->val.obj = obj;
+  else if (punc!=0)
+    ret->val.punc = punc;
   return ret;
+}
+
+void free_token( token_t tok )
+{
+  // does NOT free or in any way modify the associated object
+  free(tok);
 }
 
 /*
@@ -96,7 +111,7 @@ bool is_digit( int c )
   return '0'<=c && c<='9';
 }
 
-struct Token lex_sym_and_punc( lex_t f )
+token_t lex_sym_and_punc( lex_t f )
 {
   int c = readc(f);
   if (is_punctuation(c)) {
@@ -125,7 +140,7 @@ struct Token lex_sym_and_punc( lex_t f )
   }
 }
 
-struct Token lex_number( lex_t f )
+token_t lex_number( lex_t f )
 {
   int c = readc(f);
   if (is_digit(c)) {
@@ -138,7 +153,6 @@ struct Token lex_number( lex_t f )
       if (is_digit(c))
 	putc(c,match_stream);
       else if (is_separator(c)) {
-	unreadc(c,f);
 	fclose(match_stream);
 	printf( "integer found: ~%s~\n", match );
 	obj_t ret = new_int_s(match);
@@ -185,6 +199,10 @@ char* prepare_string( char* str )
 	putc( '\t', new_stream );
 	i++;
       }
+      else if (str[i+1]=='\\') {
+	putc( '\\', new_stream );
+	i++;
+      }
       else {
 	putc( '\\', new_stream );
       }
@@ -198,7 +216,7 @@ char* prepare_string( char* str )
   return new_str;
 }
 
-struct Token lex_string( lex_t f )
+token_t lex_string( lex_t f )
 {
   int c = readc(f);
   int delim;
@@ -247,14 +265,13 @@ struct Token lex_string( lex_t f )
   }
 }
 
-struct Token remove_whitespace( lex_t f )
+token_t remove_whitespace( lex_t f )
 {
   int c;
   while ( (c=readc(f))==' ' || c=='\t' || c=='\n' );
   //burn all the whitespace
 
   if (c==EOF) {
-    printf( "Nothing!\n" );
     return new_token( EOF_TOK, NULL, 0 );
   }
   else {
@@ -263,7 +280,7 @@ struct Token remove_whitespace( lex_t f )
   }
 }
 
-struct Token lex_token( lex_t f )
+token_t lex_token( lex_t f )
 {
   return remove_whitespace( f );
 }
@@ -298,29 +315,34 @@ main()
 {
   pointers = new_array(0,0);
 
-  struct Token tok;
+  token_t tok;
   lex_t f = new_lex( stdin );
   while (true) {
     tok = lex_token(f);
-    if (tok.type==ERROR_TOK) {
+    if (tok->type==ERROR_TOK) {
       printf( "Error encountered\n" );
       free_lex(f);
+      free_token(tok);
       break;
     }
-    else if (tok.type==EOF_TOK) {
+    else if (tok->type==EOF_TOK) {
       free_lex(f);
+      free_token(tok);
       break;
     }
     else {
-      printf( "val: " );
-      repr( tok.val );
-      putchar('\n');
-      array_push_back(pointers, tok.val);
+      if (tok->type==OBJ_TOK) {
+	printf( "val: " );
+	repr( tok->val.obj );
+	putchar('\n');
+	array_push_back(pointers, tok->val.obj);
+      }
+      free_token(tok);
       // FREE THOSE VALUES?
     }
   }
 }
- */
+*/
 
 /*
 main()

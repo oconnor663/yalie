@@ -1,5 +1,21 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+Can the only pure function defined in C be "msg"?
+
+Punctuation:
+Should not directly call underlying functionality (i.e. msg or ref).
+Instead, call macros associated with each symbol (i.e. "backquote" or
+"colon") that by default point to the associated function. This makes
+it easier for the user to change what punctuation does.
+
+Potential problems with T:
+- limited inheritance
+- weird setter semantics
+- verbose as sin
+- methods don't use a different namespace
+- dynamically adding methods
+
+
 inheriting from builtin types risks overwriting the init and del
 methods. the programmer needs to be allowed to call the previous
 definition by referencing the parent class in some way, and calling

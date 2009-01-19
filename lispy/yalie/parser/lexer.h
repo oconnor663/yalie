@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "../objects/object.h"
 
-typedef struct Lex * lex_t;
+typedef struct LexStream * lex_t;
 
 lex_t new_lex( FILE* stream );
 void free_lex( lex_t lex );
@@ -13,16 +13,19 @@ void free_lex( lex_t lex );
 enum token_type {
   OBJ_TOK,
   PUNC_TOK,
-  ERROR_TOK, //indicates an exception object
+  ERROR_TOK,
   EOF_TOK
 };
 
-struct Token {
+typedef struct Token {
   enum token_type type;
-  obj_t val; // only non-NULL for OBJ_TOK
-  int punc;  // only nonzero for PUNC_TOK
-};
+  union TokenVal {
+    obj_t obj; // only non-NULL for OBJ_TOK
+    int punc;  // only nonzero for PUNC_TOK
+  } val;
+} * token_t;
 
-struct Token lex_token( lex_t f );
+token_t lex_token( lex_t f );
+void free_token( token_t tok ); // Does NOT free associated objects
 
 #endif

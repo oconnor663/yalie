@@ -45,11 +45,13 @@ char* string_repr( obj_t string )
   for (i=0; i < ((string_t)obj_guts(string))->len; i++) {
     char c = ((string_t)obj_guts(string))->text[i];
     if (c=='\n')
-      fprintf( ret_stream, "\n" );
+      fprintf( ret_stream, "\\n" );
     else if (c=='\t')
-      fprintf( ret_stream, "\t" );
+      fprintf( ret_stream, "\\t" );
     else if (c=='\\')
       fprintf( ret_stream, "\\\\" );
+    else if (c=='"')
+      fprintf( ret_stream, "\"" );
     else
       fprintf( ret_stream, "%c", c );
   }
