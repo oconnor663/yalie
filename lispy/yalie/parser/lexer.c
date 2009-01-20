@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -34,7 +36,7 @@ void free_lex( lex_t lex )
 
 int readc( lex_t lex )
 {
-  assert (lex!=NULL);
+  assert( lex!=NULL );
 
   int ret;
   if (lex->len==0)
@@ -149,7 +151,7 @@ token_t lex_sym_and_punc( lex_t f )
   else {
     char* match;
     size_t match_size;
-    FILE* match_stream = (FILE*) open_memstream(&match, &match_size);
+    FILE* match_stream = open_memstream(&match, &match_size);
     putc(c,match_stream);
     while (true) {
       c = readc(f);
@@ -178,7 +180,7 @@ token_t lex_number( lex_t f )
   if (is_digit(c)) {
     char* match;
     size_t match_size;
-    FILE* match_stream = (FILE*) open_memstream(&match,&match_size);
+    FILE* match_stream = open_memstream(&match,&match_size);
     putc( c, match_stream );
     while (true) {
       c = readc(f);
@@ -217,7 +219,7 @@ char* prepare_string( char* str )
 
   char* new_str;
   size_t new_size;
-  FILE* new_stream = (FILE*) open_memstream(&new_str,&new_size);
+  FILE* new_stream = open_memstream(&new_str,&new_size);
   
   size_t i = 1;
   while ( i < len-1 ) {  //avoids the terminating quotation mark
@@ -261,7 +263,7 @@ token_t lex_string( lex_t f )
     delim = c;
     char* match;
     size_t match_size;
-    FILE* match_stream = (FILE*)open_memstream(&match,&match_size);
+    FILE* match_stream = open_memstream(&match,&match_size);
     putc( c, match_stream );
 
     bool escaped = false;

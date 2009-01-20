@@ -7,7 +7,6 @@
 #include "function.h"
 #include "num.h"
 #include "object.h"
-#include "parse.h"
 #include "scope.h"
 #include "string.h"
 #include "symbol_obj.h"

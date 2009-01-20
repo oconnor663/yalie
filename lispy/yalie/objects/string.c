@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +41,7 @@ char* string_repr( obj_t string )
 {
   char* ret;
   size_t ret_size;
-  FILE* ret_stream = (FILE*)open_memstream( &ret, &ret_size ); //WHY?
+  FILE* ret_stream = open_memstream( &ret, &ret_size ); 
   fprintf( ret_stream, "\"" );
   int i;
   for (i=0; i < ((string_t)obj_guts(string))->len; i++) {

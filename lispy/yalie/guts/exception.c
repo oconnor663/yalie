@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +40,7 @@ char* excep_repr( excep_t excep )
 {
   char* ret;
   size_t tmp;
-  FILE* stream = (FILE*) open_memstream( &ret, &tmp ); //why cast?
+  FILE* stream = open_memstream( &ret, &tmp ); //why cast?
 
   cons_t tmp_context = excep->context;
   while ( tmp_context != NULL ) {
