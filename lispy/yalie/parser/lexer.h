@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "../objects/object.h"
+#include "../guts/exception.h"
 
 typedef struct LexStream * lex_t;
 
@@ -20,12 +21,14 @@ enum token_type {
 typedef struct Token {
   enum token_type type;
   union TokenVal {
-    obj_t obj; // only non-NULL for OBJ_TOK
-    int punc;  // only nonzero for PUNC_TOK
+    obj_t obj;
+    int punc;
   } val;
 } * token_t;
 
 token_t lex_token( lex_t f );
-void free_token( token_t tok ); // Does NOT free associated objects
+token_t new_error_token( char* error );
+void free_token( token_t tok ); // Does NOT free associated objects,
+                                // but does free associated exception.
 
 #endif

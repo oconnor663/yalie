@@ -15,7 +15,9 @@ Potential problems with T:
 - weird setter semantics
 - verbose as sin
 - methods don't use a different namespace
-- dynamically adding methods
+- dynamically adding/redefining methods
+- reflection
+
 
 
 inheriting from builtin types risks overwriting the init and del

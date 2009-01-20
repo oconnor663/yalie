@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <error.h>
 
 #include "../objects/builtins.h"
 #include "../repr.h"
@@ -33,12 +34,10 @@ void free_lex( lex_t lex )
 
 int readc( lex_t lex )
 {
+  assert (lex!=NULL);
+
   int ret;
-  if (lex==NULL) {
-    fprintf( stderr, "\nThis should never happen!\n" );
-    exit(1);
-  }
-  else if (lex->len==0)
+  if (lex->len==0)
     ret = getc(lex->stream);
   else {
     lex->len--;
@@ -60,24 +59,52 @@ void unreadc( int c, lex_t lex )
   lex->len++;
 }
 
-token_t new_token( enum token_type type, obj_t obj, int punc )
+token_t new_obj_token( obj_t obj )
 // At most one of obj or punc should be nonzero/nonnull...
 // Does not add or own any actual objects.
 {
-  assert( obj==NULL || punc==0 );
+  assert( obj!=NULL );
 
   token_t ret = malloc( sizeof(struct Token) );
-  ret->type = type;
-  if (obj!=NULL)
-    ret->val.obj = obj;
-  else if (punc!=0)
-    ret->val.punc = punc;
+  ret->type = OBJ_TOK;
+  ret->val.obj = obj;
+  return ret;
+}
+
+token_t new_error_token( char* error )
+// At most one of obj or punc should be nonzero/nonnull...
+// Does not add or own any actual objects.
+{
+  assert( error!=NULL );
+
+  token_t ret = malloc( sizeof(struct Token) );
+  ret->type = ERROR_TOK;
+  ret->val.obj = new_excep_obj(error);
+  return ret;
+}
+
+token_t new_punc_token( int punc )
+// At most one of obj or punc should be nonzero/nonnull...
+// Does not add or own any actual objects.
+{
+  token_t ret = malloc( sizeof(struct Token) );
+  ret->type = PUNC_TOK;
+  ret->val.punc = punc;
+  return ret;
+}
+
+token_t new_eof_token()
+// At most one of obj or punc should be nonzero/nonnull...
+// Does not add or own any actual objects.
+{
+  token_t ret = malloc( sizeof(struct Token) );
+  ret->type = EOF_TOK;
   return ret;
 }
 
 void free_token( token_t tok )
 {
-  // does NOT free or in any way modify the associated object
+  // does NOT free or in any way modify any associated obj_t
   free(tok);
 }
 
@@ -117,7 +144,7 @@ token_t lex_sym_and_punc( lex_t f )
 {
   int c = readc(f);
   if (is_punctuation(c)) {
-    return new_token( PUNC_TOK, NULL, c );
+    return new_punc_token( c );
   }
   else {
     char* match;
@@ -131,7 +158,7 @@ token_t lex_sym_and_punc( lex_t f )
 	fclose(match_stream);
 	obj_t ret = new_sym_obj(match);
 	free(match);
-	return new_token( OBJ_TOK, ret, 0 );
+	return new_obj_token( ret );
       }
       else {
 	putc(c,match_stream);
@@ -141,6 +168,11 @@ token_t lex_sym_and_punc( lex_t f )
 }
 
 token_t lex_number( lex_t f )
+// POLICY
+// Starting with a number flags the token as a number.
+// If it turns out to not lex properly (i.e. "123abc")
+// then an error will be signaled. In particular, the
+// offending token is NOT interpreted as a symbol.
 {
   int c = readc(f);
   if (is_digit(c)) {
@@ -157,7 +189,7 @@ token_t lex_number( lex_t f )
 	fclose(match_stream);
 	obj_t ret = new_int_s(match);
 	free(match);
-	return new_token( OBJ_TOK, ret, 0 );
+	return new_obj_token( ret );
       }
       else {
 	// Not an integer
@@ -167,7 +199,7 @@ token_t lex_number( lex_t f )
 	for (i=strlen(match)-1; i>-1; i--)
 	  unreadc(match[i],f);
 	free(match);
-	return new_token( ERROR_TOK, NULL, 0 );
+	return new_error_token( "Could not lex number" );
       }
     }
   }
@@ -236,10 +268,9 @@ token_t lex_string( lex_t f )
     while (true) {
       c = readc(f);
       if (c=='\n' || c==EOF) {
-	printf( "unterminated string\n" );
 	fclose(match_stream);
 	free(match);
-	return new_token( ERROR_TOK, NULL, 0 );
+	return new_error_token( "Unterminated string." );
       }
       else if (c=='\\') {
 	escaped = !escaped;
@@ -253,7 +284,7 @@ token_t lex_string( lex_t f )
 	  obj_t ret = new_string( prepared_match );
 	  free(match);
 	  free(prepared_match);
-	  return new_token( OBJ_TOK, ret, 0 );
+	  return new_obj_token( ret );
 	}
       }
       else {
@@ -271,7 +302,7 @@ token_t remove_whitespace( lex_t f )
   //burn all the whitespace
 
   if (c==EOF) {
-    return new_token( EOF_TOK, NULL, 0 );
+    return new_eof_token();
   }
   else {
     unreadc(c,f);
