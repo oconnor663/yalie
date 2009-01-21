@@ -314,6 +314,7 @@ obj_t read_repl( parse_t parse, bool* is_eof )
   return o;
 }
 
+/*
 main()
 {
   parse_t repl = new_repl();
@@ -335,3 +336,4 @@ main()
     }
   }
 }
+*/
