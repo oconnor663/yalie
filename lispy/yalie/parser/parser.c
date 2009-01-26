@@ -332,7 +332,7 @@ main()
 
     if (o!=NULL) {
       repr(o);
-      printf( "\n" );
+      printf( "\b\b\b\b" );
     }
   }
 }

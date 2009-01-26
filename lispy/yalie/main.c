@@ -28,7 +28,7 @@ int main( int argv, char** argc )
     bool is_eof;
     obj_t o = read_repl( repl, &is_eof );
     if (is_eof) {
-      printf("\n");
+      printf("\b\b\b\b");
       break;
     }
     if (o!=NULL) {

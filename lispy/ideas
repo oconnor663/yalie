@@ -1,6 +1,9 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
-what am I going to do about multiple infixes in a s-expr?
+map should take any number of lists as arguments. Then functions that
+take multiple arguments can zip across several lists in parallel.
+
+what am I going to do about multiple infixes in a s-expr? Done!
 
 Can the only pure function defined in C be "msg"?
 
