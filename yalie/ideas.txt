@@ -1,0 +1,435 @@
+Yalie: Yet Another Lisp Interpreting Experiment
+
+map should take any number of lists as arguments. Then functions that
+take multiple arguments can zip across several lists in parallel.
+
+what am I going to do about multiple infixes in a s-expr? Done!
+
+Can the only pure function defined in C be "msg"?
+
+Punctuation:
+Should not directly call underlying functionality (i.e. msg or ref).
+Instead, call macros associated with each symbol (i.e. "backquote" or
+"colon") that by default point to the associated function. This makes
+it easier for the user to change what punctuation does.
+
+Potential problems with T:
+- limited inheritance
+- weird setter semantics
+- verbose as sin
+- methods don't use a different namespace
+- dynamically adding/redefining methods
+- reflection
+
+
+
+inheriting from builtin types risks overwriting the init and del
+methods. the programmer needs to be allowed to call the previous
+definition by referencing the parent class in some way, and calling
+those functions manually.
+
+put in at least some support for array programming. also, generators
+(python style) allow for lazy evaluation.
+
+def
+defmethod
+defclass
+deflocal
+
+Two birds with one stone: return to declaring variables with
+`let'. Allow (let x `foo) to extend for the duration of the current
+scope. Assignment then works like normal, except now it can modify
+variables in higher scopes (as with C). This will make it trivial for
+methods to modify variables in the member scope. This would make it
+much easier to insert declaration optimizations later, as well.
+
+Class/object scoping concept: Class contains a method scope (with
+inheritance). Object contains both a method scope and a member scope,
+hierarchically unrelated. message lookups calls resolve the method
+from the method scope, but method execution is resolved in the member
+scope (with temporary bindings for its arguments), which is a child of
+the lexical environment of the class declaration.
+
+Priorities:
+  Message passing only - automatic get/set methods for members
+
+Issues:
+  message resolution
+  method scoping
+  modifying variables in a higher scope
+  collisions with members and methods
+  allowing the global scope to be a class def
+  inheritance resolution
+
+Alternatively, members can have a $ prefix by convention. Thus, the
+actual variable name would refer only to the reference function,
+avoiding the name collision issue entirely.
+
+Classes can use layered scopes to achieve local variables. Only
+functions are visible in the external scope, but the lexical scope of
+those functions themselves is a closure on the class.
+
+Types, stored by classes, should be a const char*. They will be
+compared by pointer when testing for type equality, so they should
+never be modified. This will make it easier for user-defined types to
+be added, and also for printing out type information. A SYMBOL?!?
+
+If everything is to be a method, every scope will have to be
+associated with a class. Thus, the global scope will in fact be
+implicitly redefining the overarching Object class. But what about
+"let" scopes and "fn" scopes etc.? No, that clearly won't work. Scopes
+and functions need to be treated normally. Classes should be separate.
+
+Method syntax: the dot '.' is parsed differently based on its position
+in an s-expression. As the first element, a method call envelops the
+rest of the expression, as so:
+(a.foo b c d) ==> (msg a foo b c d)
+Anywhere else, the method call is assumed to have no arguments:
+(f a.foo b) ==> (f (msg a foo) b)
+
+"for" loop:
+(for i to 10 ls i) -> (1 ... 10)
+(for i len 10 ls i)-> (0 ... 9)
+(for i is 4 to 10 ls i) -> (4 ... 10)
+(for i is 4 len 10 ls i) -> (4 ... 13)
+(for i is 4 len 10 step -2 ls i) -> (4 2 ... -14)
+(for i in `(1 2 3) if (> i 1) do (put i)) ->  "2\n3\n" to stdout
+
+Arithmetic syntax?!!? We could totally expand 3+4*5 to (add 3 (mult 4
+5)). That would remove arithmetic symbols from names
+though. +-*/^&|<>=.  An alternative solution would be to only do it
+when there's full whitespace separation. As in "foo-bar" is a name,
+but "foo - bar" is "(minus foo bar)".
+
+Syntax that needs to exist:
+  1. Function calls
+  2. Object message passing
+  3. Container references (array, dict, and even list)
+
+Should passing a message to an object return a function? For instance,
+(a.foo 1 5) expands to ((msg a foo) 1 5). Sounds like a good
+idea. Then function calls and container references can differentiate
+based on the type of object involved.
+
+Allow class redeclarations to extend the existing class, not replace
+it.
+
+Eval definitely needs to be rewritten recursively, so that special
+forms can call it. Use continuations or something to allow goto.
+
+a la Ruby: all funtctions are actually methods. Normal functions are
+actually methods of an implicit global object. Also, because of the
+smalltalk-like semantics, there are no member references. Thus, there
+is no need for a member operator: everything can be done with (obj
+msg). NOT TRUE if I want to have normal sounding functions :p
+
+Syntax idea: when (not) is passed multiple arguments, it puts a
+function call together and negates the return. For instance:
+(not = x 10) --> (not (= x 10))
+
+Put everything on hold: all this needs to be implemented top-down as
+objects inheriting from classes.
+
+What is the distinction between a class and a member of that class?
+Should we prohibit inheriting from C types? Perhaps only prohibit
+multiple-inheriting from C types.
+
+struct Class {
+  ns_t namespace;
+}
+
+struct Object {
+  int num_parents;
+  val_t* parents; // the classes (val_t for references)
+  void* internal; // for builtins and their inheritors
+  ns_t namespace;
+};
+
+POTENTIALLY EARTH SHATTERING CONCEPT:
+Create a Yalie library that mimics the functionality of Lex and Yacc.
+Eliminate the need for code walkers. Forms can be lisp macros on
+steroids.
+
+An even newer thought on symbols: symbols should hold their own values
+indexed by THREAD. These can be stacks of (scope.val) pairs, so that
+when climbing the stack the appropriate value can be restored.
+
+Python-like global scoping can be achieved by pointing directly to the
+(key.val) pair in a containing scope. Very clean. Does that present
+problems for freeing? Envs will need to keep a list of globalized
+variables not to free.
+
+A new thought on symbols: Perhaps symbols can hold their own values
+indexed (in an internal dict) by scope. The scopes will be globally
+unique, so they can just be compared by pointer. Each symbol will then
+have its own hash table, but that's ok because all that overhead is
+managed at readtime. Does looking up every env in the symbol save any
+time over looking up the symbol in every env?
+
+__Symbols__
+Contain a cons list of lookup envs?
+Can't be envs because parse is at runtime.
+Cons list must contain other symbols.
+(Remember that even imported Global envs share symbols with the main)
+How to print? Easy, now that it contains symbols.
+Now environments must contain the symbols
+    to append to new symbols they generate.
+NO: what if environments didn't modify their
+    symbols at all? Does that cause any problems?
+Symbols need a cons list of other symbols? That's not symmetric...
+Symbols rather need a cons list of strings.
+How does all this interact with globals...?
+THERE SHOULD BE NO SPECIAL GLOBALS. ALL LEXICAL!!! 
+(This would be limiting...)
+Should environments have a special parent for the builtins...?
+Toplevel envs (including imported ones) should.
+Then they can only shadow builtins locally.
+How will globals work on import?
+ALL envs share the symbols list, but lexically
+    related envs can share a globals list.
+Symbol lookup: globals->lexical(->builtins)
+WAIT!!! Can symbols hold their own bindings? That would be WAY
+	faster for lookups. 
+INTERESTING THOUGHT: Symbol identity can be used to distinguish between
+same-named symbols that refer to different environments.
+	   This would allow symbols to hold their own
+	   bindings somewhat better.
+
+----------THE IDEA-------------:
+There is a meta-global list of symbol namestrings by which symbols can
+be compared. The symbol object stores its bound value. These objects
+are created at readtime by referencing a simple list of
+already-instantiated symbols. This list is the lexical environment. A
+"global" directive a la Python allows symbols to be pulled down from
+higher scopes. DOES THIS POSE A PROBLEM FOR RESOLVING IMPORT SCOPES,
+WHICH CAN CHANGE AT RUNTIME? Take another cue from Python: imports
+create genuine userspace objects, not new symbols. Referencing an
+object in a module is no different from referencing an index from a
+list. But that ruins the gain from having symbols hold their own
+values. To have this work, imported modules must NOT be in userspace,
+so that symbols within them can be resolved at readtime. On the other
+hand, the main speed advantage is in compiling individual functions,
+not in looking them up.
+
+Things to do immediately:
+    input (DONE!)
+    quoting/unquoting (DONE!)
+    function parameters (DONE!)
+    exceptions (Done, but see below)
+    stack unwinding (Working! but no protect yet)
+    imports, classes
+
+Idiosyncratic rules:
+    symbols may not begin with a digit (this restriction has been lifted)
+    pre/postfix syntax must be on the same line (this is necessary)
+
+Syntax:
+    # comments
+    ` semiquote
+    , unquote
+    ; unquote-splice
+    @ ref
+    "/' strings/raw
+
+Other symbols to make use of:
+    & (binary operator for and?)
+    $ 
+    [ ] (implicit ls?)
+    { } (used as an alternative delimiter for body expressions?)
+    | (replacement for dotted lists?!?!)
+    \
+    ~ (special syntax for "not"? NO! "not" is given new semantics above)
+
+
+Scrap the :b keyword arguments to functions. Instead allow {}
+delimiters to be substituded for () whenever the expression will
+contain a body. This is a sufficient signal to indenters, and it makes
+missing parentheses much easier for the interpreter to identify in
+error messages.
+
+Could a continuation-passing style allow for a recursive eval function?
+
+When everything is a pointer in C, it becomes easier to make
+everything an object. Use the enum type.
+
+All environments should point to the same dictionary for get_sym. This
+should be independent of the "parent" field, so that imported modules
+can still share symbols with the global scope.  OR!!!  Environments
+can have their imported names stored in the class. Then, when symbols
+are looked up inside that environment, the names are automatically
+adjusted!!! SWEET IDEA!!!
+
+UNWIND-PROTECT SHOULD BE A FEATURE OF fn (and form?)! "break" can be
+just a goto statement inside the predefined loops
+
+FORBID TOPLEVEL [] SYNTAX! (Brilliant!) (Terrible?) (just reset the
+input after complete lines, so as to trigger a 'no [ at beginning of
+file error'?)  NO! Require that prefix and postfix syntax be on the
+same line as the values they operate on. Enforce this rule both in the
+REPL and in text code. Use the peek_token() function to enable this.
+HERE: The REPL should only accept single forms on any given line. The
+parser should parse entire files before starting evaluation.
+
+Exceptions need to be built from the entire stack. They should be
+built in place without being passed up the stack. If nothing "catches"
+the exception, it can then be RETURNED directly from lisp_eval.
+
+The parser should signal an error for malformatted keywords, for
+instance symbols such as ":keyword:member". Also, consider introducing
+special syntax into the parser to make it easier to catch a failure to
+close parentheses.
+
+There needs to be a function for generating a fresh global scope
+containing all builtin functions and constants. These will be used as
+base Env objects for imported namespaces.
+
+Everything an object? Yes!  How does python handle "a = 7 ; if x: ..."
+for printint value? Answer: poorly.  Are python functions/classes
+objects themselves?
+
+Symbols referenced from an imported module do not actually have to be
+the exact same objects as the originals. The Global environment can
+create a new symbol object whose lookup properties point work
+differently from that symbol in its original context. Since the two
+can never be eq'd, this won't cause any problems.  DIFFERENT APPROACH:
+Environments will take a parameter giving their imported context. All
+symbol lookups will thus add module names to the front end of any
+symbols within them. This dovetails with the notion that all
+Environments will share a list of symbols with the importing env.
+
+Eventually add support for pronouns :)
+
+no function should ever need to make sure that it's arguments are
+legally lists. This should be checked by eval or apply.
+
+"let" needs to check for globalness to do temporary replaces.  it
+should also be able to temporarily overwrite car's, cdr's, and other
+data fields in the same temporary way. (how would the (let a b)
+operator resolve its own scope? perhaps it can refuse to do that
+because of the parens required to take a car. but the same problem
+exists for global variables...) (Perhaps I can reuse the
+"unwind-protect" functionality to accomplish this...)
+
+When let is called as (let x y), it should throw an exception if x is
+a global variable, because the scope will not be well defined? (Unless
+we want to start adding termination conditions to
+callstacks. Actually, this could be helpful in implementing
+unwind-protect...)
+
+can let define a recursive function? lambda has to hang on its lexical
+scope, but 
+(let a (lambda (x)
+       	 (if (= x 0)
+	     x 
+	     (a (- x 1)))))
+
+"if" should take an arbitrary number of args, as in "cond" but w/o
+parentheses. like arc.
+
+Member/method reference: Classes superclass Environment? Environments
+as objects? The member operator "." finds the member in the referenced
+namespace. If the member is a function (method), it will be wrapped in
+a lambda that automatically passes the instance as the first argument.
+OR--
+Member operator is ':' and operates on symbol lookup. Namespaces
+(envs) need to be objects in userspace!!! Symbol lookup knows how to
+tell the difference between a namespace (or classdef) and an instance
+of a class with regard to wrapping methods in the appropriate
+lambda. YESSSS!!!!! This is how to do it.
+
+Builtin polymorphic functions should check for class methods.
+
+There will be no Python Class/Lisp Class dichotomy, as there is for
+functions and forms.
+
+class Lispy_Class():
+   def __init__( self, E, parents_list ):
+   	  self.E = E  #E is kept solely for associating new methods
+	  	      #with their lexical scope. No method/member
+	      	      #lookups will use it.
+	  self.parents_list = parents_list
+   def lookup( self, symbol ):
+       ### Will need to be prepared to wrap methods.
+
+(class My_Class (Parent1 ... Parentn) (arg1...argn)
+   (
+
+
+Argument list syntax:
+Graham uses a dot '.' for &rest.
+
+TYPES:
+Cons
+Atom:
+  Int
+  Float
+  Array
+  Dict
+  String (no char)
+  Fn
+  Form
+  Env?
+  Stack?
+  Class/Instance?
+
+SPECIAL FORMS:
+quote
+fn (lambda)
+form (as lambda, but for a macro)
+set-globally
+set-locally (will be called by "let")
+if-goto
+unwind-protect (Py?) (will modify Stack objects) (part of fn?)
+
+PREDEFINED LISP FORMS:
+semiquote
+if
+goto
+tag
+return?
+def,deform
+for
+while
+do (optional block name?)
+let
+ref
+call
+
+PREDEFINED PYTHON FUNCTIONS:
+eval
+cons car cdr setcar setcdr
++ - * / // % = < <= > >=
+id (test whether two pointers point to the same place)
+is? (eq)
+and or not
+{array,dict,string}
+null
+isnum iscons ... ot just (type ...)
+put (print) ...
+dir (as in Python!)
+exit
+
+PREDEFINED LISP FUNCTIONS
+ls (list)
+len
+map
+append
+ret
+
+
+Concepts:
+- Lisp-1.
+  - First element need only evaluate to a function, and functs are atoms.
+    - equivalent: (eval `(+ 1 1)) (eval (ls `+ 1 1)) (eval (ls + 1 1))
+  - Compensation for shadowing drawbacks:
+    - Pervasive use of methods and namespaces
+    - Shortened function names, like "ls" for "list"
+- Python-like namespaces: dict-based classes, scopes, and modules
+- Python-like full lexical scoping.
+- Builtin types: int, float, string
+- Builtin data structures: cons, array, dictionary (others in libraries?)
+- Fully polymorphic base functions, everything is an object
+- clean C API, dynamic .so importing
+- ()/{} syntax, "/' strings, and readtime translation of `,; operators (~!|?)
+- New forms of "if" (Paul Graham), "not", "let", "for"
+- Yacc-like functionality available for implementing forms
