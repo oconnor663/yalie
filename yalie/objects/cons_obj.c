@@ -51,7 +51,7 @@ obj_t GlobalConsClass = NULL;
 
 static void init_cons_class()
 {
-  GlobalConsClass = new_class_obj( del_cons_obj );
+  GlobalConsClass = new_global_class_obj( del_cons_obj );
 }
 
 obj_t ConsClass()
@@ -80,7 +80,7 @@ obj_t GlobalNilClass = NULL;
 
 static void init_nil_class()
 {
-  GlobalNilClass = new_class_obj( NULL );
+  GlobalNilClass = new_global_class_obj( NULL );
 }
 
 obj_t NilClass()

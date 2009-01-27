@@ -31,7 +31,7 @@ obj_t GlobalExcepClass = NULL;
 
 void init_excep_class()
 {
-  GlobalExcepClass = new_class_obj( del_excep_obj );
+  GlobalExcepClass = new_global_class_obj( del_excep_obj );
 }
 
 obj_t ExcepClass()
@@ -40,4 +40,3 @@ obj_t ExcepClass()
     init_excep_class();
   return GlobalExcepClass;
 }
-

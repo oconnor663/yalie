@@ -21,26 +21,27 @@ static bool char_star_eq( void* a, void* b )
   return strcmp( (char*)a, (char*)b ) == 0;
 }
 
-table_t new_sym_table()
+static table_t init_sym_table()
 {
-  table_t ret = new_table( char_star_hash, char_star_eq );
-  return ret;
+  GlobalSymbolTable = new_table( char_star_hash, char_star_eq );
 }
 
-void free_sym_table( table_t table )
+void free_sym_table()
 {
-  array_t names = table_keys(table); //the vals are just the same ptrs
-  size_t i;
-  for (i=0; i<array_len(names); i++)
-    free( array_ref(names,i) );
-  free_table( table );
-  free_array( names );
+  if (GlobalSymbolTable!=NULL) {
+    array_t names = table_keys(GlobalSymbolTable); //just the same ptrs
+    size_t i;
+    for (i=0; i<array_len(names); i++)
+      free( array_ref(names,i) );
+    free_table( GlobalSymbolTable );
+    free_array( names );
+  }
 }
 
 sym_t get_sym( char* name )
 {
   if (GlobalSymbolTable==NULL)
-    GlobalSymbolTable = new_sym_table();
+    init_sym_table();
 
   sym_t ret;
   bool test = table_ref( GlobalSymbolTable, name, (void**)&ret );

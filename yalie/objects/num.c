@@ -70,7 +70,7 @@ obj_t GlobalIntClass = NULL;
 
 static void init_int_class()
 {
-  GlobalIntClass = new_class_obj( del_int );
+  GlobalIntClass = new_global_class_obj( del_int );
   class_add_method( GlobalIntClass, get_sym("+"),
 		    new_method(plus_method,"(i)") );
 }

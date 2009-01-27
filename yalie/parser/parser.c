@@ -137,6 +137,7 @@ token_t parse_get_token( parse_t parse, bool repl_start )
 
   token_t ret = lex_token( parse->input );
   if (ret->type==EOF_TOK) { 
+    free_token(ret);
     parse_get_repl_line( parse, repl_start );
     if (parse->repl_eof) {
       return new_error_token( "Encountered EOF in the REPL" );

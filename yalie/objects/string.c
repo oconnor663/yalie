@@ -62,7 +62,7 @@ obj_t GlobalStringClass = NULL;
 
 static void init_string_class()
 {
-  GlobalStringClass = new_class_obj( del_string );
+  GlobalStringClass = new_global_class_obj( del_string );
 }
 
 obj_t StringClass()
@@ -129,7 +129,7 @@ obj_t GlobalStreamClass = NULL;
 
 static void init_stream_class()
 {
-  GlobalStreamClass = new_class_obj();
+  GlobalStreamClass = new_global_class_obj();
 }
 
 obj_t StreamClass()

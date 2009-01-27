@@ -1,15 +1,17 @@
-GUTS = guts/cons.c guts/symbol.c guts/table.c guts/array.c guts/exception.c
+CFLAGS = -g
 
-OBJECTS = objects/object.c objects/cons_obj.c objects/symbol_obj.c \
-	  objects/scope.c objects/num.c objects/exception_obj.c \
-	  objects/eval.c objects/function.c objects/string.c
+GUTS = guts/cons.o guts/symbol.o guts/table.o guts/array.o guts/exception.o
 
-PARSER = parser/lexer.c parser/parser.c
+OBJECTS = objects/object.o objects/cons_obj.o objects/symbol_obj.o \
+	  objects/scope.o objects/num.o objects/exception_obj.o \
+	  objects/eval.o objects/function.o objects/string.o
 
-FILES =	${GUTS} ${OBJECTS} ${PARSER} main.c repr.c
+PARSER = parser/lexer.o parser/parser.o
+
+FILES =	${GUTS} ${OBJECTS} ${PARSER} main.o repr.o
 
 yalie: ${FILES}
-	cc -g -o yalie ${FILES} -lreadline -lgmp
+	cc -g -o yalie ${FILES} -lgmp -lreadline
 
 clean:
-	rm yalie
+	rm yalie ${FILES}

@@ -23,7 +23,7 @@ obj_t GlobalSymClass = NULL;
 
 static void init_sym_class()
 {
-  GlobalSymClass = new_class_obj( NULL );
+  GlobalSymClass = new_global_class_obj( NULL );
 }
 
 obj_t SymClass()

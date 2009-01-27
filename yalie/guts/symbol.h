@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include "table.h"
 
-extern table_t GlobalSymbolTable;
+//extern table_t GlobalSymbolTable;
 
-table_t new_sym_table(); //implicit in get_sym()
-void free_sym_table( table_t table );
+//table_t new_sym_table(); //implicit in get_sym()
+void free_sym_table();
 
 typedef char* sym_t;
 

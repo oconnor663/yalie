@@ -9,7 +9,7 @@ struct Object {
   void* guts;
   scope_t members;
   scope_t methods;
-  unsigned long int ref_count;
+  int ref_count;
 };
 
 struct Class {
@@ -33,7 +33,7 @@ obj_t new_obj( obj_t class )
   obj_add_ref( class );
   ret->methods = new_scope( ((class_t)obj_guts(class))->methods );
   ret->members = new_scope( NULL );
-  ret->ref_count = 1;
+  ret->ref_count = 0;
   //if (((class_t)obj_guts(class))->init != NULL)
   //((class_t)obj_guts(class))->init(ret);
   return ret;
@@ -47,7 +47,9 @@ void obj_add_ref( obj_t obj )
 void obj_del_ref( obj_t obj )
 {
   obj->ref_count--;
-  if (obj->ref_count == 0) {
+  printf( "REmaining refs: %i\n", obj->ref_count );
+  if (obj->ref_count <= 0) {
+    printf( "Killed\n" );
     if (((class_t)obj_guts(obj->class))->del != NULL)
       ((class_t)obj_guts(obj->class))->del(obj);
     if (obj->class!=NULL)
@@ -206,14 +208,27 @@ static void init_base_classes()
   GlobalObjectClass->guts = object_class; //NOTE
   GlobalObjectClass->members = new_scope(NULL);
   GlobalObjectClass->methods = new_scope(class_class->methods);
-  GlobalObjectClass->ref_count = 1;
-  
+  GlobalObjectClass->ref_count = 2; //so freeing ClassClass
+                                    //won't kill it prematurely
   GlobalClassClass = malloc(sizeof(struct Object));
   GlobalClassClass->class = GlobalClassClass;
   GlobalClassClass->guts = class_class; //NOTE
   GlobalClassClass->members = new_scope(NULL);
   GlobalClassClass->methods = new_scope(class_class->methods);
   GlobalClassClass->ref_count = 1;
+}
+
+void cleanup_base_classes()
+{
+  free_class(obj_guts(GlobalClassClass));
+  free_scope(GlobalClassClass->methods);
+  free_scope(GlobalClassClass->members);
+  free(GlobalClassClass);
+  
+  free_class(obj_guts(GlobalObjectClass));
+  free_scope(GlobalObjectClass->methods);
+  free_scope(GlobalObjectClass->members);
+  free(GlobalObjectClass);  
 }
 
 obj_t ObjectClass()
@@ -242,5 +257,12 @@ obj_t new_class_obj( void (*del)(obj_t dead_obj) )
   class_t ret_class = new_class( ObjectClass(), del );
   obj_t ret = new_obj( ClassClass() );
   obj_set_guts( ret, ret_class );
+  return ret;
+}
+
+obj_t new_global_class_obj( void(*del)(obj_t dead_obj) )
+{
+  obj_t ret = new_class_obj(del);
+  obj_add_ref(ret);
   return ret;
 }

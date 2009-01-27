@@ -50,7 +50,7 @@ obj_t GlobalFuncClass = NULL;
 
 static void init_func_class()
 {
-  GlobalFuncClass = new_class_obj( del_func );
+  GlobalFuncClass = new_global_class_obj( del_func );
 }
 
 obj_t FuncClass()
@@ -107,7 +107,7 @@ obj_t GlobalMethodClass = NULL;
 
 static void init_method_class()
 {
-  GlobalMethodClass = new_class_obj( del_method );
+  GlobalMethodClass = new_global_class_obj( del_method );
 }
 
 obj_t MethodClass()
