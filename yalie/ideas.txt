@@ -1,5 +1,11 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+Classes defined in C should also have a Lisp __init__() call. For
+builtin types, it should probably do nothing by default. This allows
+the user to define init behavior for builtin types without nuking the
+C side of things. This lends itself to "init" and "del" fields in the
+class_t objects themselves, for C functions.
+
 map should take any number of lists as arguments. Then functions that
 take multiple arguments can zip across several lists in parallel.
 

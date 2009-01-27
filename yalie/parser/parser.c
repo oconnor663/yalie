@@ -14,21 +14,35 @@
 #define PS1 ">>> "
 #define PS2 "... "
 
+#define LEAK_DEBUGGING true
+
 char* get_repl_line( char* prompt )
 {
-  char* line = readline( prompt );
+  char* line = NULL;
   
-  if (line!=NULL && line[0]!='\0')
-    add_history(line);
+  if ( ! LEAK_DEBUGGING ) {
+    line = readline( prompt );    
 
-  //including the \n avoids a SEGFAULT when reading later
-  if (line!=NULL) {
-    int len = strlen(line);
-    line = realloc( line, (len+2)*sizeof(char) );
-    line[len] = '\n';
-    line[len+1] = '\0';
+    if (line!=NULL && line[0]!='\0')
+      add_history(line);
+    
+    //keep the '\n' char
+    if (line!=NULL) {
+      int len = strlen(line);
+      line = realloc( line, (len+2)*sizeof(char) );
+      line[len] = '\n';
+      line[len+1] = '\0';
+    }
   }
-
+  else {
+    size_t size = 0;
+    printf( "%s", prompt );
+    ssize_t test = getline(&line,&size,stdin);
+    if (test==-1) {
+      free(line);
+      line = NULL;
+    }
+  }
   return line;
 }
 
@@ -98,6 +112,7 @@ void free_parse( parse_t parse )
     fclose(parse->owned_stream);
   if (parse->owned_string!=NULL)
     free(parse->owned_string);
+  free(parse);
 }
 
 void free_repl( parse_t repl )
@@ -198,18 +213,27 @@ obj_t read_prefixed( parse_t parse, bool repl_start )
 {
   token_t tok = parse_get_token(parse, repl_start);
 
-  if (tok->type==EOF_TOK)
+  if (tok->type==EOF_TOK) {
+    free_token(tok);
     return NULL;
-  else if (tok->type==OBJ_TOK || tok->type==ERROR_TOK)
-    return tok->val.obj;
+  }
+  else if (tok->type==OBJ_TOK || tok->type==ERROR_TOK) {
+    obj_t ret = tok->val.obj;
+    free_token(tok);
+    return ret;
+  }
   else if (tok->type==PUNC_TOK) {
-    if (tok->val.punc=='(')
+    if (tok->val.punc=='(') {
+      free_token(tok);
       return read_sexpr(parse,true);
+    }
     if (is_prefix(tok->val.punc)) {
+      int punc = tok->val.punc;
+      free_token(tok);
       obj_t rest = read_prefixed(parse, repl_start);
       if (rest==NULL)
 	error(1,0,"Parser encountered EOF after prefix\n");
-      return new_cons_obj( punc2symbol(tok->val.punc),
+      return new_cons_obj( punc2symbol(punc),
 			   new_cons_obj(rest, new_nil_obj()) );
     }
   }
@@ -226,16 +250,20 @@ obj_t read_infixes( parse_t parse, obj_t prefix, bool* modified )
 
   while (true) {
     token_t tok = parse_gentle_get_token(parse);
-    if (tok->type==EOF_TOK)
+    if (tok->type==EOF_TOK) {
+      free_token(tok);
       break;
+    }
     else if (tok->type==PUNC_TOK && is_infix(tok->val.punc)) {
+      int punc = tok->val.punc;
+      free_token(tok);
       obj_t second = read_prefixed(parse,false);
       if (second==NULL)	
 	return new_excep_obj( "EOF when expecting infix argument" );
       if (is_excep(second))
 	return second;
       if (modified!=NULL) *modified = true;
-      ret = new_cons_obj( punc2symbol(tok->val.punc),
+      ret = new_cons_obj( punc2symbol(punc),
 			  new_cons_obj( ret,
 					new_cons_obj( second, new_nil_obj() )));
     }
@@ -250,11 +278,16 @@ obj_t read_infixes( parse_t parse, obj_t prefix, bool* modified )
 obj_t read_sexpr( parse_t parse, bool sexpr_start )
 {
   token_t tok = parse_get_token(parse, false);
-  if (tok->type==ERROR_TOK)
-    return tok->val.obj;
+  if (tok->type==ERROR_TOK) {
+    obj_t ret = tok->val.obj;
+    free_token(tok);
+    return ret;
+  }
 
-  if (tok->type==PUNC_TOK && tok->val.punc==')')
+  if (tok->type==PUNC_TOK && tok->val.punc==')') {
+    free_token(tok);
     return new_nil_obj();
+  }
   else
     parse_unget_token(parse,tok);
 
@@ -290,7 +323,8 @@ obj_t read_sexpr( parse_t parse, bool sexpr_start )
   
 obj_t read_expr( parse_t parse, bool repl_start )
 {
-  obj_t obj = read_infixes(parse,read_prefixed(parse,repl_start),NULL);
+  obj_t obj = read_prefixed(parse,repl_start);
+  obj = read_infixes(parse,obj,NULL);
   return obj;
 }
 
@@ -301,6 +335,7 @@ obj_t read_repl( parse_t parse, bool* is_eof )
 
   if (parse->repl_eof) {
     if (is_eof!=NULL) *is_eof = true;
+    obj_del_ref(o);
     return NULL;
   }
   

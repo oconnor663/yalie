@@ -29,6 +29,12 @@ static obj_t new_int_mpz( mpz_t* i )
   return ret;
 }
 
+static void del_int( obj_t i )
+{
+  mpz_clear( *(mpz_t*)obj_guts(i) );
+  free(obj_guts(i));
+}
+
 char* int_repr( obj_t i )
 {
   char* ret;
@@ -64,7 +70,7 @@ obj_t GlobalIntClass = NULL;
 
 static void init_int_class()
 {
-  GlobalIntClass = new_class_obj();
+  GlobalIntClass = new_class_obj( del_int );
   class_add_method( GlobalIntClass, get_sym("+"),
 		    new_method(plus_method,"(i)") );
 }

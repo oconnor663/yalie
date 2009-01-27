@@ -7,21 +7,6 @@
 #include "string.h"
 #include "exception_obj.h"
 
-obj_t GlobalStringClass = NULL;
-
-static void init_string_class()
-{
-  GlobalStringClass = new_class_obj();
-}
-
-obj_t StringClass()
-{
-  if (GlobalStringClass==NULL)
-    init_string_class();
-
-  return GlobalStringClass;
-}
-
 typedef struct String {
   char* text;
   size_t len;
@@ -35,6 +20,12 @@ obj_t new_string( char* text )
   ret_guts->len = strlen(text);
   obj_set_guts( ret, ret_guts );
   return ret;
+}
+
+static void del_string( obj_t string )
+{
+  free( ((string_t)obj_guts(string))->text );
+  free( obj_guts(string) );
 }
 
 char* string_repr( obj_t string )
@@ -67,22 +58,22 @@ bool is_string( obj_t obj )
   return is_instance( obj, StringClass() );
 }
 
+obj_t GlobalStringClass = NULL;
 
-obj_t GlobalStreamClass = NULL;
-
-static void init_stream_class()
+static void init_string_class()
 {
-  GlobalStreamClass = new_class_obj();
+  GlobalStringClass = new_class_obj( del_string );
 }
 
-obj_t StreamClass()
+obj_t StringClass()
 {
-  if (GlobalStreamClass==NULL)
-    init_stream_class();
+  if (GlobalStringClass==NULL)
+    init_string_class();
 
-  return GlobalStreamClass;
+  return GlobalStringClass;
 }
 
+/*
 typedef struct Stream {
   char* text;
   size_t len;
@@ -133,3 +124,19 @@ bool is_stream( obj_t obj )
 {
   return is_instance( obj, StreamClass() );
 }
+
+obj_t GlobalStreamClass = NULL;
+
+static void init_stream_class()
+{
+  GlobalStreamClass = new_class_obj();
+}
+
+obj_t StreamClass()
+{
+  if (GlobalStreamClass==NULL)
+    init_stream_class();
+
+  return GlobalStreamClass;
+}
+*/

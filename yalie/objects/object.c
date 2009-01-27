@@ -1,14 +1,11 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "object.h"
-#include "scope.h"
-#include "cons_obj.h"
-#include "symbol_obj.h"
-#include "num.h"
+#include "builtins.h"
 
 struct Object {
-  class_t class;
-  obj_t class_obj; //for garbage collection
+  obj_t class;
   void* guts;
   scope_t members;
   scope_t methods;
@@ -19,6 +16,8 @@ struct Class {
   scope_t methods;
   class_t parent;
   obj_t parent_obj;
+  //void (*init)(obj_t new_obj);
+  void (*del)(obj_t dead_obj);
 };
 
 
@@ -30,16 +29,13 @@ struct Class {
 obj_t new_obj( obj_t class )
 {
   obj_t ret = malloc( sizeof(struct Object) );
-  ret->class_obj = class;
-  ret->class = obj_guts(class);
+  ret->class = class;
   obj_add_ref( class );
-  ret->methods = new_scope( ret->class->methods );
+  ret->methods = new_scope( ((class_t)obj_guts(class))->methods );
   ret->members = new_scope( NULL );
   ret->ref_count = 1;
-  //fprintf( stderr, "Would call `new' method on %p\n", ret );
-  /*
-   * Check for errors on the return.
-   */
+  //if (((class_t)obj_guts(class))->init != NULL)
+  //((class_t)obj_guts(class))->init(ret);
   return ret;
 }
 
@@ -52,16 +48,17 @@ void obj_del_ref( obj_t obj )
 {
   obj->ref_count--;
   if (obj->ref_count == 0) {
-    //fprintf( stderr, "Would call `del' method on %p\n", obj );
-    if (obj->class_obj!=NULL)
-      obj_del_ref( obj->class_obj );
+    if (((class_t)obj_guts(obj->class))->del != NULL)
+      ((class_t)obj_guts(obj->class))->del(obj);
+    if (obj->class!=NULL)
+      obj_del_ref( obj->class );
     free_scope(obj->methods);
     free_scope(obj->members);
     free(obj);
   }
 }
 
-class_t obj_class( obj_t obj )
+obj_t obj_class( obj_t obj )
 {
   return obj->class;
 }
@@ -113,19 +110,25 @@ void obj_del_member( obj_t obj, sym_t name )
  * -----------------------------------------------------------
  */
 
-static class_t new_class( obj_t parent )
+static class_t new_class( obj_t parent,
+			  //void (*init)(obj_t new_obj),
+			  void (*del)(obj_t dead_obj) )
 {
+  assert (parent!=NULL);
+
   class_t ret = malloc(sizeof(struct Class));
-    ret->parent_obj = parent;
-  if (parent!=NULL) {
-    obj_add_ref(parent);
-    ret->parent = obj_guts(parent);
-    ret->methods = new_scope( parent->methods );
-  }
-  else {
-    ret->parent = NULL;
-    ret->methods = new_scope( NULL );
-  }
+  ret->parent_obj = parent;
+  obj_add_ref(parent);
+  ret->parent = obj_guts(parent);
+  ret->methods = new_scope( parent->methods );
+  //if (init==NULL)
+  //ret->init = ((class_t)obj_guts(parent)->init);
+  //else
+  //ret->init = init;
+  if (del==NULL)
+    ret->del = ((class_t)obj_guts(parent))->del;
+  else
+    ret->del = del;
   return ret;
 }
 
@@ -137,9 +140,14 @@ static void free_class( class_t class )
   free(class);
 }
 
+static void del_class( obj_t class )
+{
+  free_class( (class_t)obj_guts(class) );
+}
+
 bool is_instance( obj_t obj, obj_t class )
 {
-  class_t child = obj_class( obj );
+  class_t child = obj_guts(obj->class);
   class_t parent = obj_guts( class );
 
   while (child!=NULL) {
@@ -178,24 +186,30 @@ static void init_base_classes()
 // This has to be done "by hand" because the inheritance structure
 // of the Class class and the base Object class is all tangled up.
 {
-  class_t object_class = new_class(NULL);
+  class_t object_class = malloc(sizeof(struct Class));
   class_t class_class = malloc(sizeof(struct Class));
+
+  object_class->methods = new_scope(NULL);
+  object_class->parent = NULL;
+  object_class->parent_obj = NULL;
+  //object_class->init = NULL;
+  object_class->del = NULL;
 
   class_class->methods = new_scope(object_class->methods);
   class_class->parent = object_class;
   class_class->parent_obj = GlobalObjectClass;
+  //class_class->init = NULL;
+  class_class->del = del_class;
 
   GlobalObjectClass = malloc(sizeof(struct Object));
-  GlobalObjectClass->class_obj = GlobalClassClass;
-  GlobalObjectClass->class = class_class;
+  GlobalObjectClass->class = GlobalClassClass;
   GlobalObjectClass->guts = object_class; //NOTE
   GlobalObjectClass->members = new_scope(NULL);
   GlobalObjectClass->methods = new_scope(class_class->methods);
   GlobalObjectClass->ref_count = 1;
   
   GlobalClassClass = malloc(sizeof(struct Object));
-  GlobalClassClass->class_obj = GlobalClassClass;
-  GlobalClassClass->class = class_class;
+  GlobalClassClass->class = GlobalClassClass;
   GlobalClassClass->guts = class_class; //NOTE
   GlobalClassClass->members = new_scope(NULL);
   GlobalClassClass->methods = new_scope(class_class->methods);
@@ -221,11 +235,11 @@ bool is_class( obj_t obj )
   return is_instance( obj, ClassClass() );
 }
 
-obj_t new_class_obj()
+obj_t new_class_obj( void (*del)(obj_t dead_obj) )
 // Understand: the class of the returned object will be the Class class,
 // however that object will contain the class argument. Complicated :p
 {
-  class_t ret_class = new_class( ObjectClass() );
+  class_t ret_class = new_class( ObjectClass(), del );
   obj_t ret = new_obj( ClassClass() );
   obj_set_guts( ret, ret_class );
   return ret;

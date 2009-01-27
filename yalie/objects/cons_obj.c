@@ -2,19 +2,9 @@
 #include "cons_obj.h"
 #include "../guts/cons.h"
 
-obj_t GlobalConsClass = NULL;
-
-static void init_cons_class()
-{
-  GlobalConsClass = new_class_obj();
-}
-
-obj_t ConsClass()
-{
-  if (GlobalConsClass==NULL)
-    init_cons_class();
-  return GlobalConsClass;
-}
+/*
+ *  CONS OBJECTS
+ */
 
 obj_t new_cons_obj( obj_t a, obj_t b )
 {
@@ -23,6 +13,13 @@ obj_t new_cons_obj( obj_t a, obj_t b )
   obj_add_ref(a);
   obj_add_ref(b);
   return ret;
+}
+
+static void del_cons_obj( obj_t cell )
+{
+  obj_del_ref( cons_obj_car(cell) );
+  obj_del_ref( cons_obj_cdr(cell) );
+  free_cons( obj_guts(cell) );
 }
 
 obj_t cons_obj_car( obj_t cell )
@@ -50,25 +47,26 @@ bool is_cons( obj_t obj )
   return is_instance( obj, ConsClass() );
 }
 
-obj_t GlobalNilClass = NULL;
+obj_t GlobalConsClass = NULL;
 
-static void init_nil_class()
+static void init_cons_class()
 {
-  GlobalNilClass = new_class_obj();
+  GlobalConsClass = new_class_obj( del_cons_obj );
 }
 
-obj_t NilClass()
+obj_t ConsClass()
 {
-  if (GlobalNilClass==NULL)
-    init_nil_class();
-  return GlobalNilClass;
+  if (GlobalConsClass==NULL)
+    init_cons_class();
+  return GlobalConsClass;
 }
+
+/*
+ *   NIL OBJECTS
+ */
 
 obj_t new_nil_obj()
 {
-  if (GlobalNilClass==NULL)
-    init_nil_class();
-  
   obj_t ret = new_obj( NilClass() );
   return ret;
 }
@@ -76,4 +74,18 @@ obj_t new_nil_obj()
 bool is_nil( obj_t obj )
 {
   return is_instance( obj, NilClass() );
+}
+
+obj_t GlobalNilClass = NULL;
+
+static void init_nil_class()
+{
+  GlobalNilClass = new_class_obj( NULL );
+}
+
+obj_t NilClass()
+{
+  if (GlobalNilClass==NULL)
+    init_nil_class();
+  return GlobalNilClass;
 }

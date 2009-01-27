@@ -1,24 +1,15 @@
 #include "exception_obj.h"
 
-obj_t GlobalExcepClass = NULL;
-
-void init_excep_class()
-{
-  GlobalExcepClass = new_class_obj();
-}
-
-obj_t ExcepClass()
-{
-  if (GlobalExcepClass==NULL)
-    init_excep_class();
-  return GlobalExcepClass;
-}
-
 obj_t new_excep_obj( char* error )
 {
   obj_t ret = new_obj( ExcepClass() );
   obj_set_guts( ret, new_excep(error) );
   return ret;
+}
+
+static void del_excep_obj( obj_t excep )
+{
+  free_excep( obj_guts(excep) );
 }
 
 void excep_obj_add( obj_t excep, char* context )
@@ -35,3 +26,18 @@ bool is_excep( obj_t obj )
 {
   return is_instance( obj, ExcepClass() );
 }
+
+obj_t GlobalExcepClass = NULL;
+
+void init_excep_class()
+{
+  GlobalExcepClass = new_class_obj( del_excep_obj );
+}
+
+obj_t ExcepClass()
+{
+  if (GlobalExcepClass==NULL)
+    init_excep_class();
+  return GlobalExcepClass;
+}
+

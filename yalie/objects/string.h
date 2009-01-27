@@ -13,7 +13,7 @@ char* string_repr( obj_t string );
 
 bool is_string( obj_t obj );
 
-
+/*
 obj_t StreamClass();
 
 obj_t new_stream_s( char* filename, char* mode );
@@ -26,5 +26,5 @@ void stream_flush( obj_t stream );
 char* stream_repr( obj_t stream );
 
 bool is_stream( obj_t obj );
-
+*/
 #endif

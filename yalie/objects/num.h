@@ -1,7 +1,7 @@
 #ifndef int_h_
 #define int_h_
 
-#include<stdbool.h>
+#include <stdbool.h>
 #include "object.h"
 
 obj_t IntClass();
