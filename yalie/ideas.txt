@@ -1,5 +1,13 @@
 Yalie: Yet Another Lisp Interpreting Experiment
 
+introduce some counterpart to "super" called "orig" that can call an
+old version of a method that is being redefined.
+
+Automatically bind self for Lisp methods.  BETTER: self is bound
+within methods to a NAMESPACE that holds the attributes for a given
+object. Then object fields can be accessed via reference notation (:).
+An @ symbol can then be an abbreviation for "self:"?
+
 Classes defined in C should also have a Lisp __init__() call. For
 builtin types, it should probably do nothing by default. This allows
 the user to define init behavior for builtin types without nuking the

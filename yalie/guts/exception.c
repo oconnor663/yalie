@@ -44,7 +44,7 @@ char* excep_repr( excep_t excep )
 
   cons_t tmp_context = excep->context;
   while ( tmp_context != NULL ) {
-    fprintf( stream, "%s\n", cons_car(tmp_context) );
+    fprintf( stream, "%s\n", (char*)cons_car(tmp_context) );
     tmp_context = cons_cdr(tmp_context);
   }
   fprintf( stream, "%s", excep->error );
