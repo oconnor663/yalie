@@ -16,8 +16,7 @@ typedef struct Table * table_t;
 table_t new_table( size_t (*hash)(void*, size_t), bool (*eq_p)(void*,void*) );
 void free_table( table_t table );
 
-size_t pointer_hash( void* ptr, size_t size );
-bool pointer_eq( void* a, void* b );
+table_t new_pointer_table();
 
 size_t table_len( table_t table );
 
