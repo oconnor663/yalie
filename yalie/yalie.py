@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
-import sys,os,string
+import sys,os,string,readline
+from StringIO import *
 
 class Scope:
     def __init__( self, parent ):
@@ -24,6 +25,8 @@ class Scope:
             raise RuntimeError, "Could not set key: '%s'" % key
     def let( self, key,val ):
         ### No return
+        if key in self.dict:
+            raise RuntimeError, "Variable already exists"
         self.dict[key] = val
     def __setitem__( self, key, val ):
         self.let( key, val )
@@ -50,7 +53,6 @@ class Object:
     def message( self, scope, message, *args ):
         return self.methods.ref(message).call(scope,self,*args)
 
-
 ### def method( scope, object, *args )
 
 class PyMethod:
@@ -60,9 +62,22 @@ class PyMethod:
         return self.fn( scope, obj, *args )
 
 
+###
+### Builtins
+###
+
+
 RootObject = Object(None)
 RootObject.methods['eval'] = PyMethod( lambda scope, obj : obj )
+RootObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(1) )
+def print_ret( p, r ):
+    sys.stdout.write( str(p) )
+    return r
+RootObject.methods['print'] = PyMethod( lambda scope, obj: print_ret(obj,obj) )
 
+NilObject = Object(RootObject)
+NilObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(0) )
+NilObject.methods['print'] = PyMethod( lambda scope, obj: print_ret('()',obj) )
 
 IntObject = Object(RootObject)
 def make_int( i ):
@@ -76,58 +91,217 @@ def int_add( scope, obj, other_obj ):
         raise RuntimeError, "Cannot add int to non-int."
     return make_int( obj.data + other_obj.data )
 IntObject.methods['add'] = PyMethod( int_add )
+IntObject.methods['print'] = PyMethod(lambda scope,obj:print_ret(obj.data,obj))
+IntObject.methods['bool'] = PyMethod( lambda scope, obj :
+                                          make_int(0) if obj.data==0 \
+                                          else make_int(1))
+
+SymbolObject = Object(RootObject)
+def make_symbol(name):
+    if type(name)!=type('') or name=='':
+        raise RuntimeError, "Something fishy"
+    ret = Object(SymbolObject)
+    ret.data = name
+    return ret
+SymbolObject.methods['eval'] = PyMethod( lambda scope, obj:scope.ref(obj.data))
+SymbolObject.methods['print'] = PyMethod(lambda scope,obj:print_ret(obj.data,obj))
 
 
-def read_obj( file, c ):
-    return clear_whitespace( file, c )
+ConsObject = Object(RootObject)
+def make_cons( obj1, obj2 ):
+    ret = Object(ConsObject)
+    ret.data = [ obj1, obj2 ]
+    return ret
+def make_list( l ):
+    if l:
+        ret = Object(ConsObject)
+        ret.data = [ l[0], make_list(l[1:]) ]
+        return ret
+    else:
+        return NilObject
+def cons_print( scope, c ):
+    sys.stdout.write( '(' )
+    c.data[0].message( scope, 'print' )
+    def cons_print_helper( rest ):
+        if rest.inherits(ConsObject):
+            sys.stdout.write(' ')
+            rest.data[0].message( scope, 'print' )
+            cons_print_helper( rest.data[1] )
+        elif rest.inherits( NilObject ):
+            sys.stdout.write( ')' )
+        else:
+            sys.stdout.write( ' . ' )
+            rest.data[1].message( scope, 'print' )
+            sys.stdout.write( ')' )
+    cons_print_helper( c.data[1] )
+    return c
+def set_car( scope, obj, arg ):
+    obj.data[0] = arg
+    return arg
+def set_cdr( scope, obj, arg ):
+    obj.data[1] = arg
+    return arg
+def cons_eval( scope, obj ):
+    fn = obj.data[0].message( scope, 'eval' )
+    args = []
+    obj = obj.data[1]
+    while not obj.inherits(NilObject):
+        if not obj.inherits(ConsObject):
+            raise RuntimeError, "Function called in dotted list"
+        args.append( obj.data[0] )
+        obj = obj.data[1]
+    return fn.message( scope, 'call', *args )
+    
+ConsObject.methods['car'] = PyMethod( lambda scope,obj: obj.data[0] )
+ConsObject.methods['cdr'] = PyMethod( lambda scope,obj: obj.data[1] )
+ConsObject.methods['setcar'] = PyMethod( set_car )
+ConsObject.methods['setcdr'] = PyMethod( set_cdr )
+ConsObject.methods['print'] = PyMethod( cons_print )
+ConsObject.methods['eval'] = PyMethod( cons_eval )
 
-def white(c):
-    return c!='' and c in string.whitespace
+MsgObject = Object(RootObject)
+def msg_call( scope, obj, recipient, message, *args ):
+    #evaluate the recipient
+    recipient = recipient.message( scope, 'eval' )
+    if not message.inherits( SymbolObject ):
+        raise RuntimeError, "'msg' requires a symbol as a message"
+    #pass the message
+    return recipient.message( scope, message.data, *args )    
+MsgObject.methods['call'] = PyMethod( msg_call )
 
-def clear_whitespace( file, c ):
-    while white(c):
-        c = file.read(1)
+
+LetObject = Object(RootObject)
+def let_call( scope, obj, var, val ):
+    if not var.inherits(SymbolObject):
+        raise RuntimeError, "'let' requires a symbol!"
+    e_val = val.message( scope, 'eval' )
+    scope.let( var.data, e_val )
+    return e_val
+LetObject.methods['call'] = PyMethod( let_call )
+
+
+SetObject = Object(RootObject)
+def set_call( scope, obj, var, val ):
+    if not var.inherits(SymbolObject):
+        raise RuntimeError, "'set' requires a symbol!"
+    e_val = val.message( scope, 'eval' )
+    scope.set( var.data, e_val )
+    return e_val
+SetObject.methods['call'] = PyMethod( set_call )
+
+###
+### Parser!!!
+###
+
+class Buffer:
+    def __init__( self, file ):
+        self.file = file
+        self.buf = []
+    def getc( self ):
+        if self.buf:
+            c = self.buf[0]
+            self.buf = self.buf[1:]
+            return c
+        else:
+            return self.file.read(1)
+    def ungetc( self, c ):
+        if len(c)>1:
+            raise RuntimeError, "OMG!!!!"
+        self.buf = [c] + self.buf if c else self.buf
+    def read_obj(self):
+        return read_obj(self)
+
+def read_obj( buf ):
+    return clear_whitespace( buf )
+
+def clear_whitespace( buf ):
+    c = buf.getc()
+    while c and c in string.whitespace:
+        c = buf.getc()
     if c=='':
         return None
     else:
-        return read_list(file,c)
+        buf.ungetc(c)
+        return read_list(buf)
 
-def read_list( file, c ):
+def read_list( buf ):
+    c = buf.getc()
     if c != '(':
-        return read_int(file,c)
+        buf.ungetc(c)
+        return read_int(buf)
 
-    def read_rest( file, c ):
-        while white(c):
-            c = file.read(1)
+    def read_rest( buf ):
+        c = buf.getc()
+        while c and c in string.whitespace:
+            c = buf.getc()
         if c=='':
             raise RuntimeError, "unclosed list"
         if c==')':
             return []
         else:
-            obj, c = read_obj( file,c )
-            rest = read_rest( file, c )
+            buf.ungetc(c)
+            obj = read_obj( buf )
+            rest = read_rest( buf )
             return [ obj ] + rest
 
-    return (read_rest( file, ' ' ), ' ')
+    return make_list(read_rest( buf ))
 
-def read_int( file, c ):
+def read_int( buf ):
+    c = buf.getc()
     if c not in string.digits:
-        return read_symbol( file, c )
-    buf = [ c ]
-    c = file.read(1)
-    while c in string.digits:
-        buf.append(c)
-        c = file.read(1)
-    if c in string.letters:
+        buf.ungetc(c)
+        return read_symbol( buf )
+    chars = [ c ]
+    c = buf.getc()
+    while c and c in string.digits:
+        chars.append(c)
+        c = buf.getc()
+    if c and c in string.letters:
         raise RuntimeError, "Syntax error reading int"
-    return ( int(string.join(buf,'')), c )
+    buf.ungetc(c)
+    return make_int(int(string.join(chars,'')))
 
-def read_symbol( file, c ):
+def read_symbol( buf ):
+    c = buf.getc()
     if c not in string.letters:
-        raise RuntimeError, "Not done yet"
-    buf = [c]
-    c = file.read(1)
-    while c in string.letters + string.digits:
-        buf.append(c)
-        c = file.read(1)
-    return ( string.join(buf,''), c )
+        raise RuntimeError, "Unable to parse"
+    chars = [c]
+    c = buf.getc()
+    while c and c in string.letters + string.digits:
+        chars.append(c)
+        c = buf.getc()
+    buf.ungetc(c)
+    return make_symbol(string.join(chars,''))
+
+
+###
+### REPL
+###
+
+def make_global_scope():
+    S = Scope( None )
+    S['msg'] = MsgObject
+    S['let'] = LetObject
+    S['set'] = SetObject
+    return S
+
+def main():
+    scope = make_global_scope()
+
+    while True:
+        try:
+            code = raw_input("yalie: ")
+        except EOFError:
+            print
+            break
+        buf = Buffer( StringIO(code) )
+        while True:
+            obj = buf.read_obj()
+            if obj==None:
+                break
+            ret = obj.message(scope,'eval')
+            ret.message(scope,'print')
+            print
+
+if __name__=='__main__':
+    main()
