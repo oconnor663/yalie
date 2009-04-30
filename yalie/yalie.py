@@ -239,9 +239,14 @@ WhileObject.methods['call'] = PyMethod( while_call )
 ###
 
 class Buffer:
+    delimiters = "()"
+    prefixes = "`,;"
+    infixes = ".:"
+    punctuation = delimiters+prefixes+infixes
     def __init__( self, file ):
         self.file = file
         self.buf = []
+        self.tokbuf = []
     def getc( self ):
         if self.buf:
             c = self.buf[0]
@@ -253,8 +258,104 @@ class Buffer:
         if len(c)>1:
             raise RuntimeError, "OMG!!!!"
         self.buf = [c] + self.buf if c else self.buf
+    def gettok( self ):
+        if self.tokbuf:
+            tmp = self.tokbuf[0]
+            self.tokbuf = self.tokbuf[1:]
+            return tmp
+        c = self.getc()
+        while c and c in string.whitespace:
+            c = self.getc()
+        if c=='':
+            return None
+        if c=='#':
+            while c not in '\n': # includes empty
+                c = self.getc()
+            return self.gettok()
+        elif c in self.punctuation:
+            return c
+        elif c in string.digits:
+            chars = [ c ]
+            c = self.getc()
+            while c and c in string.digits:
+                chars.append(c)
+                c = self.getc()
+            if c not in self.punctuation+string.whitespace:
+                raise RuntimeError, "Syntax error reading int"
+            self.ungetc(c)
+            return make_int(int(string.join(chars,'')))
+        else:
+            chars = [ c ]
+            c = self.getc()
+            while c not in self.punctuation+string.whitespace:
+                chars.append(c)
+                c = self.getc()
+            self.ungetc(c)
+            return make_symbol( string.join(chars,'') )
+    def ungettok( self, tok ):
+        self.tokbuf = [tok] + self.tokbuf
+    def read_prefixed(self):
+        dict = { '`':'quote', ';':'unquote-splice', ',':'unquote' }
+        tok = self.gettok()
+        if tok==None:
+            return None
+        elif isinstance(tok,Object):
+            return tok
+        elif tok=='(':
+            return self.read_sexpr()
+        elif tok in self.prefixes:
+            return make_list([make_symbol(dict[tok]),self.read_prefixed()])
+        else:
+            raise RuntimeError, "read_prefixes could not parse %s" % tok
+    
+    def read_infixed(self, prefixed=None):
+        dict = { '.':'msg', ':':'ref' } ##TWO COPIES
+        if prefixed==None:
+            prefixed = self.read_prefixed()
+        tok = self.gettok()
+        if tok==None:
+            return prefixed #could be None
+        elif isinstance(tok,Object) or tok not in self.infixes:
+            self.ungettok(tok)
+            return prefixed
+        else:
+            other = self.read_prefixed()
+            list = make_list( [make_symbol(dict[tok]), prefixed, other] )
+            return self.read_infixed(list)
+
+    def read_sexpr( self, capture_infix=True ):
+        dict = { '.':'msg', ':':'ref' } ##TWO COPIES
+        tok = self.gettok()
+        if tok==None:
+            raise RuntimeError, "Ended in sexpr.0"
+        elif tok==')':
+            return NilObject
+        else:
+            self.ungettok(tok)
+
+        if capture_infix:
+            first = self.read_prefixed()
+            if first==None:
+                raise RuntimeError, "Ended in sexpr.1"
+            tok = self.gettok()
+            if tok==None:
+                raise RuntimeError, "Ended in sexpr.2"
+            elif isinstance(tok,Object) or tok not in self.infixes:
+                self.ungettok(tok)
+                return make_cons( first, self.read_sexpr(False) )
+            else:
+                return make_cons( make_symbol(dict[tok]),
+                                  make_cons( first,
+                                             self.read_sexpr(False) ))
+        else:
+            return make_cons(self.read_infixed(),self.read_sexpr(False))
+
     def read_obj(self):
-        return read_obj(self)
+        return self.read_infixed()
+
+
+
+
 
 def read_obj( buf ):
     return clear_whitespace( buf )
@@ -353,7 +454,7 @@ def main():
             obj = buf.read_obj()
             if obj==None:
                 break
-            ret = obj.message(scope,'eval')
+            ret = obj#.message(scope,'eval')
             ret.message(scope,'print')
             print
 
