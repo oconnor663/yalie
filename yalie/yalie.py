@@ -353,79 +353,6 @@ class Buffer:
     def read_obj(self):
         return self.read_infixed()
 
-
-
-
-
-def read_obj( buf ):
-    return clear_whitespace( buf )
-
-def clear_whitespace( buf ):
-    c = buf.getc()
-    while c and c in string.whitespace:
-        c = buf.getc()
-    if c=='':
-        return None
-    if c=='#':
-        while c not in ('','\n'):
-            c = buf.getc()
-        return clear_whitespace(buf)
-    else:
-        buf.ungetc(c)
-        return read_list(buf)
-
-def read_list( buf ):
-    c = buf.getc()
-    if c != '(':
-        buf.ungetc(c)
-        return read_int(buf)
-
-    def read_rest( buf ):
-        c = buf.getc()
-        while c and c in string.whitespace:
-            c = buf.getc()
-        if c=='':
-            raise RuntimeError, "unclosed list"
-        if c==')':
-            return []
-        else:
-            buf.ungetc(c)
-            obj = read_obj( buf )
-            rest = read_rest( buf )
-            return [ obj ] + rest
-
-    return make_list(read_rest( buf ))
-
-def read_int( buf ):
-    c = buf.getc()
-    if c not in string.digits:
-        buf.ungetc(c)
-        return read_symbol( buf )
-    chars = [ c ]
-    c = buf.getc()
-    while c and c in string.digits:
-        chars.append(c)
-        c = buf.getc()
-    if c and c in string.letters:
-        raise RuntimeError, "Syntax error reading int"
-    buf.ungetc(c)
-    return make_int(int(string.join(chars,'')))
-
-def read_symbol( buf ):
-    allowed = [i for i in string.letters+string.digits+string.punctuation
-               if i not in "#()`:.,;"]
-    c = buf.getc()
-    if c not in allowed:
-        raise RuntimeError, "Unable to parse"
-    chars = [c]
-    c = buf.getc()
-    while c and c in allowed:
-        chars.append(c)
-        c = buf.getc()
-    buf.ungetc(c)
-    return make_symbol(string.join(chars,''))
-
-
 ###
 ### REPL
 ###
@@ -451,12 +378,15 @@ def main():
             break
         buf = Buffer( StringIO(code) )
         while True:
-            obj = buf.read_obj()
-            if obj==None:
-                break
-            ret = obj#.message(scope,'eval')
-            ret.message(scope,'print')
-            print
+            try:
+                obj = buf.read_obj()
+                if obj==None:
+                    break
+                ret = obj.message(scope,'eval')
+                ret.message(scope,'print')
+                print
+            except Exception, e:
+                print "ERROR:", e.args[0]
 
 if __name__=='__main__':
     main()
