@@ -81,16 +81,35 @@ NilObject.methods['print'] = PyMethod( lambda scope, obj: print_ret('()',obj) )
 
 IntObject = Object(RootObject)
 def make_int( i ):
-    if type(i)!=type(0):
+    if type(i) not in (type(0),type(10000000000)):
         raise RuntimeError, "OOPS!!!"
     ret = Object( IntObject )
     ret.data = i
     return ret
-def int_add( scope, obj, other_obj ):
-    if not other_obj.inherits( IntObject ):
+def int_add( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
+    if not arg.inherits( IntObject ):
         raise RuntimeError, "Cannot add int to non-int."
-    return make_int( obj.data + other_obj.data )
-IntObject.methods['add'] = PyMethod( int_add )
+    return make_int( obj.data + arg.data )
+def int_sub( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
+    if not arg.inherits( IntObject ):
+        raise RuntimeError, "Cannot subtract int from non-int."
+    return make_int( obj.data - arg.data )
+def int_eq( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
+    if not arg.inherits( IntObject ):
+        raise RuntimeError, "Cannot compare int to non-int."
+    return make_int( 1 if obj.data==arg.data else 0 )
+def int_lt( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
+    if not arg.inherits( IntObject ):
+        raise RuntimeError, "Cannot compare int to non-int."
+    return make_int( 1 if obj.data<arg.data else 0 )
+IntObject.methods['+'] = PyMethod( int_add )
+IntObject.methods['-'] = PyMethod( int_sub )
+IntObject.methods['='] = PyMethod( int_eq )
+IntObject.methods['<'] = PyMethod( int_lt )
 IntObject.methods['print'] = PyMethod(lambda scope,obj:print_ret(obj.data,obj))
 IntObject.methods['bool'] = PyMethod( lambda scope, obj :
                                           make_int(0) if obj.data==0 \
@@ -136,9 +155,11 @@ def cons_print( scope, c ):
     cons_print_helper( c.data[1] )
     return c
 def set_car( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
     obj.data[0] = arg
     return arg
 def set_cdr( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
     obj.data[1] = arg
     return arg
 def cons_eval( scope, obj ):
@@ -189,6 +210,30 @@ def set_call( scope, obj, var, val ):
     return e_val
 SetObject.methods['call'] = PyMethod( set_call )
 
+QuoteObject = Object(RootObject)
+QuoteObject.methods['call'] = PyMethod( lambda scope, self, obj: obj)
+
+IfObject = Object(RootObject)
+def if_call( scope, obj, cond, conseq, alt=NilObject ):
+    bool = cond.message( scope, 'eval' ).message( scope, 'bool' )
+    if bool.data:
+        return conseq.message( scope, 'eval' )
+    else:
+        return alt.message( scope, 'eval' )
+IfObject.methods['call'] = PyMethod( if_call )
+
+WhileObject = Object(RootObject)
+def while_call( scope, obj, cond, *body ):
+    ret = NilObject
+    while True:
+        bool = cond.message(scope,'eval').message(scope,'bool')
+        if not bool.data:
+            return ret
+        for i in body:
+            ret = i.message(scope,'eval')
+    return ret
+WhileObject.methods['call'] = PyMethod( while_call )
+
 ###
 ### Parser!!!
 ###
@@ -220,6 +265,10 @@ def clear_whitespace( buf ):
         c = buf.getc()
     if c=='':
         return None
+    if c=='#':
+        while c not in ('','\n'):
+            c = buf.getc()
+        return clear_whitespace(buf)
     else:
         buf.ungetc(c)
         return read_list(buf)
@@ -262,12 +311,14 @@ def read_int( buf ):
     return make_int(int(string.join(chars,'')))
 
 def read_symbol( buf ):
+    allowed = [i for i in string.letters+string.digits+string.punctuation
+               if i not in "#()`:.,;"]
     c = buf.getc()
-    if c not in string.letters:
+    if c not in allowed:
         raise RuntimeError, "Unable to parse"
     chars = [c]
     c = buf.getc()
-    while c and c in string.letters + string.digits:
+    while c and c in allowed:
         chars.append(c)
         c = buf.getc()
     buf.ungetc(c)
@@ -283,6 +334,9 @@ def make_global_scope():
     S['msg'] = MsgObject
     S['let'] = LetObject
     S['set'] = SetObject
+    S['quote'] = QuoteObject
+    S['if'] = IfObject
+    S['while'] = WhileObject
     return S
 
 def main():
