@@ -71,7 +71,7 @@ class Object:
         else:
             self.methods = Scope(parent.methods)
             self.members = parent.members.copy()
-            self.data = parent.data
+            self.data = copy.copy(parent.data)
             self.repr = parent.repr
     def inherits( self, ancestor ):
         if ancestor==self:
@@ -83,12 +83,13 @@ class Object:
     def message( self, scope, message, *args ):
         return self.methods.ref(message).call(scope,self,*args)
     def copy( self ):
-        ret = Object()
+        ret = Object( None )
         ret.parent = self.parent
         ret.methods = self.methods.copy()
         ret.members = self.members.copy()
         ret.data = copy.copy(self.data)
-        ret.rept = self.repr
+        ret.repr = self.repr
+        return ret
 
 class PyMethod:
     def __init__( self, fn ):
@@ -222,6 +223,16 @@ def int_sub( scope, obj, arg ):
     if not arg.inherits( IntObject ):
         raise RuntimeError, "Cannot subtract int from non-int."
     return make_int( obj.data - arg.data )
+def int_mul( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
+    if not arg.inherits( IntObject ):
+        raise RuntimeError, "Cannot subtract int from non-int."
+    return make_int( obj.data * arg.data )
+def int_div( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
+    if not arg.inherits( IntObject ):
+        raise RuntimeError, "Cannot subtract int from non-int."
+    return make_int( obj.data // arg.data )
 def int_eq( scope, obj, arg ):
     arg = arg.message(scope,'eval')
     if not arg.inherits( IntObject ):
@@ -234,6 +245,8 @@ def int_lt( scope, obj, arg ):
     return make_int( 1 if obj.data<arg.data else 0 )
 IntObject.methods['+'] = PyMethod( int_add )
 IntObject.methods['-'] = PyMethod( int_sub )
+IntObject.methods['*'] = PyMethod( int_mul )
+IntObject.methods['/'] = PyMethod( int_div )
 IntObject.methods['='] = PyMethod( int_eq )
 IntObject.methods['<'] = PyMethod( int_lt )
 IntObject.methods['bool'] = PyMethod( lambda scope, obj :
