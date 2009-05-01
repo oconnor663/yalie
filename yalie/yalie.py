@@ -6,6 +6,13 @@ from StringIO import *
 ### Make this false to see Python error traces
 CATCH_ERRORS = 1
 
+### Terminal prompts
+PROMPT = "yalie: "
+REPROMPT = "...    "
+
+### Command history
+HISTORY_NAME = os.path.expanduser('~/.yalie_history')
+
 class Scope:
     def __init__( self, parent ):
         self.parent = parent
@@ -37,6 +44,11 @@ class Scope:
 
 class Object:
     def __repr__( self ):
+        ### Note the strangeness of this arrangement. It implies that
+        ### the "repr" field will be set to a FUNCTION, not a method.
+        ### The function call will appear to be a method call, but the
+        ### type difference means that the self will not be implicitly
+        ### passed. Thus this little hack.
         return self.repr(self)
     def __init__( self, parent ):
         self.parent = parent
@@ -365,25 +377,39 @@ class Buffer:
         self.file = file
         self.buf = []
         self.tokbuf = []
-    def getc( self ):
+        self.isatty = self.file.fileno()==0 and os.isatty(0)
+        if self.isatty:
+            if not os.path.exists(HISTORY_NAME):
+                open(HISTORY_NAME,'w').close()
+            readline.read_history_file(HISTORY_NAME)
+    def getc( self, start=False, gentle=False ):
         if self.buf:
             c = self.buf[0]
             self.buf = self.buf[1:]
             return c
+        elif self.isatty:
+            if gentle:
+                return ''
+            try:
+                self.buf = list(raw_input(PROMPT if start else REPROMPT)+'\n')
+                readline.write_history_file(HISTORY_NAME)
+                return self.getc( start )
+            except EOFError:
+                return ''
         else:
             return self.file.read(1)
     def ungetc( self, c ):
         if len(c)>1:
             raise RuntimeError, "OMG!!!!"
         self.buf = [c] + self.buf if c else self.buf
-    def gettok( self ):
+    def gettok( self, start=False, gentle=False ):
         if self.tokbuf:
             tmp = self.tokbuf[0]
             self.tokbuf = self.tokbuf[1:]
             return tmp
-        c = self.getc()
+        c = self.getc(start,gentle)
         while c and c in string.whitespace:
-            c = self.getc()
+            c = self.getc(start,gentle)
         if c=='':
             return None
         if c=='#':
@@ -412,9 +438,9 @@ class Buffer:
             return make_symbol( string.join(chars,'') )
     def ungettok( self, tok ):
         self.tokbuf = [tok] + self.tokbuf
-    def read_prefixed(self):
+    def read_prefixed(self, start=False):
         dict = {'`':'quote','\'':'quote',';':'unquote-splice',',':'unquote'}
-        tok = self.gettok()
+        tok = self.gettok(start)
         if tok==None:
             return None
         elif isinstance(tok,Object):
@@ -426,11 +452,11 @@ class Buffer:
         else:
             raise RuntimeError, "read_prefixes could not parse %s" % tok
     
-    def read_infixed(self, prefixed=None):
+    def read_infixed(self, prefixed=None, start=False):
         dict = { '.':'msg', ':':'ref' } ##TWO COPIES
         if prefixed==None:
-            prefixed = self.read_prefixed()
-        tok = self.gettok()
+            prefixed = self.read_prefixed(start)
+        tok = self.gettok(False,True)
         if tok==None:
             return prefixed #could be None
         elif isinstance(tok,Object) or tok not in self.infixes:
@@ -469,7 +495,7 @@ class Buffer:
             return make_cons(self.read_infixed(),self.read_sexpr(False))
 
     def read_obj(self):
-        return self.read_infixed()
+        return self.read_infixed(None,True)
 
 ###
 ### REPL
@@ -486,45 +512,31 @@ def make_global_scope():
     return S
 
 def main():
-    HISTORY_NAME = os.path.expanduser('~/.yalie_history')
     scope = make_global_scope()
-    if not os.path.exists(HISTORY_NAME):
-        open(HISTORY_NAME,'w').close()
-    readline.read_history_file(HISTORY_NAME)
+    buf = Buffer( sys.stdin )
+
     while True:
-        try:
-            code = raw_input("yalie: ")
-        except EOFError:
-            print
-            break
-        except KeyboardInterrupt:
-            print
-            continue
-
-        readline.write_history_file(HISTORY_NAME)
-        buf = Buffer( StringIO(code) )
-
-        while True:
-            if CATCH_ERRORS:
-                ### Protected loop for normal use
-                try:
-                    obj = buf.read_obj()
-                    if obj==None:
-                        break
-                    ret = obj.message(scope,'eval')
-                    ret.message(scope,'print')
-                except Exception, e:
-                    print "ERROR:", e.args
-                except KeyboardInterrupt:
-                    print "INTERRUPT"
-                    break
-            else:
-                ### Unprotected loop for debugging
+        if CATCH_ERRORS:
+            ### Protected loop for normal use
+            try:
                 obj = buf.read_obj()
                 if obj==None:
+                    print
                     break
                 ret = obj.message(scope,'eval')
                 ret.message(scope,'print')
+            except Exception, e:
+                print "ERROR:", e.args
+            except KeyboardInterrupt:
+                print "INTERRUPT"
+                continue
+        else:
+            ### Unprotected loop for debugging
+            obj = buf.read_obj()
+            if obj==None:
+                break
+            ret = obj.message(scope,'eval')
+            ret.message(scope,'print')
 
 
 if __name__=='__main__':
