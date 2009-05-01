@@ -3,6 +3,9 @@
 import sys,os,string,readline
 from StringIO import *
 
+### Make this false to see Python error traces
+CATCH_ERRORS = 1
+
 class Scope:
     def __init__( self, parent ):
         self.parent = parent
@@ -28,21 +31,27 @@ class Scope:
         if key in self.dict:
             raise RuntimeError, "Variable already exists"
         self.dict[key] = val
+    def __getitem__( self, key ):
+        self.ref( key )
     def __setitem__( self, key, val ):
         self.let( key, val )
         
 
 class Object:
+    def __repr__( self ):
+        return self.repr(self)
     def __init__( self, parent ):
         self.parent = parent
         if parent==None:
             self.methods = Scope(None)
             self.members = {}
             self.data = None
+            self.repr = lambda self: repr(self)
         else:
             self.methods = Scope(parent.methods)
             self.members = parent.members.copy()
             self.data = parent.data
+            self.repr = parent.repr
     def inherits( self, ancestor ):
         if ancestor==self:
             return True
@@ -60,28 +69,88 @@ class PyMethod:
         self.fn = fn
     def call( self, scope, obj, *args ):
         return self.fn( scope, obj, *args )
-
-
+class LispMethod:
+    def __init__( self, scope, args, rest_arg, body ):
+        self.scope = scope
+        self.args = args                 #list of strings
+        self.rest_arg = rest_arg         #string or None
+        self.body = body                 #list of objects
+    def call( self, call_scope, caller, *call_args ):
+        ### binds args and self
+        ## first check number of args
+        if self.rest_arg==None:
+            if len(call_args)!=len(self.args):
+                raise RuntimeError, "Too many arguments to lisp method."
+        else:
+            if len(call_args)<len(self.args):
+                raise RuntimeError, "Too many arguments to lisp method."
+        new_scope = Scope(self.scope)
+        new_scope['self'] = caller
+        # pair args off with arg names and chop the list of args
+        for i in self.args:
+            new_scope[i] = call_args[0].message(call_scope,'eval')
+            call_args = call_args[1:]
+        # collect any remainder into the final list
+        if call_args:
+            rest = [ i.message(call_scope,'eval') for i in call_args ]
+            new_scope[self.rest_arg] = make_list(rest)
+        ret = NilObject
+        for i in self.body:
+            ret = i.message( new_scope, 'eval' )
+        return ret
+        
 ###
 ### Builtins
 ###
 
 
 RootObject = Object(None)
+def print_ret( obj ):
+    print repr(obj)
+    return obj
+def object_def( scope, obj, name, args, *body ):
+    if not name.inherits(SymbolObject):
+        raise RuntimeError, "Name of method must be a symbol"
+    if not args.inherits(ConsObject) and not args.inherits(NilObject):
+        raise RuntimeError, "Args must be a list"
+    if not well_formed(args):
+        raise RuntimeError, "Args list must be well-formed"
+    args_ls = unmake_list(args)
+    ## Look for a rest arg
+    rest_arg = None
+    if args_ls and args_ls[-1].inherits(ConsObject):
+        last_ls = unmake_list(args_ls[-1])
+        if len(last_ls)>2:
+            raise RuntimeError, "Too many items in a method def rest list"
+        for i in last_ls:
+            if not i.inherits(SymbolObject):
+                raise RuntimeError, "non-symbol in args sublist"
+        if last_ls[0].data != "rest":
+            raise RuntimeError, "Unknown argument tag: %s" % last_ls[0].data
+        ## with tests passed, strip rest arg
+        rest_arg = last_ls[1].data
+        args_ls = args_ls[:-1]
+    ## Check rest of args
+    for i in args_ls:
+        if not i.inherits(SymbolObject):
+            raise RuntimeError, "non-symbol in args list"
+    arg_names = [ i.data for i in args_ls ]
+    obj.methods[name.data] = LispMethod( scope, arg_names, rest_arg, body )
+    return obj
+
 RootObject.methods['eval'] = PyMethod( lambda scope, obj : obj )
 RootObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(1) )
-def print_ret( p, r ):
-    sys.stdout.write( str(p) )
-    return r
-RootObject.methods['print'] = PyMethod( lambda scope, obj: print_ret(obj,obj) )
+RootObject.methods['print'] = PyMethod( lambda scope, obj: print_ret(obj) )
+RootObject.methods['def'] = PyMethod( object_def )
 
 NilObject = Object(RootObject)
+NilObject.repr = lambda self: "()"
 NilObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(0) )
-NilObject.methods['print'] = PyMethod( lambda scope, obj: print_ret('()',obj) )
 
 IntObject = Object(RootObject)
+IntObject.repr = lambda self: repr(self.data)
 def make_int( i ):
-    if type(i) not in (type(0),type(10000000000)):
+    if type(i) not in (type(0),type(0L)):
         raise RuntimeError, "OOPS!!!"
     ret = Object( IntObject )
     ret.data = i
@@ -110,12 +179,12 @@ IntObject.methods['+'] = PyMethod( int_add )
 IntObject.methods['-'] = PyMethod( int_sub )
 IntObject.methods['='] = PyMethod( int_eq )
 IntObject.methods['<'] = PyMethod( int_lt )
-IntObject.methods['print'] = PyMethod(lambda scope,obj:print_ret(obj.data,obj))
 IntObject.methods['bool'] = PyMethod( lambda scope, obj :
                                           make_int(0) if obj.data==0 \
                                           else make_int(1))
 
 SymbolObject = Object(RootObject)
+SymbolObject.repr = lambda self: self.data
 def make_symbol(name):
     if type(name)!=type('') or name=='':
         raise RuntimeError, "Something fishy"
@@ -123,10 +192,25 @@ def make_symbol(name):
     ret.data = name
     return ret
 SymbolObject.methods['eval'] = PyMethod( lambda scope, obj:scope.ref(obj.data))
-SymbolObject.methods['print'] = PyMethod(lambda scope,obj:print_ret(obj.data,obj))
 
 
 ConsObject = Object(RootObject)
+def cons_repr( self ):
+    ret = "("
+    ret += repr(self.data[0])
+    def cons_repr_helper( rest ):
+        ret = ''
+        if rest.inherits(ConsObject):
+            ret += ' ' + repr(rest.data[0])
+            ret += cons_repr_helper( rest.data[1] )
+        elif rest.inherits( NilObject ):
+            ret += ')'
+        else:
+            ret += ' . ' + repr(rest.data[1]) + ')'
+        return ret
+    return ret + cons_repr_helper( self.data[1] )
+ConsObject.repr = cons_repr
+
 def make_cons( obj1, obj2 ):
     ret = Object(ConsObject)
     ret.data = [ obj1, obj2 ]
@@ -138,30 +222,22 @@ def make_list( l ):
         return ret
     else:
         return NilObject
-def unmake_list( c ):
-    list = []
+def well_formed( c ):
+    if not (c.inherits(ConsObject) or c.inherits(NilObject)):
+        raise RuntimeError, "Cannot check for well-formedness of nonlist"
     while not c.inherits(NilObject):
         if not c.inherits(ConsObject):
-            raise RuntimeError, "cannot make python list out of non-list"
+            return False
+        c = c.data[1]
+    return True
+def unmake_list( c ):
+    if not well_formed(c):
+        raise RuntimeError, "Cannot make python list from non-well-formed list"
+    list = []
+    while not c.inherits(NilObject):
         list.append( c.data[0] )
         c = c.data[1]
     return list
-def cons_print( scope, c ):
-    sys.stdout.write( '(' )
-    c.data[0].message( scope, 'print' )
-    def cons_print_helper( rest ):
-        if rest.inherits(ConsObject):
-            sys.stdout.write(' ')
-            rest.data[0].message( scope, 'print' )
-            cons_print_helper( rest.data[1] )
-        elif rest.inherits( NilObject ):
-            sys.stdout.write( ')' )
-        else:
-            sys.stdout.write( ' . ' )
-            rest.data[1].message( scope, 'print' )
-            sys.stdout.write( ')' )
-    cons_print_helper( c.data[1] )
-    return c
 def set_car( scope, obj, arg ):
     arg = arg.message(scope,'eval')
     obj.data[0] = arg
@@ -171,6 +247,8 @@ def set_cdr( scope, obj, arg ):
     obj.data[1] = arg
     return arg
 def cons_eval( scope, obj ):
+    if not well_formed(obj):
+        raise RuntimeError, "Cannot evaluate non-well-formed list."
     fn = obj.data[0].message( scope, 'eval' )
     return fn.message( scope, 'call', *unmake_list(obj.data[1]) )
     
@@ -178,7 +256,6 @@ ConsObject.methods['car'] = PyMethod( lambda scope,obj: obj.data[0] )
 ConsObject.methods['cdr'] = PyMethod( lambda scope,obj: obj.data[1] )
 ConsObject.methods['setcar'] = PyMethod( set_car )
 ConsObject.methods['setcdr'] = PyMethod( set_cdr )
-ConsObject.methods['print'] = PyMethod( cons_print )
 ConsObject.methods['eval'] = PyMethod( cons_eval )
 
 MsgObject = Object(RootObject)
@@ -427,9 +504,6 @@ def main():
         readline.write_history_file(HISTORY_NAME)
         buf = Buffer( StringIO(code) )
 
-        ### Make this false to see Python error traces
-        CATCH_ERRORS = 1
-
         while True:
             if CATCH_ERRORS:
                 ### Protected loop for normal use
@@ -439,7 +513,6 @@ def main():
                         break
                     ret = obj.message(scope,'eval')
                     ret.message(scope,'print')
-                    print
                 except Exception, e:
                     print "ERROR:", e.args
                 except KeyboardInterrupt:
@@ -452,7 +525,6 @@ def main():
                     break
                 ret = obj.message(scope,'eval')
                 ret.message(scope,'print')
-                print
 
 
 if __name__=='__main__':
