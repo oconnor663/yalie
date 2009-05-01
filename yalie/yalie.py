@@ -1,6 +1,6 @@
 #! /usr/bin/python
 
-import sys,os,string,readline
+import sys,os,string,readline,copy
 from StringIO import *
 
 ### Make this false to see Python error traces
@@ -37,7 +37,7 @@ class Scope:
         ### No return
         self.dict[key] = val
     def __getitem__( self, key ):
-        self.ref( key )
+        return self.ref( key )
     def __setitem__( self, key, val ):
         self.let( key, val )
     def list_keys( self ):
@@ -45,6 +45,11 @@ class Scope:
         if self.parent:
             ret += self.parent.list_keys()
         ret.sort()
+        return ret
+    def copy( self ):
+        ret = Scope(None)
+        ret.dict = self.dict.copy()
+        ret.parent = self.parent
         return ret
         
 
@@ -60,9 +65,9 @@ class Object:
         self.parent = parent
         if parent==None:
             self.methods = Scope(None)
-            self.members = {}
+            self.members = Scope(None)
             self.data = None
-            self.repr = lambda self: repr(self)
+            self.repr = lambda self: "<An Object: %s>" % self.data
         else:
             self.methods = Scope(parent.methods)
             self.members = parent.members.copy()
@@ -77,8 +82,13 @@ class Object:
             return False
     def message( self, scope, message, *args ):
         return self.methods.ref(message).call(scope,self,*args)
-
-### def method( scope, object, *args )
+    def copy( self ):
+        ret = Object()
+        ret.parent = self.parent
+        ret.methods = self.methods.copy()
+        ret.members = self.members.copy()
+        ret.data = copy.copy(self.data)
+        ret.rept = self.repr
 
 class PyMethod:
     def __init__( self, fn ):
@@ -112,7 +122,7 @@ class LispMethod:
         if self.rest_arg:
             rest = [ i.message(call_scope,'eval') for i in call_args ]
             new_scope[self.rest_arg] = make_list(rest)
-        ret = NilObject
+        ret = make_nil()
         for i in self.body:
             ret = i.message( new_scope, 'eval' )
         return ret
@@ -120,7 +130,7 @@ class LispMethod:
 ###
 ### Builtins
 ###
-
+Builtins = {}
 
 RootObject = Object(None)
 def print_ret( obj ):
@@ -155,18 +165,44 @@ def object_def( scope, obj, name, args, *body ):
     arg_names = [ i.data for i in args_ls ]
     obj.methods[name.data] = LispMethod( scope, arg_names, rest_arg, body )
     return obj
+def object_dup( scope, obj, name, new_name ):
+    if not name.inherits(SymbolObject):
+        raise RuntimeError, "Name of method must be a symbol."
+    if not new_name.inherits(SymbolObject):
+        raise RuntimeError, "New name of method must be a symbol."
+    obj.methods[new_name.data] = obj.methods[name.data]
+    return new_name
+def object_let( scope, obj, name, val ):
+    if not name.inherits(SymbolObject):
+        raise RuntimeError, "Name of member must be a symbol."
+    ret = val.message(scope,'eval')
+    obj.members[name.data] = ret
+    return ret
+def object_ref( scope, obj, name ):
+    if not name.inherits(SymbolObject):
+        raise RuntimeError, "Name of member must be a symbol."
+    return obj.members[name.data]
 
 RootObject.methods['eval'] = PyMethod( lambda scope, obj : obj )
 RootObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(1) )
 RootObject.methods['print'] = PyMethod( lambda scope, obj: print_ret(obj) )
 RootObject.methods['def'] = PyMethod( object_def )
+RootObject.methods['dup'] = PyMethod( object_dup )
+RootObject.methods['let'] = PyMethod( object_let )
+RootObject.methods['ref'] = PyMethod( object_ref )
+RootObject.methods['copy'] = PyMethod( lambda scope,obj: obj.copy() )
+RootObject.methods['child'] = PyMethod( lambda scope,obj: Object(obj) )
 RootObject.methods['dir'] = PyMethod( lambda scope,obj:
                                           make_list( [make_symbol(i) for i in
                                                       obj.methods.list_keys()]))
+Builtins['Root'] = RootObject
 
 NilObject = Object(RootObject)
+def make_nil():
+    return Object(NilObject)
 NilObject.repr = lambda self: "()"
 NilObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(0) )
+Builtins['Nil'] = NilObject
 
 IntObject = Object(RootObject)
 IntObject.repr = lambda self: repr(self.data)
@@ -203,8 +239,10 @@ IntObject.methods['<'] = PyMethod( int_lt )
 IntObject.methods['bool'] = PyMethod( lambda scope, obj :
                                           make_int(0) if obj.data==0 \
                                           else make_int(1))
+Builtins['Int'] = IntObject
 
 SymbolObject = Object(RootObject)
+SymbolObject.data = "<Symbol object>"
 SymbolObject.repr = lambda self: self.data
 def make_symbol(name):
     if type(name)!=type('') or name=='':
@@ -213,9 +251,10 @@ def make_symbol(name):
     ret.data = name
     return ret
 SymbolObject.methods['eval'] = PyMethod( lambda scope, obj:scope.ref(obj.data))
-
+Builtins['Symbol'] = SymbolObject
 
 ConsObject = Object(RootObject)
+ConsObject.data = [ RootObject, RootObject ]
 def cons_repr( self ):
     ret = "("
     ret += repr(self.data[0])
@@ -227,11 +266,10 @@ def cons_repr( self ):
         elif rest.inherits( NilObject ):
             ret += ')'
         else:
-            ret += ' . ' + repr(rest.data[1]) + ')'
+            ret += ' . ' + repr(rest) + ')'
         return ret
     return ret + cons_repr_helper( self.data[1] )
 ConsObject.repr = cons_repr
-
 def make_cons( obj1, obj2 ):
     ret = Object(ConsObject)
     ret.data = [ obj1, obj2 ]
@@ -242,7 +280,7 @@ def make_list( l ):
         ret.data = [ l[0], make_list(l[1:]) ]
         return ret
     else:
-        return NilObject
+        return make_nil()
 def well_formed( c ):
     if not (c.inherits(ConsObject) or c.inherits(NilObject)):
         raise RuntimeError, "Cannot check for well-formedness of nonlist"
@@ -272,14 +310,18 @@ def cons_eval( scope, obj ):
         raise RuntimeError, "Cannot evaluate non-well-formed list."
     fn = obj.data[0].message( scope, 'eval' )
     return fn.message( scope, 'call', *unmake_list(obj.data[1]) )
-    
 ConsObject.methods['car'] = PyMethod( lambda scope,obj: obj.data[0] )
 ConsObject.methods['cdr'] = PyMethod( lambda scope,obj: obj.data[1] )
 ConsObject.methods['setcar'] = PyMethod( set_car )
 ConsObject.methods['setcdr'] = PyMethod( set_cdr )
 ConsObject.methods['eval'] = PyMethod( cons_eval )
+Builtins['Cons'] = ConsObject
 
-MsgObject = Object(RootObject)
+# This is the general parent of all callables
+FunctionObject = Object(RootObject)
+Builtins['Function'] = FunctionObject
+
+MsgObject = Object(FunctionObject)
 def msg_call( scope, obj, recipient, message, *args ):
     #evaluate the recipient
     recipient = recipient.message( scope, 'eval' )
@@ -288,9 +330,9 @@ def msg_call( scope, obj, recipient, message, *args ):
     #pass the message
     return recipient.message( scope, message.data, *args )    
 MsgObject.methods['call'] = PyMethod( msg_call )
+Builtins['msg'] = MsgObject
 
-
-LetObject = Object(RootObject)
+LetObject = Object(FunctionObject)
 def let_call( scope, obj, var, val ):
     if not var.inherits(SymbolObject):
         raise RuntimeError, "'let' requires a symbol!"
@@ -298,9 +340,9 @@ def let_call( scope, obj, var, val ):
     scope.let( var.data, e_val )
     return e_val
 LetObject.methods['call'] = PyMethod( let_call )
+Builtins['let'] = LetObject
 
-
-SetObject = Object(RootObject)
+SetObject = Object(FunctionObject)
 def set_call( scope, obj, var, val ):
     if not var.inherits(SymbolObject):
         raise RuntimeError, "'set' requires a symbol!"
@@ -308,8 +350,9 @@ def set_call( scope, obj, var, val ):
     scope.set( var.data, e_val )
     return e_val
 SetObject.methods['call'] = PyMethod( set_call )
+Builtins['set'] = SetObject
 
-QuoteObject = Object(RootObject)
+QuoteObject = Object(FunctionObject)
 def quote_call( scope, obj, arg ):
     if not arg.inherits( ConsObject ):
         return arg
@@ -350,20 +393,23 @@ def quote_call( scope, obj, arg ):
     return quote_list( scope, arg )
         
 QuoteObject.methods['call'] = PyMethod( quote_call )
-#QuoteObject.methods['call'] = PyMethod( lambda scope,obj,arg: arg )
+Builtins['quote'] = QuoteObject
 
-IfObject = Object(RootObject)
-def if_call( scope, obj, cond, conseq, alt=NilObject ):
+IfObject = Object(FunctionObject)
+def if_call( scope, obj, cond, conseq, alt=None ):
+    if alt==None:
+        alt = make_nil()
     bool = cond.message( scope, 'eval' ).message( scope, 'bool' )
     if bool.data:
         return conseq.message( scope, 'eval' )
     else:
         return alt.message( scope, 'eval' )
 IfObject.methods['call'] = PyMethod( if_call )
+Builtins['if'] = IfObject
 
-WhileObject = Object(RootObject)
+WhileObject = Object(FunctionObject)
 def while_call( scope, obj, cond, *body ):
-    ret = NilObject
+    ret = make_nil()
     while True:
         bool = cond.message(scope,'eval').message(scope,'bool')
         if not bool.data:
@@ -372,6 +418,24 @@ def while_call( scope, obj, cond, *body ):
             ret = i.message(scope,'eval')
     return ret
 WhileObject.methods['call'] = PyMethod( while_call )
+Builtins['while'] = WhileObject
+
+DirObject = Object(FunctionObject)
+def dir_call( scope, obj, cond, *body ):
+    ret = make_nil()
+    while True:
+        bool = cond.message(scope,'eval').message(scope,'bool')
+        if not bool.data:
+            return ret
+        for i in body:
+            ret = i.message(scope,'eval')
+    return ret
+DirObject.methods['call'] = PyMethod( lambda scope,obj:
+                                          make_list( [ make_symbol(i) for i in
+                                                       scope.list_keys() ]))
+Builtins['dir'] = DirObject
+
+
 
 ###
 ### Parser!!!
@@ -386,8 +450,7 @@ class Buffer:
         self.file = file
         self.buf = []
         self.tokbuf = []
-        self.isatty = self.file.fileno()==0 and os.isatty(0)
-        if self.isatty:
+        if self.file.isatty():
             if not os.path.exists(HISTORY_NAME):
                 open(HISTORY_NAME,'w').close()
             readline.read_history_file(HISTORY_NAME)
@@ -396,7 +459,7 @@ class Buffer:
             c = self.buf[0]
             self.buf = self.buf[1:]
             return c
-        elif self.isatty:
+        elif self.file.isatty():
             if gentle:
                 return ''
             try:
@@ -482,7 +545,7 @@ class Buffer:
         if tok==None:
             raise RuntimeError, "Ended in sexpr.0"
         elif tok==')':
-            return NilObject
+            return make_nil()
         else:
             self.ungettok(tok)
 
@@ -512,13 +575,13 @@ class Buffer:
 
 def make_global_scope():
     S = Scope( None )
-    S['msg'] = MsgObject
-    S['let'] = LetObject
-    S['set'] = SetObject
-    S['quote'] = QuoteObject
-    S['if'] = IfObject
-    S['while'] = WhileObject
+    S.dict = Builtins.copy()
     return S
+
+def run_string( scope, string ):
+    buf = Buffer( StringIO(string) )
+    obj = buf.read_obj()
+    obj.message(scope,'eval')
 
 def main():
     scope = make_global_scope()
