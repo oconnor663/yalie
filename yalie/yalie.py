@@ -28,8 +28,6 @@ class Scope:
             raise RuntimeError, "Could not set key: '%s'" % key
     def let( self, key,val ):
         ### No return
-        if key in self.dict:
-            raise RuntimeError, "Variable already exists"
         self.dict[key] = val
     def __getitem__( self, key ):
         self.ref( key )
@@ -79,11 +77,13 @@ class LispMethod:
         ### binds args and self
         ## first check number of args
         if self.rest_arg==None:
-            if len(call_args)!=len(self.args):
+            if len(call_args)>len(self.args):
                 raise RuntimeError, "Too many arguments to lisp method."
+            if len(call_args)<len(self.args):
+                raise RuntimeError, "Too few arguments to lisp method."
         else:
             if len(call_args)<len(self.args):
-                raise RuntimeError, "Too many arguments to lisp method."
+                raise RuntimeError, "Too few arguments to lisp method."
         new_scope = Scope(self.scope)
         new_scope['self'] = caller
         # pair args off with arg names and chop the list of args
@@ -91,7 +91,7 @@ class LispMethod:
             new_scope[i] = call_args[0].message(call_scope,'eval')
             call_args = call_args[1:]
         # collect any remainder into the final list
-        if call_args:
+        if self.rest_arg:
             rest = [ i.message(call_scope,'eval') for i in call_args ]
             new_scope[self.rest_arg] = make_list(rest)
         ret = NilObject
