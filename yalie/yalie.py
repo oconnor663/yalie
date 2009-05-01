@@ -14,7 +14,7 @@ class Scope:
         elif self.parent != None:
             return self.parent.ref(key)
         else:
-            raise RuntimeError, "Could not ref key: '%s'" % key
+            raise RuntimeError, "Could not ref key: %s" % key
     def set( self, key, val ):
         ### Returns True on success else False
         if key in self.dict:
@@ -138,6 +138,14 @@ def make_list( l ):
         return ret
     else:
         return NilObject
+def unmake_list( c ):
+    list = []
+    while not c.inherits(NilObject):
+        if not c.inherits(ConsObject):
+            raise RuntimeError, "cannot make python list out of non-list"
+        list.append( c.data[0] )
+        c = c.data[1]
+    return list
 def cons_print( scope, c ):
     sys.stdout.write( '(' )
     c.data[0].message( scope, 'print' )
@@ -164,14 +172,7 @@ def set_cdr( scope, obj, arg ):
     return arg
 def cons_eval( scope, obj ):
     fn = obj.data[0].message( scope, 'eval' )
-    args = []
-    obj = obj.data[1]
-    while not obj.inherits(NilObject):
-        if not obj.inherits(ConsObject):
-            raise RuntimeError, "Function called in dotted list"
-        args.append( obj.data[0] )
-        obj = obj.data[1]
-    return fn.message( scope, 'call', *args )
+    return fn.message( scope, 'call', *unmake_list(obj.data[1]) )
     
 ConsObject.methods['car'] = PyMethod( lambda scope,obj: obj.data[0] )
 ConsObject.methods['cdr'] = PyMethod( lambda scope,obj: obj.data[1] )
@@ -211,7 +212,47 @@ def set_call( scope, obj, var, val ):
 SetObject.methods['call'] = PyMethod( set_call )
 
 QuoteObject = Object(RootObject)
-QuoteObject.methods['call'] = PyMethod( lambda scope, self, obj: obj)
+def quote_call( scope, obj, arg ):
+    if not arg.inherits( ConsObject ):
+        return arg
+    list = unmake_list(arg)
+    if list[0].inherits(SymbolObject) and list[0].data=='unquote-splice':
+        raise RuntimeError, "Can't splice into nothing."
+    if list[0].inherits(SymbolObject) and list[0].data=='unquote':
+        if len(list)>2:
+            raise RuntimeError, "too many to unquote"
+        return list[1].message(scope,'eval')
+    ## At this point we have a list that is guaranteed quoted
+
+    def quote_list( scope, list ):
+        list = unmake_list(list)
+        ret = []
+        for i in list:
+            if not i.inherits(ConsObject):
+                ret.append(i)
+                continue
+            ls = unmake_list(i)
+            if ls[0].inherits(SymbolObject) and ls[0].data=='unquote':
+                if len(ls)>2:
+                    raise RuntimeError, "too many to unquote"
+                ret.append( ls[1].message(scope,'eval') )
+            elif ls[0].inherits(SymbolObject) and ls[0].data=='unquote-splice':
+                if len(ls)>2:
+                    raise RuntimeError, "too many to unquote-splice"
+                tmp = ls[1].message(scope,'eval')
+                if not tmp.inherits(ConsObject):
+                    raise RuntimeError, "cannot splice non-list"
+                ls2 = unmake_list( tmp )
+                ret = ret + ls2
+            else:
+                ret.append(quote_list(scope,i))
+        return make_list(ret)
+
+    ## And now we are ready to return from quote_call
+    return quote_list( scope, arg )
+        
+QuoteObject.methods['call'] = PyMethod( quote_call )
+#QuoteObject.methods['call'] = PyMethod( lambda scope,obj,arg: arg )
 
 IfObject = Object(RootObject)
 def if_call( scope, obj, cond, conseq, alt=NilObject ):
@@ -240,7 +281,7 @@ WhileObject.methods['call'] = PyMethod( while_call )
 
 class Buffer:
     delimiters = "()"
-    prefixes = "`,;"
+    prefixes = "`',;"
     infixes = ".:"
     punctuation = delimiters+prefixes+infixes
     def __init__( self, file ):
@@ -295,7 +336,7 @@ class Buffer:
     def ungettok( self, tok ):
         self.tokbuf = [tok] + self.tokbuf
     def read_prefixed(self):
-        dict = { '`':'quote', ';':'unquote-splice', ',':'unquote' }
+        dict = {'`':'quote','\'':'quote',';':'unquote-splice',',':'unquote'}
         tok = self.gettok()
         if tok==None:
             return None
@@ -368,25 +409,51 @@ def make_global_scope():
     return S
 
 def main():
+    HISTORY_NAME = os.path.expanduser('~/.yalie_history')
     scope = make_global_scope()
-
+    if not os.path.exists(HISTORY_NAME):
+        open(HISTORY_NAME,'w').close()
+    readline.read_history_file(HISTORY_NAME)
     while True:
         try:
             code = raw_input("yalie: ")
         except EOFError:
             print
             break
+        except KeyboardInterrupt:
+            print
+            continue
+
+        readline.write_history_file(HISTORY_NAME)
         buf = Buffer( StringIO(code) )
+
+        ### Make this false to see Python error traces
+        CATCH_ERRORS = 1
+
         while True:
-            try:
+            if CATCH_ERRORS:
+                ### Protected loop for normal use
+                try:
+                    obj = buf.read_obj()
+                    if obj==None:
+                        break
+                    ret = obj.message(scope,'eval')
+                    ret.message(scope,'print')
+                    print
+                except Exception, e:
+                    print "ERROR:", e.args
+                except KeyboardInterrupt:
+                    print "INTERRUPT"
+                    break
+            else:
+                ### Unprotected loop for debugging
                 obj = buf.read_obj()
                 if obj==None:
                     break
                 ret = obj.message(scope,'eval')
                 ret.message(scope,'print')
                 print
-            except Exception, e:
-                print "ERROR:", e.args[0]
+
 
 if __name__=='__main__':
     main()
