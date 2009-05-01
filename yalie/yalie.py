@@ -43,7 +43,7 @@ class Scope:
     def list_keys( self ):
         ret = self.dict.keys()
         if self.parent:
-            ret += self.parent.list_keys()
+            ret += [ i for i in self.parent.list_keys() if i not in ret ]
         ret.sort()
         return ret
     def copy( self ):
@@ -114,6 +114,9 @@ class LispMethod:
             if len(call_args)<len(self.args):
                 raise RuntimeError, "Too few arguments to lisp method."
         new_scope = Scope(self.scope)
+        ### NB: the assignment of self before other arguments allows
+        ### any user-defined argument named 'self' to take precedence
+        ### in binding. This is intended.
         new_scope['self'] = caller
         # pair args off with arg names and chop the list of args
         for i in self.args:
@@ -191,11 +194,17 @@ RootObject.methods['def'] = PyMethod( object_def )
 RootObject.methods['dup'] = PyMethod( object_dup )
 RootObject.methods['let'] = PyMethod( object_let )
 RootObject.methods['ref'] = PyMethod( object_ref )
+RootObject.methods['parent'] = PyMethod( lambda scope,obj:
+                                             obj.parent if obj.parent!=None \
+                                             else obj)
 RootObject.methods['copy'] = PyMethod( lambda scope,obj: obj.copy() )
 RootObject.methods['child'] = PyMethod( lambda scope,obj: Object(obj) )
-RootObject.methods['dir'] = PyMethod( lambda scope,obj:
+RootObject.methods['methods'] = PyMethod( lambda scope,obj:
                                           make_list( [make_symbol(i) for i in
                                                       obj.methods.list_keys()]))
+RootObject.methods['members'] = PyMethod( lambda scope,obj:
+                                          make_list( [make_symbol(i) for i in
+                                                      obj.members.list_keys()]))
 Builtins['Root'] = RootObject
 
 NilObject = Object(RootObject)
@@ -206,7 +215,7 @@ NilObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(0) )
 Builtins['Nil'] = NilObject
 
 IntObject = Object(RootObject)
-IntObject.repr = lambda self: repr(self.data)
+IntObject.repr = lambda self: str(self.data)
 def make_int( i ):
     if type(i) not in (type(0),type(0L)):
         raise RuntimeError, "OOPS!!!"
