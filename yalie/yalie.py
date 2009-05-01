@@ -8,7 +8,7 @@ CATCH_ERRORS = 1
 
 ### Terminal prompts
 PROMPT = "yalie: "
-REPROMPT = "...    "
+REPROMPT = "...      "
 
 ### Command history
 HISTORY_NAME = os.path.expanduser('~/.yalie_history')
@@ -96,6 +96,7 @@ class PyMethod:
         self.fn = fn
     def call( self, scope, obj, *args ):
         return self.fn( scope, obj, *args )
+
 class LispMethod:
     def __init__( self, scope, args, rest_arg, body ):
         self.scope = scope
@@ -131,6 +132,36 @@ class LispMethod:
             ret = i.message( new_scope, 'eval' )
         return ret
         
+class FormMethod( LispMethod ):
+    def call( self, call_scope, caller, *call_args ):
+        ### binds args and self
+        ## first check number of args
+        if self.rest_arg==None:
+            if len(call_args)>len(self.args):
+                raise RuntimeError, "Too many arguments to lisp method."
+            if len(call_args)<len(self.args):
+                raise RuntimeError, "Too few arguments to lisp method."
+        else:
+            if len(call_args)<len(self.args):
+                raise RuntimeError, "Too few arguments to lisp method."
+        new_scope = Scope(self.scope)
+        ### NB: the assignment of self before other arguments allows
+        ### any user-defined argument named 'self' to take precedence
+        ### in binding. This is intended.
+        new_scope['self'] = caller
+        # pair args off with arg names and chop the list of args
+        ###### NOTE: NOT EVALUATING ARGUMENTS
+        for i in self.args:
+            new_scope[i] = call_args[0]
+            call_args = call_args[1:]
+        # collect any remainder into the final list
+        if self.rest_arg:
+            new_scope[self.rest_arg] = make_list(call_args)
+        ret = make_nil()
+        for i in self.body:
+            ret = i.message( new_scope, 'eval' )
+        return ret.message( call_scope, 'eval' )
+        
 ###
 ### Builtins
 ###
@@ -140,7 +171,7 @@ RootObject = Object(None)
 def print_ret( obj ):
     print repr(obj)
     return obj
-def object_def( scope, obj, name, args, *body ):
+def def_method_or_form( is_function, scope, obj, name, args, *body ):
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of method must be a symbol"
     if not args.inherits(ConsObject) and not args.inherits(NilObject):
@@ -167,8 +198,15 @@ def object_def( scope, obj, name, args, *body ):
         if not i.inherits(SymbolObject):
             raise RuntimeError, "non-symbol in args list"
     arg_names = [ i.data for i in args_ls ]
-    obj.methods[name.data] = LispMethod( scope, arg_names, rest_arg, body )
+    if is_function:
+        obj.methods[name.data] = LispMethod( scope, arg_names, rest_arg, body )
+    else:
+        obj.methods[name.data] = FormMethod( scope, arg_names, rest_arg, body )
     return obj
+def object_def( scope, obj, name, args, *body ):
+    return def_method_or_form( True, scope, obj, name, args, *body )
+def object_deform( scope, obj, name, args, *body ):
+    return def_method_or_form( False, scope, obj, name, args, *body )
 def object_dup( scope, obj, name, new_name ):
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of method must be a symbol."
@@ -176,13 +214,13 @@ def object_dup( scope, obj, name, new_name ):
         raise RuntimeError, "New name of method must be a symbol."
     obj.methods[new_name.data] = obj.methods[name.data]
     return new_name
-def object_let( scope, obj, name, val ):
+def object_set( scope, obj, name, val ):
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of member must be a symbol."
     ret = val.message(scope,'eval')
     obj.members[name.data] = ret
     return ret
-def object_ref( scope, obj, name ):
+def object_get( scope, obj, name ):
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of member must be a symbol."
     return obj.members[name.data]
@@ -191,9 +229,10 @@ RootObject.methods['eval'] = PyMethod( lambda scope, obj : obj )
 RootObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(1) )
 RootObject.methods['print'] = PyMethod( lambda scope, obj: print_ret(obj) )
 RootObject.methods['def'] = PyMethod( object_def )
+RootObject.methods['deform'] = PyMethod( object_deform )
 RootObject.methods['dup'] = PyMethod( object_dup )
-RootObject.methods['let'] = PyMethod( object_let )
-RootObject.methods['ref'] = PyMethod( object_ref )
+RootObject.methods['set'] = PyMethod( object_set )
+RootObject.methods['get'] = PyMethod( object_get )
 RootObject.methods['parent'] = PyMethod( lambda scope,obj:
                                              obj.parent if obj.parent!=None \
                                              else obj)
@@ -340,10 +379,14 @@ ConsObject.methods['eval'] = PyMethod( cons_eval )
 Builtins['Cons'] = ConsObject
 
 # This is the general parent of all callables
-FunctionObject = Object(RootObject)
-Builtins['Function'] = FunctionObject
+OperatorObject = Object(RootObject)
+Builtins['Operator'] = OperatorObject
+FunctionObject = Object(OperatorObject)
+Builtins['Function'] = OperatorObject
+FormObject = Object(OperatorObject)
+Builtins['Form'] = OperatorObject
 
-MsgObject = Object(FunctionObject)
+MsgObject = Object(FormObject)
 def msg_call( scope, obj, recipient, message, *args ):
     #evaluate the recipient
     recipient = recipient.message( scope, 'eval' )
@@ -354,7 +397,7 @@ def msg_call( scope, obj, recipient, message, *args ):
 MsgObject.methods['call'] = PyMethod( msg_call )
 Builtins['msg'] = MsgObject
 
-LetObject = Object(FunctionObject)
+LetObject = Object(FormObject)
 def let_call( scope, obj, var, val ):
     if not var.inherits(SymbolObject):
         raise RuntimeError, "'let' requires a symbol!"
@@ -364,7 +407,7 @@ def let_call( scope, obj, var, val ):
 LetObject.methods['call'] = PyMethod( let_call )
 Builtins['let'] = LetObject
 
-SetObject = Object(FunctionObject)
+SetObject = Object(FormObject)
 def set_call( scope, obj, var, val ):
     if not var.inherits(SymbolObject):
         raise RuntimeError, "'set' requires a symbol!"
@@ -374,7 +417,7 @@ def set_call( scope, obj, var, val ):
 SetObject.methods['call'] = PyMethod( set_call )
 Builtins['set'] = SetObject
 
-QuoteObject = Object(FunctionObject)
+QuoteObject = Object(FormObject)
 def quote_call( scope, obj, arg ):
     if not arg.inherits( ConsObject ):
         return arg
@@ -417,45 +460,60 @@ def quote_call( scope, obj, arg ):
 QuoteObject.methods['call'] = PyMethod( quote_call )
 Builtins['quote'] = QuoteObject
 
-IfObject = Object(FunctionObject)
-def if_call( scope, obj, cond, conseq, alt=None ):
-    if alt==None:
-        alt = make_nil()
+IfObject = Object(FormObject)
+def if_call( scope, obj, cond, conseq, *rest):
     bool = cond.message( scope, 'eval' ).message( scope, 'bool' )
     if bool.data:
         return conseq.message( scope, 'eval' )
+    elif len(rest)==0:
+        return make_nil()
+    elif len(rest)==1:
+        return rest[0].message( scope, 'eval' )
     else:
-        return alt.message( scope, 'eval' )
+        return if_call( scope, obj, rest[0], rest[1], *rest[2:] )
 IfObject.methods['call'] = PyMethod( if_call )
 Builtins['if'] = IfObject
 
-WhileObject = Object(FunctionObject)
+WhileObject = Object(FormObject)
+BreakObject = Object(FormObject)
+ContinueObject = Object(FormObject)
+class BreakException(Exception): pass
+class ContinueException(Exception): pass
 def while_call( scope, obj, cond, *body ):
     ret = make_nil()
     while True:
         bool = cond.message(scope,'eval').message(scope,'bool')
         if not bool.data:
             return ret
-        for i in body:
-            ret = i.message(scope,'eval')
+        try:
+            for i in body:
+                ret = i.message(scope,'eval')
+        except BreakException:
+            ret = make_nil()
+            break
+        except ContinueException:
+            continue
     return ret
+def break_call( scope, obj ):
+    raise BreakException, "break called outside of a while loop"
+def continue_call( scope, obj ):
+    raise ContinueException, "continue called outside of a while loop"
 WhileObject.methods['call'] = PyMethod( while_call )
 Builtins['while'] = WhileObject
+BreakObject.methods['call'] = PyMethod( break_call )
+Builtins['break'] = BreakObject
+ContinueObject.methods['call'] = PyMethod( continue_call )
+Builtins['continue'] = ContinueObject
 
 DirObject = Object(FunctionObject)
-def dir_call( scope, obj, cond, *body ):
-    ret = make_nil()
-    while True:
-        bool = cond.message(scope,'eval').message(scope,'bool')
-        if not bool.data:
-            return ret
-        for i in body:
-            ret = i.message(scope,'eval')
-    return ret
 DirObject.methods['call'] = PyMethod( lambda scope,obj:
                                           make_list( [ make_symbol(i) for i in
                                                        scope.list_keys() ]))
 Builtins['dir'] = DirObject
+
+MakeConsObject = Object(FunctionObject)
+MakeConsObject.methods['call'] = PyMethod( lambda scope,obj,a,b: make_cons(a,b))
+Builtins['cons'] = MakeConsObject
 
 
 
@@ -603,12 +661,27 @@ def make_global_scope():
 def run_string( scope, string ):
     buf = Buffer( StringIO(string) )
     obj = buf.read_obj()
-    obj.message(scope,'eval')
+    return obj.message(scope,'eval')
+
+def run_file( scope, file ):
+    buf = Buffer(file)
+    obj = buf.read_obj()
+    ret = make_nil()
+    while obj:
+        ret = obj.message( scope, 'eval' )
+        obj = buf.read_obj()
+    return ret
 
 def main():
     scope = make_global_scope()
-    buf = Buffer( sys.stdin )
 
+    BUILTINS_PATH = './builtins.y'
+    if os.path.isfile(BUILTINS_PATH):
+        builtins = open(BUILTINS_PATH)
+        run_file( scope, builtins )
+        builtins.close()
+
+    buf = Buffer( sys.stdin )
     while True:
         if CATCH_ERRORS:
             ### Protected loop for normal use
@@ -619,6 +692,9 @@ def main():
                     break
             except KeyboardInterrupt:
                 print
+                continue
+            except Exception, e:
+                print "ERROR:", e.args
                 continue
             try:
                 ret = obj.message(scope,'eval')
