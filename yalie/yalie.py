@@ -40,6 +40,12 @@ class Scope:
         self.ref( key )
     def __setitem__( self, key, val ):
         self.let( key, val )
+    def list_keys( self ):
+        ret = self.dict.keys()
+        if self.parent:
+            ret += self.parent.list_keys()
+        ret.sort()
+        return ret
         
 
 class Object:
@@ -154,6 +160,9 @@ RootObject.methods['eval'] = PyMethod( lambda scope, obj : obj )
 RootObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(1) )
 RootObject.methods['print'] = PyMethod( lambda scope, obj: print_ret(obj) )
 RootObject.methods['def'] = PyMethod( object_def )
+RootObject.methods['dir'] = PyMethod( lambda scope,obj:
+                                          make_list( [make_symbol(i) for i in
+                                                      obj.methods.list_keys()]))
 
 NilObject = Object(RootObject)
 NilObject.repr = lambda self: "()"
@@ -523,6 +532,10 @@ def main():
                 if obj==None:
                     print
                     break
+            except KeyboardInterrupt:
+                print
+                continue
+            try:
                 ret = obj.message(scope,'eval')
                 ret.message(scope,'print')
             except Exception, e:
