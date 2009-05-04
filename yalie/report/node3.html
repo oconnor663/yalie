@@ -1,0 +1,288 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Syntax</TITLE>
+<META NAME="description" CONTENT="Syntax">
+<META NAME="keywords" CONTENT="report">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="report.css">
+
+<LINK REL="next" HREF="node4.html">
+<LINK REL="previous" HREF="node2.html">
+<LINK REL="up" HREF="report.html">
+<LINK REL="next" HREF="node4.html">
+</HEAD>
+
+<BODY >
+
+<DIV CLASS="navigation"><!--Navigation Panel-->
+<A NAME="tex2html39"
+  HREF="node4.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html37"
+  HREF="report.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html31"
+  HREF="node2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="/usr/share/latex2html/icons/prev.png"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html40"
+  HREF="node4.html">Builtin Objects and Methods</A>
+<B> Up:</B> <A NAME="tex2html38"
+  HREF="report.html">Yet Another Lisp Interpreting</A>
+<B> Previous:</B> <A NAME="tex2html32"
+  HREF="node2.html">Concepts</A>
+<BR>
+<BR></DIV>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00030000000000000000">
+Syntax</A>
+</H1>
+
+<P>
+Yalie contains only three literal objects: integers, symbols, and
+lists. Integers are written literally. Symbols are written as any
+string of characters (other than those defined as punctuation in this
+section) that is not an integer. Lists are written as a sequence of
+whitespace-separated literals enclosed by matching parentheses. We can
+define the parsing function as taking for arguments a code snippet and
+an initial store, and returning an updated store and the number
+referring to the newly created object in that store.
+
+<P>
+Integers are parsed as
+<P><!-- MATH
+ \begin{displaymath}
+\operatorname{parse}(i\in\mathbb{Z},\sigma) = (n,\sigma'),
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER" CLASS="mathdisplay">
+<IMG
+ WIDTH="174" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img8.png"
+ ALT="$\displaystyle \operatorname{parse}(i\in\mathbb{Z},\sigma) = (n,\sigma'),$">
+</DIV><P></P>
+where <!-- MATH
+ $\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
+(\text{INT}, {\phi_0}, {\phi_2}_{\text{INT}}, i)]$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="144" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.png"
+ ALT="$ \sigma' = [\sigma\vert\operatorname{next}(\sigma) \rightarrow
+($">INT<IMG
+ WIDTH="98" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img10.png"
+ ALT="$ , {\phi_0}, {\phi_2}_{\text{INT}}, i)]$"></SPAN> and
+<!-- MATH
+ $n=\operatorname{next}(\sigma)$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="87" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.png"
+ ALT="$ n=\operatorname{next}(\sigma)$"></SPAN>. ``INT'' is the reference number of
+the integer superobject, which we will define later, and
+<!-- MATH
+ ${\phi_2}_{\text{INT}}$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="44" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img12.png"
+ ALT="$ {\phi_2}_{\text{INT}}$"></SPAN> is its member scope.
+
+<P>
+Symbols are parsed as
+<P><!-- MATH
+ \begin{displaymath}
+\operatorname{parse}(s\in\mathbb{S},\sigma) = (n,\sigma'),
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER" CLASS="mathdisplay">
+<IMG
+ WIDTH="174" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img13.png"
+ ALT="$\displaystyle \operatorname{parse}(s\in\mathbb{S},\sigma) = (n,\sigma'),$">
+</DIV><P></P>
+where <P><!-- MATH
+ \begin{displaymath}
+\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
+(\text{SYMBOL}, {\phi_0}, {\phi_2}_{\text{SYMBOL}}, i)]
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER" CLASS="mathdisplay">
+<IMG
+ WIDTH="144" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img14.png"
+ ALT="$\displaystyle \sigma' = [\sigma\vert\operatorname{next}(\sigma) \rightarrow
+($">SYMBOL<IMG
+ WIDTH="130" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img15.png"
+ ALT="$\displaystyle , {\phi_0}, {\phi_2}_{\text{SYMBOL}}, i)]$">
+</DIV><P></P>
+and
+<!-- MATH
+ $n=\operatorname{next}(\sigma)$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="87" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.png"
+ ALT="$ n=\operatorname{next}(\sigma)$"></SPAN>. ``SYMBOL'' is the reference number of
+the symbol superobject, which we will again define later, and
+<!-- MATH
+ ${\phi_2}_{\text{SYMBOL}}$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="76" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img16.png"
+ ALT="$ {\phi_2}_{\text{SYMBOL}}$"></SPAN> is its member scope, again as before.
+
+<P>
+Finally, lists are parsed into ``cons'' objects, as is traditional for
+Lisp languages. The data element of these cons objects will be an
+ordered pair of the form <SPAN CLASS="MATH"><IMG
+ WIDTH="39" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img17.png"
+ ALT="$ (a,b)$"></SPAN>, and they will be linked together to
+form linked lists terminated in a ``nil'' object.
+<P><!-- MATH
+ \begin{displaymath}
+\operatorname{parse}(\text{``()''},\sigma) = (n,\sigma'),
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER" CLASS="mathdisplay">
+<IMG
+ WIDTH="46" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img18.png"
+ ALT="$\displaystyle \operatorname{parse}($">``()''<IMG
+ WIDTH="96" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img19.png"
+ ALT="$\displaystyle ,\sigma) = (n,\sigma'),$">
+</DIV><P></P>
+where <!-- MATH
+ $\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
+(\text{NIL}, \phi_0, {\phi_2}_{\text{NIL}},
+\o)]$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="144" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.png"
+ ALT="$ \sigma' = [\sigma\vert\operatorname{next}(\sigma) \rightarrow
+($">NIL<IMG
+ WIDTH="100" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img20.png"
+ ALT="$ , \phi_0, {\phi_2}_{\text{NIL}},
+\o)]$"></SPAN> and <!-- MATH
+ $n=\operatorname{next}(\sigma)$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="87" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.png"
+ ALT="$ n=\operatorname{next}(\sigma)$"></SPAN>. Also,
+<P><!-- MATH
+ \begin{displaymath}
+\operatorname{parse}(\text{``(a, b,\ldots z)''},\sigma) =
+(n,\sigma'),
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER" CLASS="mathdisplay">
+<IMG
+ WIDTH="46" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img18.png"
+ ALT="$\displaystyle \operatorname{parse}($">``(a, b,...z)''<IMG
+ WIDTH="96" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img19.png"
+ ALT="$\displaystyle ,\sigma) = (n,\sigma'),$">
+</DIV><P></P>
+where <P><!-- MATH
+ \begin{displaymath}
+\sigma' = [\sigma|\operatorname{next}(\sigma)
+\rightarrow (\text{CONS}, \phi_0, {\phi_2}_{\text{CONS}},
+\operatorname{parse}(\text{``(b,\ldots z)''},\sigma')]
+\end{displaymath}
+ -->
+</P>
+<DIV ALIGN="CENTER" CLASS="mathdisplay">
+<IMG
+ WIDTH="144" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img14.png"
+ ALT="$\displaystyle \sigma' = [\sigma\vert\operatorname{next}(\sigma) \rightarrow
+($">CONS<IMG
+ WIDTH="239" HEIGHT="35" ALIGN="MIDDLE" BORDER="0"
+ SRC="img21.png"
+ ALT="$\displaystyle , \phi_0, {\phi_2}_{\text{CONS}},
+\operatorname{parse}(\text{\lq\lq (b,\ldots z)''},\sigma')]$">
+</DIV><P></P>
+and
+<!-- MATH
+ $n=\operatorname{next}(\sigma)$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="87" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.png"
+ ALT="$ n=\operatorname{next}(\sigma)$"></SPAN>.
+
+<P>
+In addition to these literals, we define some extra translational
+syntax for convenience. Message passing is invoked by the expression
+<TT>(msg foo msgForFoo [args...])</TT>, so we allow the period
+operator to translate into that S-expression. We let <TT>a.b</TT>
+translate to <TT>(msg a b)</TT> and <TT>(a.b c d...)</TT> translate to
+<TT>(msg a b c d...)</TT>. When there are multiple consecutive
+infixed objects at the front of an S-expression, we evaluate from left
+to right and allow the final infix to capture the expression. Thus
+<TT>(a.b.c d e)</TT> translates to <TT>(msg (msg a b) c d e)</TT>. We
+also define the single quote as a prefix operator that takes
+precedence over the period, and we translate <TT>`a</TT> to
+<TT>(quote a)</TT>. Both <TT>msg</TT> and <TT>quote</TT> will be
+defined below.
+
+<P>
+
+<DIV CLASS="navigation"><HR>
+<!--Navigation Panel-->
+<A NAME="tex2html39"
+  HREF="node4.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html37"
+  HREF="report.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html31"
+  HREF="node2.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="/usr/share/latex2html/icons/prev.png"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html40"
+  HREF="node4.html">Builtin Objects and Methods</A>
+<B> Up:</B> <A NAME="tex2html38"
+  HREF="report.html">Yet Another Lisp Interpreting</A>
+<B> Previous:</B> <A NAME="tex2html32"
+  HREF="node2.html">Concepts</A></DIV>
+<!--End of Navigation Panel-->
+<ADDRESS>
+Jack O'Connor
+2009-05-04
+</ADDRESS>
+</BODY>
+</HTML>

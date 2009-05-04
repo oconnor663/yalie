@@ -271,6 +271,11 @@ def isa( scope, obj, arg ):
     return make_bool( obj.inherits(arg) )
 def object_eq( scope, obj, arg ):
     return make_bool(obj==arg)
+def object_parent( scope, obj ):
+    if obj.parent:
+        return obj.parent
+    else:
+        raise RuntimeError, "Root object has no parent to return."
 
 RootObject.methods['eval'] = PyFnMethod( lambda scope, obj : obj )
 RootObject.methods['='] = PyFnMethod( object_eq )
@@ -282,9 +287,7 @@ RootObject.methods['deform'] = PyFormMethod( object_deform )
 RootObject.methods['dup'] = PyFormMethod( object_dup )
 RootObject.methods['set'] = PyFormMethod( object_set )
 RootObject.methods['get'] = PyFormMethod( object_get )
-RootObject.methods['parent'] = PyFnMethod( lambda scope,obj:
-                                               obj.parent if obj.parent!=None \
-                                               else obj)
+RootObject.methods['parent'] = PyFnMethod( object_parent )
 RootObject.methods['isa'] = PyFnMethod( isa )
 RootObject.methods['copy'] = PyFnMethod( lambda scope,obj: obj.copy() )
 RootObject.methods['child'] = PyFnMethod( lambda scope,obj: Object(obj) )

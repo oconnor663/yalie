@@ -1,0 +1,170 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Concepts</TITLE>
+<META NAME="description" CONTENT="Concepts">
+<META NAME="keywords" CONTENT="report">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="report.css">
+
+<LINK REL="next" HREF="node3.html">
+<LINK REL="previous" HREF="node1.html">
+<LINK REL="up" HREF="report.html">
+<LINK REL="next" HREF="node3.html">
+</HEAD>
+
+<BODY >
+
+<DIV CLASS="navigation"><!--Navigation Panel-->
+<A NAME="tex2html29"
+  HREF="node3.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html27"
+  HREF="report.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html21"
+  HREF="node1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="/usr/share/latex2html/icons/prev.png"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html30"
+  HREF="node3.html">Syntax</A>
+<B> Up:</B> <A NAME="tex2html28"
+  HREF="report.html">Yet Another Lisp Interpreting</A>
+<B> Previous:</B> <A NAME="tex2html22"
+  HREF="node1.html">Introduction</A>
+<BR>
+<BR></DIV>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00020000000000000000">
+Concepts</A>
+</H1>
+Broadly speaking, there are two major categories of object-oriented
+languages.[<A
+ HREF="node6.html#Abadi">1</A>] The most familiar and popular are the
+``class-based'' languages, including C++, Java, and Smalltalk. The
+other category is ``object-based'' or ``prototype-based'' languages,
+like JavaScript and Lua. Class-based languages distinguish classes
+from the objects that belong to them, and inheritance is accomplished
+within the class hierarchy. Object-based languages omit this
+distinction, and instead allow objects to inherit from one another and
+produce their own clone or child objects. In practice, object-based
+languages often approximate classes by using certain objects solely
+for inheritance, and for that reason--and because of the wider
+popularity of class-based languages--some have argued that making
+classes an explicit part of the language is more
+convenient.[<A
+ HREF="node6.html#Bruce">2</A>] Our primary purpose here, though, is
+simplicity and consistency, so ours will be an object-based semantics.
+
+<P>
+We will also be taking a less conventional approach to specifying the
+semantics of our language. With the goal of unifying code and data, we
+will first describe the translation from syntax to literal objects and
+then separately define the methods available to those objects. This is
+also intended to highlight the fact that the vast majority of the
+functionality of Yalie is contained in predefined methods for our
+objects, rather than in the syntax of our language.
+
+<P>
+The semantics of our language will be built from three components:
+objects, the scope, and the store. Objects will be treated as simple
+tuples, of the form <!-- MATH
+ $(p,\phi_1,\phi_2,d)$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="87" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img1.png"
+ ALT="$ (p,\phi_1,\phi_2,d)$"></SPAN>, containing a reference to a
+parent object, a scope of methods, a scope of member objects, and a
+data field for builtin data like integers. Scopes--denoted by
+<SPAN CLASS="MATH"><IMG
+ WIDTH="13" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img2.png"
+ ALT="$ \phi$"></SPAN>--are maps from names to natural numbers or (in the case of
+method scopes) functions, and the store--denoted by <SPAN CLASS="MATH"><IMG
+ WIDTH="13" HEIGHT="13" ALIGN="BOTTOM" BORDER="0"
+ SRC="img3.png"
+ ALT="$ \sigma$"></SPAN>--is a
+map from natural numbers to objects. In this way, the store is
+intended to simulate a persistent memory of mutable objects, and for
+our purposes we can understand the store as unique (in contrast to
+scopes, of which there will be many). The extension of a scope or
+store is represented by the expression ``<!-- MATH
+ $[\phi|key\rightarrow
+val]$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="98" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img4.png"
+ ALT="$ [\phi\vert key\rightarrow
+val]$"></SPAN>''. The smallest currently unassigned integer in a store is
+denoted by ``<!-- MATH
+ $\operatorname{next}(\sigma)$
+ -->
+<SPAN CLASS="MATH"><IMG
+ WIDTH="56" HEIGHT="32" ALIGN="MIDDLE" BORDER="0"
+ SRC="img5.png"
+ ALT="$ \operatorname{next}(\sigma)$"></SPAN>''. The empty scope and the
+empty store are denoted by <SPAN CLASS="MATH"><IMG
+ WIDTH="20" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img6.png"
+ ALT="$ \phi_0$"></SPAN> and <SPAN CLASS="MATH"><IMG
+ WIDTH="20" HEIGHT="30" ALIGN="MIDDLE" BORDER="0"
+ SRC="img7.png"
+ ALT="$ \sigma_0$"></SPAN>, respectively.
+
+<P>
+We have put Yalie together so that externally it resembles a
+traditional Lisp, but the underlying semantics are very different. In
+particular, functions and special forms are just objects with a
+predefined ``call'' method. The mechanism of a function call is that
+the ``eval'' method of a list implicitly evaluates its first element
+and passes the rest of the list as arguments to the first element's
+call method. The ``msg'' special form is then provided with a call
+method that allows the user to pass arbitrary messages.
+
+<P>
+
+<DIV CLASS="navigation"><HR>
+<!--Navigation Panel-->
+<A NAME="tex2html29"
+  HREF="node3.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html27"
+  HREF="report.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html21"
+  HREF="node1.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="/usr/share/latex2html/icons/prev.png"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html30"
+  HREF="node3.html">Syntax</A>
+<B> Up:</B> <A NAME="tex2html28"
+  HREF="report.html">Yet Another Lisp Interpreting</A>
+<B> Previous:</B> <A NAME="tex2html22"
+  HREF="node1.html">Introduction</A></DIV>
+<!--End of Navigation Panel-->
+<ADDRESS>
+Jack O'Connor
+2009-05-04
+</ADDRESS>
+</BODY>
+</HTML>

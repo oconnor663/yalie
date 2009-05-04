@@ -1,0 +1,114 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<!--Converted with LaTeX2HTML 2002-2-1 (1.71)
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Conclusions</TITLE>
+<META NAME="description" CONTENT="Conclusions">
+<META NAME="keywords" CONTENT="report">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META NAME="Generator" CONTENT="LaTeX2HTML v2002-2-1">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="report.css">
+
+<LINK REL="next" HREF="node6.html">
+<LINK REL="previous" HREF="node4.html">
+<LINK REL="up" HREF="report.html">
+<LINK REL="next" HREF="node6.html">
+</HEAD>
+
+<BODY >
+
+<DIV CLASS="navigation"><!--Navigation Panel-->
+<A NAME="tex2html59"
+  HREF="node6.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html57"
+  HREF="report.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html51"
+  HREF="node4.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="/usr/share/latex2html/icons/prev.png"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html60"
+  HREF="node6.html">Bibliography</A>
+<B> Up:</B> <A NAME="tex2html58"
+  HREF="report.html">Yet Another Lisp Interpreting</A>
+<B> Previous:</B> <A NAME="tex2html52"
+  HREF="node4.html">Builtin Objects and Methods</A>
+<BR>
+<BR></DIV>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00050000000000000000">
+Conclusions</A>
+</H1>
+Several different interpreters were created at different stages in
+this project, but the ``call'' and ``eval'' semantics were only
+included in the final version. The ease of coding these semantics
+relative to the more standard approach (using a central eval loop) was
+striking, both in reduced programming time and in reduced debugging
+time. These semantics are also far easier to modify than any previous.
+
+<P>
+The language is still very small, so some of the benefits of the
+object-oriented approach are not yet apparent. One tangible benefit is
+that, despite having gutted the entire language to allow the
+ubiquitous use of objects, the only difference visible in the global
+namespace is the existence of the <TT>msg</TT> function. All other
+object-oriented functionality is confined within the method spaces. If
+we were to further extend the language--with strings and file handles
+for example--we would see the same benefits repeated, with new
+functionality mostly confined to method spaces. Not only does this
+approach keep the global namespace free of clutter, it also provides
+helpful documentation in the form of method lists.
+
+<P>
+The example of adding a factorial method to the entire set of integers
+(see README) demonstrates the flexibility of the object-oriented
+approach, and though the language is still small, the improved
+consistency of the semantics has already made itself felt during the
+implementation process. We look forward to finding new ways of
+leveraging the object abstraction, both by itself and in conjunction
+with Lisp's macro system.
+
+<P>
+
+<DIV CLASS="navigation"><HR>
+<!--Navigation Panel-->
+<A NAME="tex2html59"
+  HREF="node6.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html57"
+  HREF="report.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html51"
+  HREF="node4.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="/usr/share/latex2html/icons/prev.png"></A>   
+<BR>
+<B> Next:</B> <A NAME="tex2html60"
+  HREF="node6.html">Bibliography</A>
+<B> Up:</B> <A NAME="tex2html58"
+  HREF="report.html">Yet Another Lisp Interpreting</A>
+<B> Previous:</B> <A NAME="tex2html52"
+  HREF="node4.html">Builtin Objects and Methods</A></DIV>
+<!--End of Navigation Panel-->
+<ADDRESS>
+Jack O'Connor
+2009-05-04
+</ADDRESS>
+</BODY>
+</HTML>
