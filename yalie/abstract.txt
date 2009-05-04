@@ -1,0 +1,31 @@
+One of the historical attractions of the Lisp family of programming
+languages has been their flexibility. Lisp was one of the first
+languages to include dynamic typing, and Lisp macros allow the
+programmer to create new binding forms and control structures.
+Another strength of Lisp is its elegance. The S-expression syntax
+allows Lisp to treat lists as code. Thus Lisp macros, by constructing
+and returning lists of symbols, actually return code. This is one of
+the more confusing aspects of Lisp for newcomers, to be sure, but it
+also simplifies the language in an important sense. In the long run,
+fewer "moving parts" means fewer distinct concepts that a programmer
+needs to keep in mind to understand his language.
+
+More recent developments, however, have seen Lisp fall behind. In
+particular, the Smalltalk language demonstrated that it is possible to
+treat everything in a language as an "object." Through
+object-orientation, Smalltalk was able to achieve greater flexibility
+and greater simplicity. These goals are essentially orthogonal to the
+goal of facilitating an object-oriented programming style. Lisp object
+systems have attempted the latter, and as a result they have generally
+made their languages more complicated and less consistent. We believe
+that object-orientation can greatly enhance Lisp's core strengths, but
+only if these concepts are introduced consistently throughout the
+entire language.
+
+This is the intention of Yet Another Lisp Interpreting Experiment (or,
+"Yalie"). Our goal is to demonstrate a Lisp variant in which
+everything is an object and all function calls are based on message
+passing. In doing this, we hope to make the language less complicated,
+rather than more so. An interactive interpreter for Yalie, written in
+Python, accompanies this paper. For a practical description of the
+language, please see the accompanying README file.
