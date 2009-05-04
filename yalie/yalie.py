@@ -4,7 +4,7 @@ import sys,os,string,readline,copy
 from StringIO import *
 
 ### Make this false to see Python error traces
-CATCH_ERRORS = 0
+CATCH_ERRORS = 1
 
 ### Terminal prompts
 PROMPT = "yalie: "

@@ -19,7 +19,7 @@
      (if (rest.isa Nil) ()
 	 (rest.cdr.isa Nil) rest.car
 	 (rest.car.isa Nil) (call append rest.cdr)
-	 (cons rest.car.car (call append (cons rest.car.cdr rest.cdr)))))
+	 (cons rest.car.car (call append rest.car.cdr rest.cdr))))
 
 (def (< a b) (a.< b))
 (def (= a b) (a.= b))
