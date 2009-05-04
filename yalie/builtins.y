@@ -9,6 +9,8 @@
 (def (ls (rest rest)) rest)
 (def (car x) x.car)
 (def (cdr x) x.cdr)
+(def (setcar x y) (x.setcar y))
+(def (setcdr x y) (x.setcdr y))
 (def (len x)
      (if x
 	 (1.+ (len (cdr x)))
@@ -18,7 +20,6 @@
 	 (rest.cdr.isa Nil) rest.car
 	 (rest.car.isa Nil) (call append rest.cdr)
 	 (cons rest.car.car (call append (cons rest.car.cdr rest.cdr)))))
-     
 
 (def (< a b) (a.< b))
 (def (= a b) (a.= b))
