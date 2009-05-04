@@ -4,7 +4,7 @@ import sys,os,string,readline,copy
 from StringIO import *
 
 ### Make this false to see Python error traces
-CATCH_ERRORS = 0
+CATCH_ERRORS = 1
 
 ### Terminal prompts
 PROMPT = "yalie: "
@@ -274,6 +274,7 @@ def object_eq( scope, obj, arg ):
 
 RootObject.methods['eval'] = PyFnMethod( lambda scope, obj : obj )
 RootObject.methods['='] = PyFnMethod( object_eq )
+RootObject.methods['is'] = PyFnMethod( object_eq )
 RootObject.methods['bool'] = PyFnMethod( lambda scope, obj : make_int(1) )
 RootObject.methods['print'] = PyFnMethod( lambda scope, obj: print_ret(obj) )
 RootObject.methods['def'] = PyFormMethod( object_def )

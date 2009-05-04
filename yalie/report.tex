@@ -1,0 +1,220 @@
+\documentclass[twocolumn]{article}
+\usepackage{amsmath,graphicx,amsfonts,amssymb}
+\title{Yet Another Lisp Interpreting Experiment}
+\author{John O'Connor, Paul Hudak}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+One of the historical attractions of the Lisp family of programming
+languages has been their flexibility. Lisp was one of the first
+languages to include dynamic typing, and Lisp macros allow the
+programmer to create new binding forms and control structures. This
+flexibility is one of the reasons for Lisp's popularity in the AI
+community. Programmers can implement domain-specific mini-languages
+without losing the infrastructure of a full language implementation.
+
+Another strength of Lisp is its elegance. The S-expression syntax
+allows Lisp to treat lists as code. Thus Lisp macros, by constructing
+and returning lists of symbols, actually return code. This is one of
+the more confusing aspects of Lisp for newcomers, to be sure, but it
+also simplifies the language in an important sense. Where most
+languages have code and data, Lisp has only data. In the long run,
+fewer ``moving parts'' means fewer distinct concepts that a programmer
+needs to keep in mind to understand his language.
+
+More recent developments, however, have seen Lisp fall behind. In
+particular, the Smalltalk language demonstrated that it is possible to
+treat everything in a language as an ``object.'' The popular Python
+and Ruby languages have adopted many concepts from Smalltalk with
+great success. Several object-oriented variants of Lisp have been
+developed, including the Common Lisp Object System, but these have not
+achieved nearly the same popularity. We wish to suggest that one of
+the failings of various Lisp object systems is that they are built for
+the wrong reasons.
+
+Through object-orientation, Smalltalk was able to achieve greater
+flexibility and greater simplicity. These goals are essentially
+orthogonal to the goal of facilitating an object-oriented programming
+style. Lisp object systems have attempted the latter, and as a result
+they have generally made their languages more complicated and less
+consistent. We believe that object-orientation can greatly enhance
+Lisp's core strengths, but only if these concepts are introduced
+consistently throughout the entire language.
+
+This is the intention of Yet Another Lisp Interpreting Experiment (or,
+``Yalie''). Our goal is to demonstrate a Lisp variant in which
+everything is an object and all function calls are based on message
+passing. In doing this, we hope to make the language less complicated,
+rather than more so. An interactive interpreter for Yalie, written in
+Python, accompanies this paper.
+
+\section*{Concepts}
+Broadly speaking, there are two major categories of object-oriented
+languages.\cite{Abadi} The most familiar and popular are the
+``class-based'' languages, including C++, Java, and Smalltalk. The
+other category is ``object-based'' or ``prototype-based'' languages,
+like JavaScript and Lua. Class-based languages distinguish classes
+from the objects that belong to them, an inheritance is accomplished
+within the class hierarchy. Object-based languages omit this
+distinction, and instead allow objects to inherit from one another and
+produce their own clone or child objects. In practice, object-based
+languages often approximate classes by using certain objects solely
+for inheritance, and for that reason---and because of the wider
+popularity of class-based languages---some have argued that making
+classes an explicit part of the language is more
+convenient.\cite{Bruce} Our primary purpose here, though, is to
+simplify our language, so ours will be an object-based semantics.
+
+We will also be taking a less conventional approach to specifying the
+semantics of our language. With the goal of unifying code and data, we
+will first describe the translation from syntax to literal objects and
+then separately define the methods available to those objects. This is
+also intended to highlight the fact that the vast majority of the
+functionality of Yalie is contained in predefined methods for our
+objects, rather than in the syntax of our language.
+
+The semantics of our language will be based on three broad concepts:
+objects, the scope, and the store. Objects will be treated as simple
+tuples, of the form $(p,\phi_1,\phi_2,d)$, containing a reference to a
+parent object, a scope of methods, a scope of member objects, and a
+data field for builtin data like integers. Scopes---denoted by
+$\phi$---are maps from names to natural numbers, and the
+store---denoted by $\sigma$---is a map from natural numbers to
+objects. In this way, the store is intended to simulate a persistent
+memory of mutable objects, and for our purposes we can understand the
+store as unique (in contrast to scopes, of which there will be
+many). The extension of a scope or store is represented by the
+expression ``$[\phi|key\rightarrow val]$''. The smallest currently
+unassigned integer in a store is denoted by
+``$\operatorname{next}(\sigma)$''. The empty scope and the empty store
+are denoted by $\phi_0$ and $\sigma_0$, respectively.
+
+\section*{Syntax}
+
+Yalie contains only three literal objects: integers, symbols, and
+lists. Integers are written literally. Symbols are written as any
+string of characters (other than those defined as punctuation in this
+section) that is not an integer. Lists are written as a sequence of
+whitespace-separated literals enclosed by matching parentheses. We can
+define the parsing function as taking for arguments a code snippet and
+an initial store, and returning an updated store and the number
+referring to the newly created object in that store.
+
+Integers are parsed as
+\begin{equation}
+\operatorname{parse}(i\in\mathbb{Z},\sigma) = (n,\sigma'),
+\end{equation}
+where $\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
+(\text{INT}, {\phi_1}_{\text{INT}}, {\phi_2}_{\text{INT}}, i)]$ and
+$n=\operatorname{next}(\sigma)$. ``INT'' is the reference number of
+the integer superobject, which we will define later, and
+${\phi_1}_{\text{INT}}$ and ${\phi_2}_{\text{INT}}$ are its method and
+member scopes.
+
+Symbols are parsed as
+\[ \operatorname{parse}(s\in\mathbb{S},\sigma) = (n,\sigma'),\]
+where \[\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
+(\text{SYMBOL}, {\phi_1}_{\text{SYMBOL}}, {\phi_2}_{\text{SYMBOL}},
+i)]\] and $n=\operatorname{next}(\sigma)$. ``SYMBOL'' is the reference
+number of the symbol superobject, which we will again define later,
+and ${\phi_1}_{\text{SYMBOL}}$ and ${\phi_2}_{\text{SYMBOL}}$ are its
+method and member scopes, again as before.
+
+Finally, lists are parsed into ``cons'' objects, as is traditional for
+Lisp languages. The data element of these cons objects will be an
+ordered pair of the form $(a,b)$, and they will be linked together to
+form linked lists terminated in a ``nil'' object.
+\[ \operatorname{parse}(\text{``()''},\sigma) = (n,\sigma'),\]
+where $\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
+(\text{NIL}, {\phi_1}_{\text{NIL}}, {\phi_2}_{\text{NIL}},
+\o)]$ and $n=\operatorname{next}(\sigma)$. Also,
+\[ \operatorname{parse}(\text{``(a, b,\ldots z)''},\sigma) =
+(n,\sigma'),\] where \[\sigma' = [\sigma|\operatorname{next}(\sigma)
+\rightarrow (\text{CONS}, {\phi_1}_{\text{CONS}},
+{\phi_2}_{\text{CONS}}, \operatorname{parse}(\text{``(b,\ldots
+  z)''},\sigma')]\] and $n=\operatorname{next}(\sigma)$.
+
+In addition to these literals, we define some extra translational
+syntax for convenience. Message passing is invoked by the expression
+\texttt{(msg foo msgForFoo [args...])}, so we allow the period
+operator to translate into that S-expression. We let \texttt{a.b}
+translate to \texttt{(msg a b)} and \texttt{(a.b c d...)} translate to
+\texttt{(msg a b c d...)}. When there are multilple consecutive
+infixed objects at the front of an S-expression, we evaluate from left
+to right and allow the final infix to capture the expression. Thus
+\texttt{(a.b.c d e)} translates to \texttt{(msg (msg a b) c d e)}. We
+also define the single quote as a prefix operator that takes
+precedence over the period, and we translate \texttt{`a} to
+\texttt{(quote a)}. Both \texttt{msg} and \texttt{quote} will be
+defined below.
+
+\section*{Builtin Objects and Methods}
+The meat of the Yalie language is in its builtin objects and
+methods. As we have seen, object literals all inherit from parent
+objects that will be exposed to the user for potential
+modification. These parent objects will have methods defined for their
+children to inherit.
+
+We will formally specify several methods here, and give a brief
+description of the rest. Everything described in this section is
+implemented in the accompanying interpreter, as are several additional
+features described in the next section.
+
+In order to specify these methods, we will need a few helper
+functions. The lookup function, $L$, takes a store, an object
+reference, and a method name and returns the method of that name
+belonging to the closest ancestor of the object.
+\begin{multline*}
+  L(\sigma,o,\text{``name''}) = \phi_1(\text{``name''}) \text{ if
+  ``name''} \in \phi_1 \\\text{else }L(\sigma,p,\text{``name''}),
+\end{multline*}
+where $\sigma(o)=(p,\phi_1,\phi_2,d)$.
+
+The method invoker, $M$, returns the value of a method call on a given
+object under a given scope and store. That is, it returns an object
+reference, a new scope, and a new store.
+\begin{multline*} M(\phi,\sigma,o,\text{``name''},\left<a_1,\ldots a_n\right>)
+ =\\ f( \phi, \sigma, o, \left<a_1, \ldots a_n\right>
+\end{multline*}
+where $f = L(\sigma,o,\text{``name''})$.
+
+Lastly, our wrapper function, $W$, takes a function of some arguments
+and returns a function that implicitly evaluates those arguments
+before beginning. Evaluation is accomplished by the ``eval'' method,
+which each object will define.
+\begin{multline*}
+W(f)(\phi,\sigma,o,\left<a_1,\ldots a_n\right>) =
+f(\phi,\sigma,o,\left<e_1,\ldots e_n\right>)
+\end{multline*}
+where $e_i = M(\phi,\sigma,a_i,\text{``eval''},\left<\right>)$.
+
+\section*{Tutorial}
+
+wrapper for implicit evaluation
+
+extras:
+printing
+comments
+builtins.y
+def, deform, fn, form
+unquote
+let
+
+\section*{Conclusions}
+easier to program by far
+
+
+\begin{thebibliography}{9}
+\bibitem{Abadi} M. Abadi and L. Cardelli. \textit{A Theory of Objects.} New
+  York: Springer, 1996.
+
+\bibitem{Bruce} K. B. Bruce. \textit{Foundations of Object-Oriented
+    Languages.} Cambridge, Massachusetts: MIT Press, 2002.
+\end{thebibliography}
+
+
+
+\end{document}

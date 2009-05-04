@@ -25,6 +25,7 @@
 (def (= a b) (a.= b))
 (def (<= a b) (or (< a b) (= a b)))
 (def (> a b) (and (not < a b) (not = a b)))
+(def (>= a b) (or (> a b) (= a b)))
 
 (def (+ (rest rest))
      (if rest
