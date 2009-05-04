@@ -35,11 +35,13 @@ class Scope:
             raise RuntimeError, "Could not set key: '%s'" % key
     def let( self, key,val ):
         ### No return
+        if key in self.dict:
+            raise RuntimeError, "'let' cannot modify an existing binding"
         self.dict[key] = val
     def __getitem__( self, key ):
         return self.ref( key )
     def __setitem__( self, key, val ):
-        self.let( key, val )
+        self.dict[key] = val
     def list_keys( self ):
         ret = self.dict.keys()
         if self.parent:
@@ -61,13 +63,15 @@ class Object:
         ### type difference means that the self will not be implicitly
         ### passed. Thus this little hack.
         return self.repr(self)
-    def __init__( self, parent ):
+    def __init__( self, parent, name=None ):
         self.parent = parent
+        self.name = name
         if parent==None:
             self.methods = Scope(None)
             self.members = Scope(None)
             self.data = None
-            self.repr = lambda self: "<An Object: %s>" % self.data
+            self.repr = lambda self: "<Object%s>" % (': '+self.name if
+                                                     self.name else '')
         else:
             self.methods = Scope(parent.methods)
             self.members = parent.members.copy()
@@ -167,7 +171,7 @@ class FormMethod( LispMethod ):
 ###
 Builtins = {}
 
-RootObject = Object(None)
+RootObject = Object(None, "Root")
 def print_ret( obj ):
     print repr(obj)
     return obj
@@ -224,6 +228,9 @@ def object_get( scope, obj, name ):
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of member must be a symbol."
     return obj.members[name.data]
+def isa( scope, obj, arg ):
+    obj2 = arg.message(scope,'eval')
+    return make_int(1) if obj.inherits(obj2) else make_int(0)
 
 RootObject.methods['eval'] = PyMethod( lambda scope, obj : obj )
 RootObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(1) )
@@ -236,6 +243,7 @@ RootObject.methods['get'] = PyMethod( object_get )
 RootObject.methods['parent'] = PyMethod( lambda scope,obj:
                                              obj.parent if obj.parent!=None \
                                              else obj)
+RootObject.methods['isa'] = PyMethod( isa )
 RootObject.methods['copy'] = PyMethod( lambda scope,obj: obj.copy() )
 RootObject.methods['child'] = PyMethod( lambda scope,obj: Object(obj) )
 RootObject.methods['methods'] = PyMethod( lambda scope,obj:
@@ -246,15 +254,17 @@ RootObject.methods['members'] = PyMethod( lambda scope,obj:
                                                       obj.members.list_keys()]))
 Builtins['Root'] = RootObject
 
-NilObject = Object(RootObject)
+NilObject = Object(RootObject, "Nil")
 def make_nil():
     return Object(NilObject)
-NilObject.repr = lambda self: "()"
+NilObject.repr = lambda self: "<Object: Nil>" if self==NilObject else "()"
 NilObject.methods['bool'] = PyMethod( lambda scope, obj : make_int(0) )
 Builtins['Nil'] = NilObject
 
-IntObject = Object(RootObject)
-IntObject.repr = lambda self: str(self.data)
+IntObject = Object(RootObject, "Int")
+IntObject.data = 1
+IntObject.repr = lambda self: "<Object: Int>" if self==IntObject \
+    else str(self.data)
 def make_int( i ):
     if type(i) not in (type(0),type(0L)):
         raise RuntimeError, "OOPS!!!"
@@ -281,6 +291,11 @@ def int_div( scope, obj, arg ):
     if not arg.inherits( IntObject ):
         raise RuntimeError, "Cannot subtract int from non-int."
     return make_int( obj.data // arg.data )
+def int_mod( scope, obj, arg ):
+    arg = arg.message(scope,'eval')
+    if not arg.inherits( IntObject ):
+        raise RuntimeError, "Cannot subtract int from non-int."
+    return make_int( obj.data % arg.data )
 def int_eq( scope, obj, arg ):
     arg = arg.message(scope,'eval')
     if not arg.inherits( IntObject ):
@@ -295,6 +310,7 @@ IntObject.methods['+'] = PyMethod( int_add )
 IntObject.methods['-'] = PyMethod( int_sub )
 IntObject.methods['*'] = PyMethod( int_mul )
 IntObject.methods['/'] = PyMethod( int_div )
+IntObject.methods['%'] = PyMethod( int_mod )
 IntObject.methods['='] = PyMethod( int_eq )
 IntObject.methods['<'] = PyMethod( int_lt )
 IntObject.methods['bool'] = PyMethod( lambda scope, obj :
@@ -302,7 +318,7 @@ IntObject.methods['bool'] = PyMethod( lambda scope, obj :
                                           else make_int(1))
 Builtins['Int'] = IntObject
 
-SymbolObject = Object(RootObject)
+SymbolObject = Object(RootObject, "Symbol")
 SymbolObject.data = "<Symbol object>"
 SymbolObject.repr = lambda self: self.data
 def make_symbol(name):
@@ -314,9 +330,11 @@ def make_symbol(name):
 SymbolObject.methods['eval'] = PyMethod( lambda scope, obj:scope.ref(obj.data))
 Builtins['Symbol'] = SymbolObject
 
-ConsObject = Object(RootObject)
-ConsObject.data = [ RootObject, RootObject ]
+ConsObject = Object(RootObject, "Cons")
+ConsObject.data = [ make_nil(), make_nil() ]
 def cons_repr( self ):
+    if self==ConsObject:
+        return "<Object: Cons>"
     ret = "("
     ret += repr(self.data[0])
     def cons_repr_helper( rest ):
@@ -379,14 +397,30 @@ ConsObject.methods['eval'] = PyMethod( cons_eval )
 Builtins['Cons'] = ConsObject
 
 # This is the general parent of all callables
-OperatorObject = Object(RootObject)
+OperatorObject = Object(RootObject, "Operator")
+OperatorObject.repr = lambda self: "<Operator%s>" % (': '+self.name if
+                                                     self.name else '')
 Builtins['Operator'] = OperatorObject
-FunctionObject = Object(OperatorObject)
-Builtins['Function'] = OperatorObject
-FormObject = Object(OperatorObject)
-Builtins['Form'] = OperatorObject
+FunctionObject = Object(OperatorObject, "Function")
+FunctionObject.repr = lambda self: "<Function%s>" % (': '+self.name if
+                                                     self.name else '')
+Builtins['Function'] = FunctionObject
+SpecialFormObject = Object(OperatorObject, "Form")
+SpecialFormObject.repr = lambda self: "<Form%s>" % (': '+self.name if 
+                                                    self.name else '')
+Builtins['Form'] = SpecialFormObject
 
-MsgObject = Object(FormObject)
+CallObject = Object(SpecialFormObject,"call")
+def call_call( scope, obj, fn, args ):
+    fn = fn.message(scope,'eval')
+    args = args.message(scope,'eval')
+    if not args.inherits(ConsObject) and not args.inherits(NilObject):
+        raise RuntimeError, "arguments for 'call' must be in a list"
+    return fn.message( scope, 'call', *unmake_list(args) )
+CallObject.methods['call'] = PyMethod(call_call)
+Builtins['call'] = CallObject
+
+MsgObject = Object(SpecialFormObject, "msg")
 def msg_call( scope, obj, recipient, message, *args ):
     #evaluate the recipient
     recipient = recipient.message( scope, 'eval' )
@@ -397,17 +431,36 @@ def msg_call( scope, obj, recipient, message, *args ):
 MsgObject.methods['call'] = PyMethod( msg_call )
 Builtins['msg'] = MsgObject
 
-LetObject = Object(FormObject)
-def let_call( scope, obj, var, val ):
-    if not var.inherits(SymbolObject):
-        raise RuntimeError, "'let' requires a symbol!"
-    e_val = val.message( scope, 'eval' )
-    scope.let( var.data, e_val )
-    return e_val
+LetObject = Object(SpecialFormObject, "let")
+def let_call( scope, obj, *body ):
+    if body[0].inherits(ConsObject) or body[0].inherits(NilObject):
+        new_scope = Scope(scope)
+        bindings = unmake_list(body[0])
+        if len(bindings)%2!=0:
+            raise RuntimeError, "'let' requires an even number of initial args"
+        for i in [bindings[i] for i in range(len(bindings)) if i%2==0]:
+            if not i.inherits(SymbolObject):
+                raise RuntimeError, "'let' cannot bind a non-symbol"
+        while bindings:
+            new_scope.let(bindings[0].data,
+                          bindings[1].message(new_scope,'eval'))
+            bindings = bindings[2:]
+        ret = make_nil()
+        for i in body[1:]:
+            ret = i.message(new_scope,'eval')
+        return ret
+    elif len(body)==2:
+        if not body[0].inherits(SymbolObject):
+            raise RuntimeError, "'let' requires a symbol!"
+        val = body[1].message( scope, 'eval' )
+        scope.let( body[0].data, val )
+        return val
+    else:
+        raise RuntimeError, "'let' not formatted properly"
 LetObject.methods['call'] = PyMethod( let_call )
 Builtins['let'] = LetObject
 
-SetObject = Object(FormObject)
+SetObject = Object(SpecialFormObject, "set")
 def set_call( scope, obj, var, val ):
     if not var.inherits(SymbolObject):
         raise RuntimeError, "'set' requires a symbol!"
@@ -417,7 +470,7 @@ def set_call( scope, obj, var, val ):
 SetObject.methods['call'] = PyMethod( set_call )
 Builtins['set'] = SetObject
 
-QuoteObject = Object(FormObject)
+QuoteObject = Object(SpecialFormObject, "quote")
 def quote_call( scope, obj, arg ):
     if not arg.inherits( ConsObject ):
         return arg
@@ -460,7 +513,7 @@ def quote_call( scope, obj, arg ):
 QuoteObject.methods['call'] = PyMethod( quote_call )
 Builtins['quote'] = QuoteObject
 
-IfObject = Object(FormObject)
+IfObject = Object(SpecialFormObject, "if")
 def if_call( scope, obj, cond, conseq, *rest):
     bool = cond.message( scope, 'eval' ).message( scope, 'bool' )
     if bool.data:
@@ -474,9 +527,9 @@ def if_call( scope, obj, cond, conseq, *rest):
 IfObject.methods['call'] = PyMethod( if_call )
 Builtins['if'] = IfObject
 
-WhileObject = Object(FormObject)
-BreakObject = Object(FormObject)
-ContinueObject = Object(FormObject)
+WhileObject = Object(SpecialFormObject, "while")
+BreakObject = Object(SpecialFormObject, "break")
+ContinueObject = Object(SpecialFormObject, "continue")
 class BreakException(Exception): pass
 class ContinueException(Exception): pass
 def while_call( scope, obj, cond, *body ):
@@ -505,17 +558,109 @@ Builtins['break'] = BreakObject
 ContinueObject.methods['call'] = PyMethod( continue_call )
 Builtins['continue'] = ContinueObject
 
-DirObject = Object(FunctionObject)
+DirObject = Object(FunctionObject, "dir")
 DirObject.methods['call'] = PyMethod( lambda scope,obj:
                                           make_list( [ make_symbol(i) for i in
                                                        scope.list_keys() ]))
 Builtins['dir'] = DirObject
 
-MakeConsObject = Object(FunctionObject)
-MakeConsObject.methods['call'] = PyMethod( lambda scope,obj,a,b: make_cons(a,b))
+MakeConsObject = Object(FunctionObject, "cons")
+def makecons_call( scope, obj, a, b ):
+    a = a.message(scope,'eval')
+    b = b.message(scope,'eval')
+    return make_cons(a,b)
+MakeConsObject.methods['call'] = PyMethod( makecons_call )
 Builtins['cons'] = MakeConsObject
 
+DefObject = Object( SpecialFormObject, "def" )
+def def_call( scope, obj, shape, *body ):
+    if not well_formed( shape ) or shape.inherits(NilObject):
+        raise RuntimeError, "Function declaration must be of form (f ...)"
+    if not shape.data[0].inherits(SymbolObject):
+        raise RuntimeError, "Function name must be a symbol"
+    name = shape.data[0]
+    args = shape.data[1]
+    ret = Object( FunctionObject, name.data )
+    object_def( scope, ret, make_symbol('call'), args, *body )
+    scope[name.data] = ret
+    return ret
+DefObject.methods['call'] = PyMethod( def_call )
+Builtins['def'] = DefObject
 
+FnObject = Object( SpecialFormObject, "fn" )
+def fn_call( scope, obj, args, *body ):
+    if not well_formed( args ):
+        raise RuntimeError, "Function args must be a list"
+    ret = Object( FunctionObject )
+    object_def( scope, ret, make_symbol('call'), args, *body )
+    return ret
+FnObject.methods['call'] = PyMethod( fn_call )
+Builtins['fn'] = FnObject
+
+DeformObject = Object( SpecialFormObject, "deform" )
+def deform_call( scope, obj, shape, *body ):
+    if not well_formed( shape ) or shape.inherits(NilObject):
+        raise RuntimeError, "Form declaration must be of form (f ...)"
+    if not shape.data[0].inherits(SymbolObject):
+        raise RuntimeError, "Form name must be a symbol"
+    name = shape.data[0]
+    args = shape.data[1]
+    ret = Object( SpecialFormObject, name.data )
+    object_deform( scope, ret, make_symbol('call'), args, *body )
+    scope[name.data] = ret
+    return ret
+DeformObject.methods['call'] = PyMethod( deform_call )
+Builtins['deform'] = DeformObject
+
+FormObject = Object( SpecialFormObject, "form" )
+def form_call( scope, obj, args, *body ):
+    if not well_formed( args ):
+        raise RuntimeError, "Form arguments must be a list."
+    ret = Object( SpecialFormObject )
+    object_deform( scope, ret, make_symbol('call'), args, *body )
+    return ret
+FormObject.methods['call'] = PyMethod( form_call )
+Builtins['form'] = FormObject
+
+AndObject = Object( SpecialFormObject, "and" )
+def and_call( scope, obj, *body ):
+    for i in body:
+        val = i.message(scope,'eval')
+        bool = val.message(scope,'bool')
+        if bool.data==0:
+            return bool
+    return make_int(1)
+AndObject.methods['call'] = PyMethod( and_call )
+Builtins['and'] = AndObject
+
+OrObject = Object( SpecialFormObject, "or" )
+def or_call( scope, obj, *body ):
+    for i in body:
+        val = i.message(scope,'eval')
+        bool = val.message(scope,'bool')
+        if bool.data==1:
+            return bool
+    return make_int(0)
+OrObject.methods['call'] = PyMethod( or_call )
+Builtins['or'] = OrObject
+
+NotObject = Object( SpecialFormObject, "not" )
+def not_call( scope, obj, arg, *rest ):
+    if rest:
+        command = make_list([arg]+list(rest))
+        tmp = command.message(scope,'eval')
+    else:
+        tmp = arg.message(scope,'eval')
+    bool = tmp.message(scope,'bool')
+    return make_int(0) if bool.data else make_int(1)
+NotObject.methods['call'] = PyMethod( not_call )
+Builtins['not'] = NotObject
+
+ErrorObject = Object( SpecialFormObject, "error" )
+def error_call( scope, obj ):
+    raise RuntimeError, "(error) called"
+ErrorObject.methods['call'] = PyMethod( error_call )
+Builtins['error'] = ErrorObject
 
 ###
 ### Parser!!!
@@ -570,24 +715,17 @@ class Buffer:
             return self.gettok()
         elif c in self.punctuation:
             return c
-        elif c in string.digits:
+        elif c not in self.punctuation+string.whitespace:
             chars = [ c ]
             c = self.getc()
-            while c and c in string.digits:
-                chars.append(c)
-                c = self.getc()
-            if c not in self.punctuation+string.whitespace:
-                raise RuntimeError, "Syntax error reading int"
-            self.ungetc(c)
-            return make_int(int(string.join(chars,'')))
-        else:
-            chars = [ c ]
-            c = self.getc()
-            while c not in self.punctuation+string.whitespace:
+            while c not in self.punctuation + string.whitespace:
                 chars.append(c)
                 c = self.getc()
             self.ungetc(c)
-            return make_symbol( string.join(chars,'') )
+            try:
+                return make_int(int(string.join(chars,'')))
+            except ValueError:
+                return make_symbol( string.join(chars,'') )
     def ungettok( self, tok ):
         self.tokbuf = [tok] + self.tokbuf
     def read_prefixed(self, start=False):
@@ -604,8 +742,11 @@ class Buffer:
         else:
             raise RuntimeError, "read_prefixes could not parse %s" % tok
     
-    def read_infixed(self, prefixed=None, start=False):
+    def read_infixed(self, prefixed=None, start=False, captured_ptr=None):
         dict = { '.':'msg', ':':'ref' } ##TWO COPIES
+        ### The first element of captured_ptr will be set to True
+        ### if any infix punctuation was encountered during the call.
+        if captured_ptr: captured_ptr[0] = False
         if prefixed==None:
             prefixed = self.read_prefixed(start)
         tok = self.gettok(False,True)
@@ -615,6 +756,7 @@ class Buffer:
             self.ungettok(tok)
             return prefixed
         else:
+            if captured_ptr: captured_ptr[0] = True
             other = self.read_prefixed()
             list = make_list( [make_symbol(dict[tok]), prefixed, other] )
             return self.read_infixed(list)
@@ -629,22 +771,16 @@ class Buffer:
         else:
             self.ungettok(tok)
 
-        if capture_infix:
-            first = self.read_prefixed()
-            if first==None:
-                raise RuntimeError, "Ended in sexpr.1"
-            tok = self.gettok()
-            if tok==None:
-                raise RuntimeError, "Ended in sexpr.2"
-            elif isinstance(tok,Object) or tok not in self.infixes:
-                self.ungettok(tok)
-                return make_cons( first, self.read_sexpr(False) )
-            else:
-                return make_cons( make_symbol(dict[tok]),
-                                  make_cons( first,
-                                             self.read_sexpr(False) ))
+        captured_ptr = [False]
+        first = self.read_infixed( None, False, captured_ptr )
+        if first==None:
+            raise RuntimeError, "Ended in sexpr.1"
+        rest = self.read_sexpr(False)
+        
+        if capture_infix and captured_ptr[0]:
+            return make_list(unmake_list(first)+unmake_list(rest))
         else:
-            return make_cons(self.read_infixed(),self.read_sexpr(False))
+            return make_cons( first, rest )
 
     def read_obj(self):
         return self.read_infixed(None,True)
@@ -708,6 +844,7 @@ def main():
             ### Unprotected loop for debugging
             obj = buf.read_obj()
             if obj==None:
+                print
                 break
             ret = obj.message(scope,'eval')
             ret.message(scope,'print')
