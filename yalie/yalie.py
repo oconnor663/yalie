@@ -4,7 +4,7 @@ import sys,os,string,readline,copy
 from StringIO import *
 
 ### Make this false to see Python error traces
-CATCH_ERRORS = 1
+CATCH_ERRORS = 0
 
 ### Terminal prompts
 PROMPT = "yalie: "
@@ -85,7 +85,10 @@ class Object:
         else:
             return False
     def message( self, scope, message, *args ):
-        return self.methods.ref(message).call(scope,self,*args)
+        ret = self.methods.ref(message).call(scope,self,*args)
+        if type(ret)==type(True):
+            print "message %s to obj %s is returning a bool!" % (message, self )
+        return ret
     def copy( self ):
         ret = Object( None )
         ret.parent = self.parent
@@ -101,7 +104,8 @@ class PyFnMethod:
     def call( self, scope, obj, *args ):
         # implicitly eval's the args
         args = [ i.message(scope,'eval') for i in args ]
-        return self.fn( scope, obj, *args )
+        ret = self.fn( scope, obj, *args )
+        return ret
     def call_noeval( self, scope, obj, *args ):
         return self.fn( scope, obj, *args )
 
@@ -264,9 +268,12 @@ def object_get( scope, obj, name ):
         raise RuntimeError, "Name of member must be a symbol."
     return obj.members[name.data]
 def isa( scope, obj, arg ):
-    return make_int(1) if obj.inherits(arg) else make_int(0)
+    return make_bool( obj.inherits(arg) )
+def object_eq( scope, obj, arg ):
+    return make_bool(obj==arg)
 
 RootObject.methods['eval'] = PyFnMethod( lambda scope, obj : obj )
+RootObject.methods['='] = PyFnMethod( object_eq )
 RootObject.methods['bool'] = PyFnMethod( lambda scope, obj : make_int(1) )
 RootObject.methods['print'] = PyFnMethod( lambda scope, obj: print_ret(obj) )
 RootObject.methods['def'] = PyFormMethod( object_def )
@@ -293,6 +300,7 @@ def make_nil():
     return Object(NilObject)
 NilObject.repr = lambda self: "<Object: Nil>" if self==NilObject else "()"
 NilObject.methods['bool'] = PyFnMethod( lambda scope, obj : make_int(0) )
+NilObject.methods['='] = PyFnMethod( lambda scope,obj,arg: make_bool(arg.inherits(NilObject)) )
 Builtins['Nil'] = NilObject
 
 IntObject = Object(RootObject, "Int")
@@ -305,6 +313,8 @@ def make_int( i ):
     ret = Object( IntObject )
     ret.data = i
     return ret
+def make_bool( val ):
+    return make_int(1 if val else 0)
 def int_add( scope, obj, arg ):
     if not arg.inherits( IntObject ):
         raise RuntimeError, "Cannot add int to non-int."
@@ -325,24 +335,19 @@ def int_mod( scope, obj, arg ):
     if not arg.inherits( IntObject ):
         raise RuntimeError, "Cannot subtract int from non-int."
     return make_int( obj.data % arg.data )
-def int_eq( scope, obj, arg ):
-    if not arg.inherits( IntObject ):
-        raise RuntimeError, "Cannot compare int to non-int."
-    return make_int( 1 if obj.data==arg.data else 0 )
 def int_lt( scope, obj, arg ):
     if not arg.inherits( IntObject ):
         raise RuntimeError, "Cannot compare int to non-int."
-    return make_int( 1 if obj.data<arg.data else 0 )
+    return make_bool( obj.data < arg.data )
 IntObject.methods['+'] = PyFnMethod( int_add )
 IntObject.methods['-'] = PyFnMethod( int_sub )
 IntObject.methods['*'] = PyFnMethod( int_mul )
 IntObject.methods['/'] = PyFnMethod( int_div )
 IntObject.methods['%'] = PyFnMethod( int_mod )
-IntObject.methods['='] = PyFnMethod( int_eq )
+IntObject.methods['='] = PyFnMethod( lambda scope,obj,arg: make_bool(arg.inherits(IntObject) and
+                                     arg.data == obj.data) )
 IntObject.methods['<'] = PyFnMethod( int_lt )
-IntObject.methods['bool'] = PyFnMethod( lambda scope, obj :
-                                            make_int(0) if obj.data==0 \
-                                            else make_int(1))
+IntObject.methods['bool'] = PyFnMethod( lambda scope, obj : make_bool(obj.data) )
 Builtins['Int'] = IntObject
 
 SymbolObject = Object(RootObject, "Symbol")
@@ -355,6 +360,8 @@ def make_symbol(name):
     ret.data = name
     return ret
 SymbolObject.methods['eval'] = PyFnMethod( lambda scope, obj:scope.ref(obj.data))
+SymbolObject.methods['='] = PyFnMethod( lambda scope,obj,arg: make_bool(arg.inherits(SymbolObject) and
+                                     arg.data == obj.data) )
 Builtins['Symbol'] = SymbolObject
 
 ConsObject = Object(RootObject, "Cons")
@@ -414,11 +421,18 @@ def cons_eval( scope, obj ):
         raise RuntimeError, "Cannot evaluate non-well-formed list."
     fn = obj.data[0].message( scope, 'eval' )
     return fn.message( scope, 'call', *unmake_list(obj.data[1]) )
+def cons_eq( scope, obj, arg ):
+    if not arg.inherits(ConsObject):
+        return False
+    b1 = obj.data[0].message(scope,'=',arg.data[0])
+    b2 = obj.data[1].message(scope,'=',arg.data[1])
+    return make_bool( b1.data and b2.data )
 ConsObject.methods['car'] = PyFnMethod( lambda scope,obj: obj.data[0] )
 ConsObject.methods['cdr'] = PyFnMethod( lambda scope,obj: obj.data[1] )
 ConsObject.methods['setcar'] = PyFnMethod( set_car )
 ConsObject.methods['setcdr'] = PyFnMethod( set_cdr )
 ConsObject.methods['eval'] = PyFnMethod( cons_eval )
+ConsObject.methods['='] = PyFnMethod( cons_eq )
 Builtins['Cons'] = ConsObject
 
 # This is the general parent of all callables
@@ -681,7 +695,7 @@ def not_call( scope, obj, arg, *rest ):
     else:
         tmp = arg.message(scope,'eval')
     bool = tmp.message(scope,'bool')
-    return make_int(0) if bool.data else make_int(1)
+    return make_bool( not bool.data )
 NotObject.methods['call'] = PyFormMethod( not_call )
 Builtins['not'] = NotObject
 
