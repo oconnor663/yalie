@@ -15,12 +15,34 @@
      (if x
 	 (1.+ (len (cdr x)))
 	 0))
+(def (reverse list)
+     (def (helper list rest)
+	  (if list 
+	      (helper (cdr list) (cons (car list) rest))
+	      rest))
+     (helper list ()))
 (def (append (rest rest))
      (if (rest.isa Nil) ()
 	 (rest.cdr.isa Nil) rest.car
 	 (rest.car.isa Nil) (call append rest.cdr)
 	 (cons rest.car.car (call append rest.car.cdr rest.cdr))))
-
+(def (map fn (rest arg-lists))
+     (def (map-single fn list)
+	  (if list
+	      (cons (fn (car list)) (map-single fn (cdr list)))))
+     (if (not arg-lists)
+	 (error))
+     (if (car arg-lists)
+	 (let (args (map-single car arg-lists)
+	       rests (map-single cdr arg-lists))
+	   (cons (call fn args)
+		 (call map fn rests)))))
+(def (filter fn list)
+     (if list
+	 (if (fn (car list))
+	     (cons (car list) (filter fn (cdr list)))
+	     (filter fn (cdr list)))))
+     
 (def (< a b) (a.< b))
 (def (= a b) (a.= b))
 (def (<= a b) (or (< a b) (= a b)))
