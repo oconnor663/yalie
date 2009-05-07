@@ -214,18 +214,23 @@ RootObject = Object(None, "Root")
 def print_ret( obj ):
     print repr(obj)
     return obj
-def def_method_or_form( is_function, scope, obj, name, args, *body ):
+def def_method_or_form( is_function, scope, obj, shape, *body ):
+    if not shape.inherits(ConsObject):
+        print obj
+        print shape
+        print body
+        raise RuntimeError, "Shape must be a list of at least len 1"
+    if not well_formed(shape):
+        raise RuntimeError, "Shape list must be well-formed"
+    shape = unmake_list(shape)
+    name = shape[0]
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of method must be a symbol"
-    if not args.inherits(ConsObject) and not args.inherits(NilObject):
-        raise RuntimeError, "Args must be a list"
-    if not well_formed(args):
-        raise RuntimeError, "Args list must be well-formed"
-    args_ls = unmake_list(args)
+    args = shape [1:]
     ## Look for a rest arg
     rest_arg = None
-    if args_ls and args_ls[-1].inherits(ConsObject):
-        last_ls = unmake_list(args_ls[-1])
+    if args and args[-1].inherits(ConsObject):
+        last_ls = unmake_list(args[-1])
         if len(last_ls)>2:
             raise RuntimeError, "Too many items in a method def rest list"
         for i in last_ls:
@@ -235,21 +240,21 @@ def def_method_or_form( is_function, scope, obj, name, args, *body ):
             raise RuntimeError, "Unknown argument tag: %s" % last_ls[0].data
         ## with tests passed, strip rest arg
         rest_arg = last_ls[1].data
-        args_ls = args_ls[:-1]
+        args = args[:-1]
     ## Check rest of args
-    for i in args_ls:
+    for i in args:
         if not i.inherits(SymbolObject):
             raise RuntimeError, "non-symbol in args list"
-    arg_names = [ i.data for i in args_ls ]
+    arg_names = [ i.data for i in args ]
     if is_function:
         obj.methods[name.data] = LispFnMethod( scope, arg_names, rest_arg, body )
     else:
         obj.methods[name.data] = LispFormMethod( scope, arg_names, rest_arg, body )
     return obj
-def object_def( scope, obj, name, args, *body ):
-    return def_method_or_form( True, scope, obj, name, args, *body )
-def object_deform( scope, obj, name, args, *body ):
-    return def_method_or_form( False, scope, obj, name, args, *body )
+def object_def( scope, obj, shape, *body ):
+    return def_method_or_form( True, scope, obj, shape, *body )
+def object_deform( scope, obj, shape, *body ):
+    return def_method_or_form( False, scope, obj, shape, *body )
 def object_dup( scope, obj, name, new_name ):
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of method must be a symbol."
@@ -542,13 +547,13 @@ def quote_call( scope, obj, arg ):
             ls = unmake_list(i)
             if ls[0].inherits(SymbolObject) and ls[0].data=='unquote':
                 if len(ls)>2:
-                    raise RuntimeError, "too many to unquote"
+                    raise RuntimeError, "too many args to unquote"
                 ret.append( ls[1].message(scope,'eval') )
             elif ls[0].inherits(SymbolObject) and ls[0].data=='unquote-splice':
                 if len(ls)>2:
-                    raise RuntimeError, "too many to unquote-splice"
+                    raise RuntimeError, "too many args to unquote-splice"
                 tmp = ls[1].message(scope,'eval')
-                if not tmp.inherits(ConsObject):
+                if not tmp.inherits(ConsObject) and not tmp.inherits(NilObject):
                     raise RuntimeError, "cannot splice non-list"
                 ls2 = unmake_list( tmp )
                 ret = ret + ls2
@@ -628,21 +633,11 @@ def def_call( scope, obj, shape, *body ):
     name = shape.data[0]
     args = shape.data[1]
     ret = Object( FunctionObject, name.data )
-    object_def( scope, ret, make_symbol('call'), args, *body )
+    object_def( scope, ret, make_cons(make_symbol('call'),args), *body )
     scope[name.data] = ret
     return ret
 DefObject.methods['call'] = PyFormMethod( def_call )
 Builtins['def'] = DefObject
-
-FnObject = Object( SpecialFormObject, "fn" )
-def fn_call( scope, obj, args, *body ):
-    if not well_formed( args ):
-        raise RuntimeError, "Function args must be a list"
-    ret = Object( FunctionObject )
-    object_def( scope, ret, make_symbol('call'), args, *body )
-    return ret
-FnObject.methods['call'] = PyFormMethod( fn_call )
-Builtins['fn'] = FnObject
 
 DeformObject = Object( SpecialFormObject, "deform" )
 def deform_call( scope, obj, shape, *body ):
@@ -653,21 +648,11 @@ def deform_call( scope, obj, shape, *body ):
     name = shape.data[0]
     args = shape.data[1]
     ret = Object( SpecialFormObject, name.data )
-    object_deform( scope, ret, make_symbol('call'), args, *body )
+    object_deform( scope, ret, make_cons(make_symbol('call'),args), *body )
     scope[name.data] = ret
     return ret
 DeformObject.methods['call'] = PyFormMethod( deform_call )
 Builtins['deform'] = DeformObject
-
-FormObject = Object( SpecialFormObject, "form" )
-def form_call( scope, obj, args, *body ):
-    if not well_formed( args ):
-        raise RuntimeError, "Form arguments must be a list."
-    ret = Object( SpecialFormObject )
-    object_deform( scope, ret, make_symbol('call'), args, *body )
-    return ret
-FormObject.methods['call'] = PyFormMethod( form_call )
-Builtins['form'] = FormObject
 
 AndObject = Object( SpecialFormObject, "and" )
 def and_call( scope, obj, *body ):

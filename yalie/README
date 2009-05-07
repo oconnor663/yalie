@@ -197,15 +197,13 @@ changes the value of the member or adds a new member if one of that
 name did not exist before. Note that there is no 'let' for member
 variables, so set is allowed to create new bindings.
 
-(x.def foo (args...) body...)
-(x.deform bar (args) macro_body...)
-
-These work similarly to the function and macro constructs above,
-except the function name is not part of the list of arguments in the
-definition. This can be used to redefine methods (see also 'dup'
-below). All user defined methods bind the variable "self" implicitly
-in their bodies. For example, to give all integers a factorial method
-denoted by '!', we would write:
+(x.def (name args...) body...)  (x.deform (name args...)
+macro_body...)  These work similarly to the function and macro
+constructs above, except that they bind methods to an object rather
+than functions to the local scope. This can be used to redefine
+methods (see also 'dup' below). All user defined methods bind the
+variable "self" implicitly in their bodies. For example, to give all
+integers a factorial method denoted by '!', we would write:
 (Int.def ! ()
   (if (= self 0)
       1

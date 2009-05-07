@@ -1,3 +1,12 @@
+(deform (fn args (rest body))
+ `(let ()
+   (def (anon ;args)
+    ;body)))
+(deform (form args (rest body))
+ `(let ()
+   (deform (anon ;args)
+    ;body)))
+
 (def (eval x) x.eval)
 (def (print x) x.print)
 (def (do (rest rest))

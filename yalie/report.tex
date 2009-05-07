@@ -1,10 +1,25 @@
 \documentclass[twocolumn]{article}
 \usepackage{amsmath,graphicx,amsfonts,amssymb}
+\usepackage{}
 \title{Yet Another Lisp Interpreting Experiment}
 \author{John O'Connor, Paul Hudak}
 \date{}
 
 \begin{document}
+
+\newcommand{\next}{\operatorname{next}}
+\newcommand{\invoke}{\operatorname{invoke}}
+\newcommand{\lookup}{\operatorname{lookup}}
+\newcommand{\wrap}{\operatorname{wrap}}
+\newcommand{\parse}{\operatorname{parse}}
+
+\newcommand{\eval}{\texttt{eval}}
+\newcommand{\call}{\texttt{call}}
+\newcommand{\msg}{\texttt{msg}}
+
+\newcommand{\lb}{\left<}
+\newcommand{\rb}{\right>}
+
 \maketitle
 
 \section*{Introduction}
@@ -18,12 +33,13 @@ without losing the infrastructure of a full language implementation.
 
 Another strength of Lisp is its elegance. The S-expression syntax
 allows Lisp to treat lists as code. Thus Lisp macros, by constructing
-and returning lists of symbols, actually return code. This is one of
-the more confusing aspects of Lisp for newcomers, to be sure, but it
-also simplifies the language in an important sense. Where most
-languages have code and data, Lisp has only data. In the long run,
-fewer ``moving parts'' means fewer distinct concepts that a programmer
-needs to keep in mind to understand his language.
+and returning lists of symbols, actually return instructions to be
+executed. This is one of the more confusing aspects of Lisp for
+newcomers, to be sure, but it also simplifies the language in an
+important sense. Where most languages have code and data, Lisp has
+only data. In the long run, fewer ``moving parts'' means fewer
+distinct concepts that a programmer needs to keep in mind to
+understand his language.
 
 More recent developments, however, have seen Lisp fall behind. In
 particular, the Smalltalk language demonstrated that it is possible to
@@ -49,15 +65,16 @@ This is the intention of Yet Another Lisp Interpreting Experiment (or,
 everything is an object and all function calls are based on message
 passing. In doing this, we hope to make the language less complicated,
 rather than more so. An interactive interpreter for Yalie, written in
-Python, accompanies this paper. What follows is a partial formal
-description of the language implemented in that interpreter.  For a
-practical description, please see the accompanying README file. This
-paper assumes basic familiarity with a modern Lisp dialect such as
+Python, accompanies this paper. What follows is a formal description
+of the language implemented in that interpreter.  For a practical
+description, please see the accompanying README file. This paper
+assumes the reader is familiar with a modern Lisp dialect such as
 Scheme or Common Lisp.
 
 \section*{Concepts}
+\subsection*{Object-based Languages}
 Broadly speaking, there are two major categories of object-oriented
-languages.\cite{Abadi} The most familiar and popular are the
+languages\cite{Abadi}. The most familiar and widely used are the
 ``class-based'' languages, including C++, Java, and Smalltalk. The
 other category is ``object-based'' or ``prototype-based'' languages,
 like JavaScript and Lua. Class-based languages distinguish classes
@@ -69,96 +86,220 @@ languages often approximate classes by using certain objects solely
 for inheritance, and for that reason---and because of the wider
 popularity of class-based languages---some have argued that making
 classes an explicit part of the language is more
-convenient.\cite{Bruce} Our primary purpose here, though, is
+convenient\cite{Bruce}. Our primary purpose here, though, is
 simplicity and consistency, so ours will be an object-based semantics.
 
-We will also be taking a less conventional approach to specifying the
-semantics of our language. With the goal of unifying code and data, we
-will first describe the translation from syntax to literal objects and
-then separately define the methods available to those objects. This is
-also intended to highlight the fact that the vast majority of the
-functionality of Yalie is contained in predefined methods for our
-objects, rather than in the syntax of our language.
+\subsection*{Message Passing}
+As a demonstration of the consistency possible with object
+orientation, all of the semantics of our language aside from literal
+syntax is based on message passing. This is very different from
+traditional Lisp semantics and requires some explanation. For an
+example, suppose we wish to evaluate the S-expression
+\[ \texttt{(+ 1 2)}. \] That is a list object (a series of cons
+objects, in fact) containing a symbol object and two integer
+objects. Evaluation begins by calling the \eval\ method of the list. As
+with all Lisp dialects, S-expressions represent function calls, so the
+\eval\ method of a list calls the \eval\ method of its first element,
+expecting a function or special form object of some kind. The \eval\
+method of the \texttt{+} symbol returns the binding of that symbol in
+the calling scope, which is indeed a function. The list \eval\ then
+invokes the \call\ method of that object, passing the remainder of the
+list as arguments, and finally returns $3$.
 
-The semantics of our language will be built from three components:
-objects, the scope, and the store. Objects will be treated as simple
-tuples, of the form $(p,\phi_1,\phi_2,d)$, containing a reference to a
-parent object, a scope of methods, a scope of member objects, and a
-data field for builtin data like integers. Scopes---denoted by
-$\phi$---are maps from names to natural numbers or (in the case of
-method scopes) functions, and the store---denoted by $\sigma$---is a
-map from natural numbers to objects. In this way, the store is
-intended to simulate a persistent memory of mutable objects, and for
-our purposes we can understand the store as unique (in contrast to
-scopes, of which there will be many). The extension of a scope or
-store is represented by the expression ``$[\phi|key\rightarrow
-val]$''. The smallest currently unassigned integer in a store is
-denoted by ``$\operatorname{next}(\sigma)$''. The empty scope and the
-empty store are denoted by $\phi_0$ and $\sigma_0$, respectively.
+Tradditionally, S-expressions represented function calls because a
+central evaluation loop interpreted them that way. Here they represent
+function calls because their \eval\ method carries out a
+function call. Note also that functions and forms in Yalie are just
+ordinary objects with a defined \call\ method. We will
+construct a few predefined global functions and forms in Yalie, and
+these will be just ordinary objects with \call\ methods that we
+define usefully.
 
-We have put Yalie together so that externally it resembles a
-traditional Lisp, but the underlying semantics are very different. In
-particular, functions and special forms are just objects with a
-predefined ``call'' method. The mechanism of a function call is that
-the ``eval'' method of a list implicitly evaluates its first element
-and passes the rest of the list as arguments to the first element's
-call method. The ``msg'' special form is then provided with a call
-method that allows the user to pass arbitrary messages.
+Another key difference in this function is the way \texttt{+} is
+defined, which is not immediately visible. Rather than being a builtin
+operation that knows about integers, \texttt{+} simply calls invokes a
+method of its arguments. This method is also named \texttt{+}, though
+it resides in method tables rather than the global scope as the
+\texttt{+} function does. One of the global functions we will define
+is \msg, which allows the user to invoke methods explicitly. Expressed
+using \msg, the S-expression we considered above can be rewritten as
+\[\texttt{(msg 1 + 2)}.\]
+That is, adding $1$ to $2$ means sending the \texttt{+} message to the
+object $1$ with the argument $2$. In full detail, the \eval\ method of
+that list evaluates the symbol \msg, whose value is a special form
+object with a \call\ method that passes that messages. When that \call\
+method is invoked, it evaluates its first argument, the $1$ object,
+and invokes the method named by its second argument, passing the rest
+of its arguments to that method.
 
+Something to keep in mind as we continue is that anything defined as a
+method can be invoked explicitly or even redefined by the user. Thus,
+the first S-expression could be rewritten again as
+\[ \texttt{(msg + call 1 2)}, \]
+and the second could even be rewritten
+\[ \texttt{(msg msg call 1 + 2)}. \] The latter is not particularly
+useful, but it illustrates what is going on ``under the hood.'' We
+will discuss the facilities for defining and redefining new methods in
+later sections.
+
+\subsection*{Semantic Machinery}
+The semantics of our language will be built from several different
+components. Persistent, often mutable objects will be the core of our
+language, so evaluation will use both a scope and a store. A scope is
+a map from names to positive integer values. We will refer to these
+integers suggestively as pointers. We denote scopes by the variable
+$\varphi$, with the global scope---that is, the builtin scope in which
+program evaluation begins---denoted by $\Phi$. A store is then a map
+from these pointers to objects, and this indirection allows us to
+mutate objects by modifying the store. We denote a store by the
+variable $\sigma$, and the global store, analogous to the global
+scope, is denoted by $\Sigma$. We will frequently refer to the
+pointers to certain builtin objects using capitalized names like
+\textsf{ROOT}, the prinary object at the top of the inheritance
+hierarchy, or \textsf{INT}, the object from which all integers
+inherit. The objects to which these pointers refer are then written
+$\Sigma(\mathsf{ROOT})$ and $\Sigma(\mathsf{INT})$. The actual values
+of these pointers are arbitrary, so long as they are constant and
+unique. The only other way we will refer to pointer values is the
+$\next(\sigma)$ function, whose value is the smallest pointer not
+currently in the domain of $\sigma$. We will generally use the
+variable $\omega$ to denote pointers, though we will also use the
+variable $a$ to refer to arguments to functions and $e$ to refer to
+the results of evaluation.
+
+An object has four important properties. It has a parent object from
+which it inherits method functions, a map of its own from names to
+method functions, a scope of member elements, and a field for
+underlying data such as an integer or a name. We will define objects
+as ordered 4-tuples, written
+\[ \lb p, \mu, \varphi, d \rb .\]
+For example, the integer five would be represented as
+\[ \lb \mathsf{INT}, \mu_0, \varphi_0, 5 \rb, \]
+where $\mu_0$ is the empty function map, and $\varphi_0$ is the empty
+scope. We will frequently use the notation $\mu_{\sigma(\omega)}$ and
+$\varphi_{\sigma(\omega)}$ to refer to the function map or scope
+elements of the object $\sigma(\omega)$.
+
+We have already mentioned the function $\next(\sigma)$, but we should
+like to introduce two more semantic function here that we will use
+later. The first is our function for looking up methods, using the
+``message-passing'' terminology of Simula and Smalltalk. When a method
+cannot be found in the method table of a given object, it's parent is
+queried recursively.
+\begin{multline*} \lookup(\text{``msg''}, \sigma, \omega) = \\
+\begin{cases}
+  \varphi_{\sigma(\omega)} &\text{if } \text{``msg''} \in
+  \operatorname{Domain}(\varphi_{\sigma(\omega)}) \\
+    \lookup(\text{``msg''},\sigma,p_{\sigma(\omega)}) &\text{otherwise}
+  \end{cases}
+\end{multline*}
+
+The second function we need to define at the moment is the semantic
+function for invoking methods. We mentioned the global \msg\ object in
+the preceding section, and this semantic function will eventually form
+the core of that object's \call\ method, in addition to being used
+explicitly by many other methods. The invocation of a method requires
+the current store and scope as well as pointers to invoking object and
+all the arguments of the method, the latter expressed as an ordered
+tuple. Method functions will be defined so that the value of an
+invocation is a 3-tuple containing the new store and scope and a
+pointer to the object returned by the method.
+\begin{multline*}
+  \invoke( \text{``msg''}, \sigma, \phi, \lb a_1,\ldots a_n\rb) = \\
+  (\lookup(\text{``msg''}, \sigma, \omega))(\sigma,\phi,\omega,
+  \lb a_1,\ldots a_n \rb )
+\end{multline*}
+  
 \section*{Syntax}
 
+With the goal of unifying code and data, we will take a less
+conventional approach to specifying the semantics of our
+language. First, we will describe the translation from syntax to
+literal objects. Then we will define the methods available to those
+objects. Invocation of the \eval\ methods of our code will be
+responsible for most of the work done by a program, and ultimately our
+complete denotational operator, $[\![-]\!]$, will be the simple
+combination of the parse and invoke operations with $\Sigma$ and
+$\Phi$.
+
+\subsection*{Literal Objects}
 Yalie contains only three literal objects: integers, symbols, and
-lists. Integers are written literally. Symbols are written as any
-string of characters (other than those defined as punctuation in this
-section) that is not an integer. Lists are written as a sequence of
-whitespace-separated literals enclosed by matching parentheses. We can
-define the parsing function as taking for arguments a code snippet and
-an initial store, and returning an updated store and the number
-referring to the newly created object in that store.
-
-Integers are parsed as
-\[\operatorname{parse}(i\in\mathbb{Z},\sigma) = (n,\sigma'),\]
-where $\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
-(\text{INT}, {\phi_0}, {\phi_2}_{\text{INT}}, i)]$ and
-$n=\operatorname{next}(\sigma)$. ``INT'' is the reference number of
-the integer superobject, which we will define later, and
-${\phi_2}_{\text{INT}}$ is its member scope.
-
-Symbols are parsed as
-\[ \operatorname{parse}(s\in\mathbb{S},\sigma) = (n,\sigma'),\]
-where \[\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
-(\text{SYMBOL}, {\phi_0}, {\phi_2}_{\text{SYMBOL}}, i)]\] and
-$n=\operatorname{next}(\sigma)$. ``SYMBOL'' is the reference number of
-the symbol superobject, which we will again define later, and
-${\phi_2}_{\text{SYMBOL}}$ is its member scope, again as before.
+lists. Integers are written as strings of decimal digits. Symbols are
+written as any string of characters (other than those defined as
+punctuation in this section) that is not an integer. Lists are written
+as a sequence of whitespace-separated literals enclosed by matching
+parentheses. We can define the parsing function as taking for
+arguments a code snippet and an initial store, and returning an
+updated store and the number referring to the newly created object in
+that store.  Integers are parsed as
+\begin{multline*}
+\parse(\texttt{NUM},\sigma) =
+\lb\next(\sigma),[\sigma|\operatorname{next}(\sigma) \rightarrow\right. \\
+\left.\lb\mathsf{INT}, \mu_0, \varphi_{\Sigma(\mathsf{INT})}, \texttt{NUM}\rb]\rb,
+\end{multline*}
+and symbols are parsed as
+\begin{multline*}
+  \parse(\texttt{SYM},\sigma) =
+  \lb\next(\sigma),[\sigma|\operatorname{next}(\sigma) \rightarrow\right. \\
+\left.\lb\mathsf{SYMBOL}, \mu_0, \varphi_{\Sigma(\mathsf{SYMBOL})},
+  \texttt{SYM}\rb]\rb.
+\end{multline*}
+Note that the parent of each new integer or symbol object is the
+global integer or symbol object, respectively. These objects are
+created with an empty method table, meaning that they inherit all of
+their methods by default. They also copy the member scope of their
+parent, which is empty by default unless modified by the user.
 
 Finally, lists are parsed into ``cons'' objects, as is traditional for
-Lisp languages. The data element of these cons objects will be an
-ordered pair of the form $(a,b)$, and they will be linked together to
-form linked lists terminated in a ``nil'' object.
-\[ \operatorname{parse}(\text{``()''},\sigma) = (n,\sigma'),\]
-where $\sigma' = [\sigma|\operatorname{next}(\sigma) \rightarrow
-(\text{NIL}, \phi_0, {\phi_2}_{\text{NIL}},
-\o)]$ and $n=\operatorname{next}(\sigma)$. Also,
-\[ \operatorname{parse}(\text{``(a, b,\ldots z)''},\sigma) =
-(n,\sigma'),\] where \[\sigma' = [\sigma|\operatorname{next}(\sigma)
-\rightarrow (\text{CONS}, \phi_0, {\phi_2}_{\text{CONS}},
-\operatorname{parse}(\text{``(b,\ldots z)''},\sigma')]\] and
-$n=\operatorname{next}(\sigma)$.
+Lisp languages. The underlying data field, $d$, of these cons objects
+will be an ordered pair of the form $\lb a,b\rb$, and they will be
+chained together to form linked lists terminated in a ``nil''
+object. List parsing will be defined in two steps. First, the empty
+list is parsed as
+\begin{multline*}
+  \parse(\texttt{()},\sigma) = \lb\next(\sigma),
+  [\sigma|\operatorname{next}(\sigma) \rightarrow \right.\\
+\left.\lb\mathsf{NIL}, \mu_0, \varphi_{\Sigma(\mathsf{NIL})}, \o\rb]\rb.
+\end{multline*}
+This is similar to the integer and symbol parsing operations above,
+though note that the data field of nil objects is unimportant. List
+parsing for nonempty lists can now be defined recursively.
+\begin{multline*} \parse(\texttt{(a b \ldots\ z)},\sigma) = \lb
+  \next(\sigma''),[\sigma''|\operatorname{next}(\sigma'')
+  \rightarrow\right. \\\left.\lb\mathsf{CONS}, \mu_0,
+  \varphi_{\Sigma(\mathsf{CONS})},
+  \lb F, R \rb \rb ] \rb
+\end{multline*}
+where
+\begin{align*}
+  \lb F, \sigma' \rb &= \parse( \texttt{a}, \sigma ) \\
+  \lb R, \sigma'' \rb &= \parse( \texttt{(b \ldots\ z)}, \sigma')
+\end{align*}
+This expression can be slightly confusing. $F$ denotes the pointer to
+the first parsed object in a list, and $\sigma'$ is the store after
+parsing that object. $R$ then denotes the pointer to the rest of the
+list, acquired recursively, and $\sigma''$ is the store after all that
+parsing is done. The whole list is finally assembled by adding to
+$\sigma''$ the cons cell at the head of the list.
 
+\subsection*{Syntactic Sugar}
 In addition to these literals, we define some extra translational
-syntax for convenience. Message passing is invoked by the expression
-\texttt{(msg foo msgForFoo [args...])}, so we allow the period
-operator to translate into that S-expression. We let \texttt{a.b}
-translate to \texttt{(msg a b)} and \texttt{(a.b c d...)} translate to
-\texttt{(msg a b c d...)}. When there are multiple consecutive
-infixed objects at the front of an S-expression, we evaluate from left
-to right and allow the final infix to capture the expression. Thus
-\texttt{(a.b.c d e)} translates to \texttt{(msg (msg a b) c d e)}. We
-also define the single quote as a prefix operator that takes
-precedence over the period, and we translate \texttt{`a} to
-\texttt{(quote a)}. Both \texttt{msg} and \texttt{quote} will be
-defined below.
+syntax for convenience. First we give a dot operator for message
+passing, and second we will provide a quote operator to protect
+objects from automatic evaluation.
+
+Message passing is invoked by the expression
+\[\texttt{(msg foo msgForFoo [args...])},\]
+so we allow the period operator to translate into that
+S-expression. Without parentheses, \texttt{a.b} translates We let \texttt{a.b} translate to \texttt{(msg a b)} and
+\texttt{(a.b c d...)} translate to \texttt{(msg a b c d...)}. When
+there are multiple consecutive infixed objects at the front of an
+S-expression, we evaluate from left to right and allow the final infix
+to capture the expression. Thus \texttt{(a.b.c d e)} translates to
+\texttt{(msg (msg a b) c d e)}. We also define the single quote as a
+prefix operator that takes precedence over the period, and we
+translate \texttt{`a} to \texttt{(quote a)}. Both \texttt{msg} and
+\texttt{quote} will be defined below.
 
 \section*{Builtin Objects and Methods}
 The meat of the Yalie language is in its builtin objects and
@@ -201,7 +342,7 @@ f(\phi,\sigma,o,\left<e_1,\ldots e_n\right>)
 where $e_i = M(\phi,\sigma,a_i,\text{``eval''},\left<\right>)$.
 
 Now we can define some of the important methods. The basic
-\texttt{eval} function simply returns the value of the caller.
+\eval\ function simply returns the value of the caller.
 \[ \phi_{\text{ROOT}}(\text{``eval''})(\phi,\sigma,o,\left<\right>) = 
 (o,\phi,\sigma) \]
 where $\sigma_{\text{ROOT}}$ is the method scope of the root
@@ -243,7 +384,7 @@ The language is still very small, so some of the benefits of the
 object-oriented approach are not yet apparent. One tangible benefit is
 that, despite having gutted the entire language to allow the
 ubiquitous use of objects, the only difference visible in the global
-namespace is the existence of the \texttt{msg} function. All other
+namespace is the existence of the \msg\ function. All other
 object-oriented functionality is confined within the method spaces. If
 we were to further extend the language---with strings and file handles
 for example---we would see the same benefits repeated, with new
