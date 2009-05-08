@@ -294,6 +294,12 @@ list, acquired recursively, and $\sigma''$ is the store after all that
 parsing is done. The whole list is finally assembled by adding to
 $\sigma''$ the cons cell at the head of the list.
 
+As we mentioned above, we can now define the denotational semantic
+operator for Yalie expressions.
+\[ [\![-]\!]\phantom{,}\Sigma\phantom{,}\Phi = M(\text{``eval''}, \Sigma',
+\Phi, \omega, \lb\rb),\] where $\lb \Sigma', \Phi, \omega\rb
+= \parse({}-{},\Sigma)$.
+
 \subsection*{Syntactic Sugar}
 In addition to these literals, we define some extra translational
 syntax for convenience. First we give a dot operator for message
@@ -482,7 +488,7 @@ in Yalie. The first two are inspired by Paul Graham's work on the Arc
 dialect of Lisp\cite{Graham}, and the others are our own. Each is
 described in the accompanying README file.
 
-First, the functionality of the \texttt{cond} expression can be
+First, the functionality of the \texttt{cond} expression is
 incorporated into \texttt{if} without changing the basic structure of
 an \texttt{if} call. In particular, \texttt{if} can be made to take an
 arbitrary number of test-consequence pairs, with an optional unpaired
@@ -497,7 +503,7 @@ expression interpreted as an alternative. For example:
 \end{quote}
 
 Second, parentheses inside the bindings of a \texttt{let} expression
-can simply be dropped. This gives the cleaner syntax:
+are simply dropped. This gives the cleaner syntax:
 \begin{quote}
 \begin{verbatim}
 (let (a 1
@@ -505,10 +511,12 @@ can simply be dropped. This gives the cleaner syntax:
   (+ a b))
 \end{verbatim}
 \end{quote}
-The meaning of \texttt{let} can also be radically extended in a
-different way. A \texttt{let} expression with a single binding and no
-body can create a local binding in the calling scope that persists
-until the end of that scope. When doing this, a further pair of
+The meaning of \texttt{let} is also radically extended in a different
+way. A \texttt{let} expression with a single binding and no body can
+create a local binding in the calling scope that persists until the
+end of that scope. This allows the programmer to create a local
+variable without adding a level of nesting and indentation, which can
+greatly improve readability. When doing this, a further pair of
 parentheses is omitted. Thus, the following is valid:
 \begin{quote}
 \begin{verbatim}
@@ -516,16 +524,25 @@ parentheses is omitted. Thus, the following is valid:
 (+ a 2)
 \end{verbatim}
 \end{quote}
-Finally, the functionality of the \texttt{not} operator can be
-extended to include multiple arguments. When receiving more than one
-argument, not interprets all its arguments as a function call and
-returns that call's negation. For instance, the following returns a
-true value:
+As implemented in Yalie, \texttt{let} can create a new binding in this
+way but cannot modify an existing one. (The \texttt{set} function
+exists for that.) The purpose of the distinction is to separate
+variable declaration for variable modification, so that most
+typographical errors in variable names will lead to a program error
+instead of a silent bug.
+
+Finally, the functionality of the \texttt{not} operator is be extended
+to include multiple arguments. When receiving more than one argument,
+not interprets all its arguments as a function call and returns that
+call's negation. For instance, the following returns a true value:
 \begin{quote}
 \begin{verbatim}
-(not < 3 4)
+(not = 0 1)
 \end{verbatim}
 \end{quote}
+In many common cases, this both increases readability and saves the
+user two parentheses.
+
 
 \section*{Conclusions}
 Several different interpreters were created at different stages in
