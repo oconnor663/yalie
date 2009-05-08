@@ -849,6 +849,15 @@ def main():
         run_file( scope, builtins )
         builtins.close()
 
+    if len(sys.argv)>2:
+        sys.stderr.write( "Too many arguments. Zero or one please.\n" )
+        return 1
+    elif len(sys.argv)==2:
+        file = open(sys.argv[1])
+        run_file( scope, file )
+        file.close()
+        return 0
+
     buf = Buffer( sys.stdin )
     while True:
         if CATCH_ERRORS:
@@ -856,7 +865,8 @@ def main():
             try:
                 obj = buf.read_obj()
                 if obj==None:
-                    print
+                    if sys.stdin.isatty():
+                        print
                     break
             except KeyboardInterrupt:
                 print
@@ -866,7 +876,8 @@ def main():
                 continue
             try:
                 ret = obj.message(scope,'eval')
-                ret.message(scope,'print')
+                if sys.stdin.isatty():
+                    ret.message(scope,'print')
             except Exception, e:
                 print "ERROR:", e.args
             except KeyboardInterrupt:
@@ -876,10 +887,12 @@ def main():
             ### Unprotected loop for debugging
             obj = buf.read_obj()
             if obj==None:
-                print
+                if sys.stdin.isatty():
+                    print
                 break
             ret = obj.message(scope,'eval')
-            ret.message(scope,'print')
+            if sys.stdin.isatty():
+                ret.message(scope,'print')
 
 
 if __name__=='__main__':

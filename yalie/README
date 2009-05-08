@@ -3,10 +3,14 @@ Brief documentation for the Yalie language:
 Invocation
 ----------
 ./yalie.py
+./yalie.py code.y
+./yalie.py < code.y
 
 In addition to functions and methods built in through Python, Yalie
 automatically reads in the file "builtins.y" in the current directory
-and executes the definitions there.
+and executes the definitions there. This file is included with the
+Yalie source, and it contains a lot of important files. Make sure it
+is in the current directory when you run Yalie.
 
 
 Syntax

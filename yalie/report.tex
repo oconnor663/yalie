@@ -296,8 +296,8 @@ $\sigma''$ the cons cell at the head of the list.
 
 As we mentioned above, we can now define the denotational semantic
 operator for Yalie expressions.
-\[ [\![-]\!]\phantom{,}\Sigma\phantom{,}\Phi = M(\text{``eval''}, \Sigma',
-\Phi, \omega, \lb\rb),\] where $\lb \Sigma', \Phi, \omega\rb
+\[ [\![-]\!]\phantom{,}\Sigma\phantom{,}\Phi = \invoke(\text{``eval''},
+\Sigma', \Phi, \omega, \lb\rb),\] where $\lb \Sigma', \Phi, \omega\rb
 = \parse({}-{},\Sigma)$.
 
 \subsection*{Syntactic Sugar}
@@ -375,7 +375,7 @@ object.
 We can also introduce the default \eval\ method, which most objects
 will inherit. This is just the identity method on the caller, so the
 definition is even simpler.
-\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``parent''})(\sigma,\varphi,\omega,
+\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``eval''})(\sigma,\varphi,\omega,
 \lb\rb) = \lb [\sigma,\varphi,\omega] \rb. \]
 
 The next two methods we define are \texttt{copy} and
@@ -424,7 +424,7 @@ and the return value of \texttt{set}.
   \mu_{\sigma(\omega)},[\varphi_{\sigma(\omega)}|d_{\sigma(a_1)}\rightarrow e_1],
   d_{\sigma(\omega)}\rb],\right.\\\left.\varphi', e_1\rb.
 \end{multline*}
-where $\lb \sigma',\varphi',e_1 \rb = M(\text{``eval''},\sigma,
+where $\lb \sigma',\varphi',e_1 \rb = \invoke(\text{``eval''},\sigma,
 \varphi, a_2, \lb\rb)$.
 
 The final method of the root object that we define here (others can be
@@ -457,12 +457,12 @@ element and then invokes the \call\ method of that value with the rest
 of the list passed as arguments. We denote this as
 \begin{multline*}
 \mu_{\Sigma(\mathsf{CONS})}(\text{``eval''})(\sigma,\varphi,\omega,
-\lb\rb) = \\M(\text{``call''},\sigma',\varphi',e_1,\lb a_2,\ldots
+\lb\rb) = \\\invoke(\text{``call''},\sigma',\varphi',e_1,\lb a_2,\ldots
 a_n\rb).
 \end{multline*}
 where 
 \[ \lb \sigma',\varphi',e_1\rb =
-M(\text{``eval''},\sigma,\varphi,a_1,\lb\rb) \]
+\invoke(\text{``eval''},\sigma,\varphi,a_1,\lb\rb) \]
 and $\lb a_1,a_2,\ldots a_n\rb$ is the tuple representing the
 contents of $\sigma(\omega)$.
 
@@ -472,11 +472,11 @@ methods explicitly, and it is the \call\ method of that form object
 that exposes this functionality
 \begin{multline*}
   \mu_{\Sigma(\mathsf{MSG})}(\text{``call''})(\sigma,\varphi,\omega,
-  \lb a_1,\ldots a_n \rb) = \\M( d_{\sigma'(a_2)}, \sigma', \varphi', e_1,
+  \lb a_1,\ldots a_n \rb) = \\\invoke( d_{\sigma'(a_2)}, \sigma', \varphi', e_1,
   \lb a_3,\ldots a_n \rb),
 \end{multline*}
 where $\lb \sigma', \varphi', e_1\rb =
-M(\text{``eval''},\sigma,\varphi,a_1,\lb\rb)$.
+\invoke(\text{``eval''},\sigma,\varphi,a_1,\lb\rb)$.
 
 \section*{Additional Features}
 Today Lisp is over fifty years old, and Common Lisp is almost half
