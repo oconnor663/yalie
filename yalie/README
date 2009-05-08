@@ -250,8 +250,14 @@ result, though the second takes an extra step.
 (msg + call 1 2 3)  #invokes +.call explicitly (by invoking msg.call
        	      	    	     	    	        implicitly)
 
-
 x.call
 Defined for things that can be called with function syntax. Redefining
 this method changes the behavior of the function. Evaluating a list
 implicitly calls this method from the first element of that list.
+
+Other objects have specialized methods, and many global functions are
+just wrappers around these methods. Integers, for example, define
+methods for all of the arithmetic operations and binary
+relations. Cons objects define car, cdr, setcar, and setcdr
+methods. If any of these methods are modified, the change will be
+reflected in the behavior of the wrapper functions using them.

@@ -1,6 +1,6 @@
 \documentclass[twocolumn]{article}
 \usepackage{amsmath,graphicx,amsfonts,amssymb}
-\usepackage{}
+\usepackage{verbatim}
 \title{Yet Another Lisp Interpreting Experiment}
 \author{John O'Connor, Paul Hudak}
 \date{}
@@ -54,11 +54,11 @@ the wrong reasons.
 Through object-orientation, Smalltalk was able to achieve greater
 flexibility and greater simplicity. These goals are essentially
 orthogonal to the goal of facilitating an object-oriented programming
-style. Lisp object systems have attempted the latter, and as a result
-they have generally made their languages more complicated and less
-consistent. We believe that object-orientation can greatly enhance
-Lisp's core strengths, but only if these concepts are introduced
-consistently throughout the entire language.
+(OOP) style. Lisp object systems have attempted the latter, and as a
+result they have generally made their languages more complicated and
+less consistent. We believe that object-orientation can greatly
+enhance Lisp's core strengths, but only if these concepts are
+introduced consistently throughout the entire language.
 
 This is the intention of Yet Another Lisp Interpreting Experiment (or,
 ``Yalie''). Our goal is to demonstrate a Lisp variant in which
@@ -86,15 +86,26 @@ languages often approximate classes by using certain objects solely
 for inheritance, and for that reason---and because of the wider
 popularity of class-based languages---some have argued that making
 classes an explicit part of the language is more
-convenient\cite{Bruce}. Our primary purpose here, though, is
-simplicity and consistency, so ours will be an object-based semantics.
+convenient\cite{Bruce}.
+
+Our primary purpose here is simplicity, however, so ours will be an
+object-based semantics. We will also draw an unconventional
+distinction between object-\emph{oriented} languages, by which we mean
+those that encourage a programming style centered around objects and
+inheritance, and object-\emph{based} languages, which merely use
+objects as the fundamental unit of their semantics. Yalie is an
+object-\emph{based} language, and our intention is to replicate the
+functional and procedural paradigms traditional in Lisp
+languages. Obviously, an object-based semantics will make OOP fairly
+natural in Yalie, but our primary goals of simplicity, consistency,
+and flexibility should benefit any programming paradigm.
 
 \subsection*{Message Passing}
-As a demonstration of the consistency possible with object
-orientation, all of the semantics of our language aside from literal
-syntax is based on message passing. This is very different from
-traditional Lisp semantics and requires some explanation. For an
-example, suppose we wish to evaluate the S-expression
+As a demonstration of the consistency possible with objects, all of
+the semantics of our language aside from literal syntax is based on
+message passing. This is very different from traditional Lisp
+semantics and requires some explanation. For an example, suppose we
+wish to evaluate the S-expression
 \[ \texttt{(+ 1 2)}. \] That is a list object (a series of cons
 objects, in fact) containing a symbol object and two integer
 objects. Evaluation begins by calling the \eval\ method of the list. As
@@ -153,8 +164,10 @@ program evaluation begins---denoted by $\Phi$. A store is then a map
 from these pointers to objects, and this indirection allows us to
 mutate objects by modifying the store. We denote a store by the
 variable $\sigma$, and the global store, analogous to the global
-scope, is denoted by $\Sigma$. We will frequently refer to the
-pointers to certain builtin objects using capitalized names like
+scope, is denoted by $\Sigma$. An extension to a scope or a store is
+denoted by the expression
+$[\sigma|\text{key}\rightarrow\text{val}]$. We will frequently refer to
+the pointers to certain builtin objects using capitalized names like
 \textsf{ROOT}, the primary object at the top of the inheritance
 hierarchy, or \textsf{INT}, the object from which all integers
 inherit. The objects to which these pointers refer are then written
@@ -205,8 +218,8 @@ tuple. Method functions will be defined so that the value of an
 invocation is a 3-tuple containing the new store and scope and a
 pointer to the object returned by the method.
 \begin{multline*}
-  \invoke( \text{``msg''}, \sigma, \phi, \lb a_1,\ldots a_n\rb) = \\
-  (\lookup(\text{``msg''}, \sigma, \omega))(\sigma,\phi,\omega,
+  \invoke( \text{``msg''}, \sigma, \varphi, \lb a_1,\ldots a_n\rb) = \\
+  (\lookup(\text{``msg''}, \sigma, \omega))(\sigma,\varphi,\omega,
   \lb a_1,\ldots a_n \rb )
 \end{multline*}
   
@@ -324,87 +337,195 @@ mark, as is common in scripting languages.
 
 \section*{Builtin Objects and Methods}
 
-This section is incomplete.
+Yalie defines a number of objects that exist in the global scope and
+store when any program begins. We have already encountered the
+\textsf{ROOT}, \textsf{INT}, \textsf{SYMBOL}, \textsf{CONS}, and
+\textsf{NIL} objects. Other generic parent objects include
+\textsf{FUNCTION}, \textsf{FORM}, and their mutual parent,
+\textsf{OPERATOR}. Predefined function and form objects, which inherit
+from these, include \textsf{MSG} and \textsf{QUOTE}. Others we have
+not yet encountered include \textsf{IF} and \textsf{WHILE}. By
+convention, we give each such object in $\Sigma$ a corresponding
+binding in $\Phi$.
 
-A example of a method definition is the \texttt{copy} method of the
-root object, which all other objects inherit. This method returns an
-exact duplicate of the calling object, with the same parent, methods,
-members, and underlying data. It is defined as
+The meat of our language is not this hierarchy itself but rather the
+methods defined for these objects. Below we provide formal definitions
+of many of the most important methods implemented in the Yalie
+interpreter. We will begin with several methods inherited by every
+object and add to that description several important methods outside
+the root object.
+
+The \texttt{parent} method returns the parent of a given object, and
+it is a good example with which to start. The definition reads
+\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``parent''})(\sigma,\varphi,\omega,
+\lb\rb) = \lb [\sigma,\varphi,p_{\sigma(\omega)}] \rb. \] Recall that
+$\mu_{\Sigma(\mathsf{ROOT})}$ is the method table of the \textsf{ROOT}
+object in the global store, $\Sigma$. This method does not modify the
+store or the scope, so those are returned directly. As mentioned
+above, $p_{\sigma(\omega)}$ refers to the $p$ element of the object
+$\sigma(\omega)$, which is the pointer to the parent of the calling
+object.
+
+We can also introduce the default \eval\ method, which most objects
+will inherit. This is just the identity method on the caller, so the
+definition is even simpler.
+\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``parent''})(\sigma,\varphi,\omega,
+\lb\rb) = \lb [\sigma,\varphi,\omega] \rb. \]
+
+The next two methods we define are \texttt{copy} and
+\texttt{child}. These methods are fundamental to an object-based
+language. Apart from literal objects, copying is the simplest way to
+produce a new object. A copied object shares the same parent as its
+source, and it replicates its source's the method table, member scope,
+and underlying data. After copying the two objects are independent;
+changing one does not affect the other. The copy method is defined as
 \begin{multline*}
-  \mu_{\Sigma(\mathsf{ROOT})}(\text{``copy''})(\sigma,\phi,\omega,
-\lb\rb) \\ = \lb [\sigma|\next(\sigma)\rightarrow\sigma(\omega)],\phi,
-\next(\sigma)\rb
+  \mu_{\Sigma(\mathsf{ROOT})}(\text{``copy''})(\sigma,\varphi,\omega,
+\lb\rb) \\ = \lb [\sigma|\next(\sigma)\rightarrow\sigma(\omega)],\varphi,
+\next(\sigma)\rb.
+\end{multline*}
+The other essential way to create a new object is to spawn a child
+object that inherits from a parent. Children also copy the member
+scopes and underlying data of their parent, but their method table is
+initially empty, and they inherit all their methods from the
+parent. Thus any changes made to the methods of the parent will be
+reflected in the child. The child method is defined as
+\begin{multline*}
+  \mu_{\Sigma(\mathsf{ROOT})}(\text{``child''})(\sigma,\varphi,\omega,
+  \lb\rb) \\ = \lb [\sigma|\next(\sigma)\rightarrow \lb \omega, \mu_0,
+  \varphi_{\sigma(\omega)}, d_{\sigma(\omega)}\rb],\right.\\\left.\varphi,
+  \next(\sigma)\rb.
 \end{multline*}
 
-% The meat of the Yalie language is in its builtin objects and
-% methods. As we have seen, object literals all inherit from parent
-% objects that will be exposed to the user for potential
-% modification. These parent objects will have methods defined for their
-% children to inherit.
+Another pair of important methods is the \texttt{get} and \texttt{set}
+methods, which query and modify member values. These are not used by
+any other builtin functions or methods, but they are an important
+facility for user-defined objects. The \texttt{get} method is the
+simpler of the two, and it is also the first method we have defined so
+far that takes an argument.
+\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``get''})(\sigma,\varphi,\omega,
+\lb a_1\rb) = \lb \sigma, \varphi,
+\varphi_{\sigma(\omega)}(d_{\sigma(a_1)})\rb.\] That is, the
+\texttt{get} method receives a symbol, $a_1$, and references its data
+element in the member scope of the caller. The \texttt{set} method
+takes two elements, and it is the first method so far that will
+evaluate an argument. The first argument is a symbol giving the member
+name, and the second is evaluated to give the new value of the member
+and the return value of \texttt{set}.
+\begin{multline*}
+  \mu_{\Sigma(\mathsf{ROOT})}(\text{``set''})(\sigma,\varphi,\omega,
+  \lb a_1,a_2\rb) =\\ \lb [\sigma'|\omega\rightarrow \lb p_{\sigma(\omega)},
+  \mu_{\sigma(\omega)},[\varphi_{\sigma(\omega)}|d_{\sigma(a_1)}\rightarrow e_1],
+  d_{\sigma(\omega)}\rb],\right.\\\left.\varphi', e_1\rb.
+\end{multline*}
+where $\lb \sigma',\varphi',e_1 \rb = M(\text{``eval''},\sigma,
+\varphi, a_2, \lb\rb)$.
 
-% We will formally specify only a few methods here. A short description
-% of all the methods used by the interpreter can be found in the
-% accompanying README file.
+The final method of the root object that we define here (others can be
+found in the accompanying README) is \texttt{dup}, which serves in
+place of the ``super'' keyword from languages like C++. When a child
+object redefines an inherited method but wishes to invoke the
+inherited version, it must first duplicate that original method to
+another binding. The \texttt{dup} method thus takes two arguments, a
+method name and a name for the new binding. Note that even if the
+original binding is inherited, the new binding will be local to the
+calling object.
+\begin{multline*}
+  \mu_{\Sigma(\mathsf{ROOT})}(\text{``dup''})(\sigma,\varphi,\omega,
+  \lb a_1,a_2\rb) =\\ \lb [\sigma|\omega\rightarrow \lb
+  p_{\sigma(\omega)}, [\mu_{\sigma(\omega)}|d_{\sigma(a_2)}\rightarrow
+  \lookup(d_{\sigma(a_1)},\sigma,\omega)],\right.\right.\\\left.\left.
+  \varphi_{\sigma(\omega)},
+  d_{\sigma(\omega)}\rb],\varphi, \omega\rb.
+\end{multline*}
 
-% In order to specify these methods, we will need a few helper
-% functions. The lookup function, $L$, takes a store, an object
-% reference, and a method name and returns the method of that name
-% belonging to the closest ancestor of the object.
-% \begin{multline*}
-%   L(\sigma,o,\text{``name''}) = \phi_1(\text{``name''}) \text{ if
-%   ``name''} \in \phi_1 \\\text{else }L(\sigma,p,\text{``name''}),
-% \end{multline*}
-% where $\sigma(o)=(p,\phi_1,\phi_2,d)$.
+One critical method outside of the root object is the \eval\ method of
+symbols. Rather than evaluating to themselves, as most objects do,
+symbols evaluate to their binding in the current scope.
+\[  \mu_{\Sigma(\mathsf{SYMBOL})}(\text{``eval''})(\sigma,\varphi,\omega,
+\lb a_1\rb) = \lb \sigma, \varphi, \varphi(d_{\sigma(\omega)})\rb.\]
 
-% The method invoker, $M$, returns the value of a method call on a given
-% object under a given scope and store. That is, it invokes functions
-% which return an object reference, a new scope, and a new store.
-% \begin{multline*} M(\phi,\sigma,o,\text{``name''},\left<a_1,\ldots a_n\right>)
-%  =\\ f( \phi, \sigma, o, \left<a_1, \ldots a_n\right> )
-% \end{multline*}
-% where $f = L(\sigma,o,\text{``name''})$.
+The other nontrivial \eval\ method is that of cons lists. As described
+in a previous section, the \eval\ method of a list evaluates its first
+element and then invokes the \call\ method of that value with the rest
+of the list passed as arguments. We denote this as
+\begin{multline*}
+\mu_{\Sigma(\mathsf{CONS})}(\text{``eval''})(\sigma,\varphi,\omega,
+\lb\rb) = \\M(\text{``call''},\sigma',\varphi',e_1,\lb a_2,\ldots
+a_n\rb).
+\end{multline*}
+where 
+\[ \lb \sigma',\varphi',e_1\rb =
+M(\text{``eval''},\sigma,\varphi,a_1,\lb\rb) \]
+and $\lb a_1,a_2,\ldots a_n\rb$ is the tuple representing the
+contents of $\sigma(\omega)$.
 
-% Lastly, our wrapper function, $W$, takes a function of some arguments
-% and returns a function that implicitly evaluates those arguments
-% before beginning. This is necessary because the ``call'' function will
-% need to circumvent implicit evaluation of arguments. Evaluation is
-% accomplished by the ``eval'' method, which each object will define.
-% \begin{multline*}
-% W(f)(\phi,\sigma,o,\left<a_1,\ldots a_n\right>) =
-% f(\phi,\sigma,o,\left<e_1,\ldots e_n\right>)
-% \end{multline*}
-% where $e_i = M(\phi,\sigma,a_i,\text{``eval''},\left<\right>)$.
+The final method we define here is the critical \call\ method of the
+\msg\ object. Recall that the \msg\ form allows the user to invoke
+methods explicitly, and it is the \call\ method of that form object
+that exposes this functionality
+\begin{multline*}
+  \mu_{\Sigma(\mathsf{MSG})}(\text{``call''})(\sigma,\varphi,\omega,
+  \lb a_1,\ldots a_n \rb) = \\M( d_{\sigma'(a_2)}, \sigma', \varphi', e_1,
+  \lb a_3,\ldots a_n \rb),
+\end{multline*}
+where $\lb \sigma', \varphi', e_1\rb =
+M(\text{``eval''},\sigma,\varphi,a_1,\lb\rb)$.
 
-% Now we can define some of the important methods. The basic
-% \eval\ function simply returns the value of the caller.
-% \[ \phi_{\text{ROOT}}(\text{``eval''})(\phi,\sigma,o,\left<\right>) = 
-% (o,\phi,\sigma) \]
-% where $\sigma_{\text{ROOT}}$ is the method scope of the root
-% object. Most objects inherit this method, with the exception of
-% symbols and lists. The symbol ``eval'' method is
-% \[ \phi_{\text{SYMBOL}}(\text{``eval''})(\phi,\sigma,o,\left<\right>) = 
-% (\phi(d_{\sigma(o)}),\phi,\sigma). \]
-% Finally, for lists,
-% \[ \phi_{\text{CONS}}(\text{``eval''})(\phi,\sigma,o,\left<\right>) =
-% M(\phi',\sigma',e_1,\text{``call''},\left<a_2,\ldots a_n\right>) \]
-% where $\left< a_1,\ldots a_n\right>$ are the contents of the list, and
-% $(e_1,\phi',\sigma') = M(\phi,\sigma,a_1,\text{``eval''},\left<\right>)$.
+\section*{Additional Features}
+Today Lisp is over fifty years old, and Common Lisp is almost half
+that age as well. Apart from adding wholly new features, there is much
+room for improvement in the traditional syntax of the language, in
+particular by reducing the sheer number of parentheses that the user
+needs to type. We list here four such attempts that we have included
+in Yalie. The first two are inspired by Paul Graham's work on the Arc
+dialect of Lisp\cite{Graham}, and the others are our own. Each is
+described in the accompanying README file.
 
-% For an example of the use of the $W$ wrapper, the method for addition
-% over the integers is
-% \[ \phi_{\text{INT}}(\text{``eval''}) = W
-% \lambda(\phi,\sigma,o,\left<e_1\right>).(n,\phi,\sigma') \] where
-% $n = (\text{INT},\phi_0,{\phi_2}_{\text{INT}},d_{e_1}+d_{\sigma(o)})$ and
-% $\sigma' = [\sigma|\operatorname{next}(\sigma)\rightarrow n]$.
+First, the functionality of the \texttt{cond} expression can be
+incorporated into \texttt{if} without changing the basic structure of
+an \texttt{if} call. In particular, \texttt{if} can be made to take an
+arbitrary number of test-consequence pairs, with an optional unpaired
+expression interpreted as an alternative. For example:
+\begin{quote}
+\begin{verbatim}
+(if test1 a
+    test2 b
+    test3 c
+          d)
+\end{verbatim}
+\end{quote}
 
-% Finally, here is the critical ``call'' method for the \texttt{msg}
-% function object.
-% \begin{multline*}
-%   \phi_{\text{MSG}}(\text{``call''})(\phi,\sigma,o,\left<a_1,a_2,
-%   \ldots a_n \right>) = \\M(\phi,\sigma,a_1,d_{a_2}, \left<a_3,\ldots
-%   a_n\right>).
-% \end{multline*}
-
+Second, parentheses inside the bindings of a \texttt{let} expression
+can simply be dropped. This gives the cleaner syntax:
+\begin{quote}
+\begin{verbatim}
+(let (a 1
+      b 2)
+  (+ a b))
+\end{verbatim}
+\end{quote}
+The meaning of \texttt{let} can also be radically extended in a
+different way. A \texttt{let} expression with a single binding and no
+body can create a local binding in the calling scope that persists
+until the end of that scope. When doing this, a further pair of
+parentheses is omitted. Thus, the following is valid:
+\begin{quote}
+\begin{verbatim}
+(let a 1)
+(+ a 2)
+\end{verbatim}
+\end{quote}
+Finally, the functionality of the \texttt{not} operator can be
+extended to include multiple arguments. When receiving more than one
+argument, not interprets all its arguments as a function call and
+returns that call's negation. For instance, the following returns a
+true value:
+\begin{quote}
+\begin{verbatim}
+(not < 3 4)
+\end{verbatim}
+\end{quote}
 
 \section*{Conclusions}
 Several different interpreters were created at different stages in
@@ -416,24 +537,24 @@ in reduced debugging time. These semantics are also far easier to
 modify than any previous.
 
 The language is still very small, so some of the benefits of the
-object-oriented approach are not yet apparent. One tangible benefit is
+object-based approach are not yet apparent. One tangible benefit is
 that, despite having gutted the entire language to allow the
 ubiquitous use of objects, the only difference visible in the global
-namespace is the existence of the \msg\ function. All other
-object-oriented functionality is confined within the method spaces. If
-we were to further extend the language---with strings and file handles
-for example---we would see the same benefits repeated, with new
+namespace is the existence of the \msg\ function. All other object
+facilities are confined within the method spaces. If we were to
+further extend the language---with strings and file handles for
+example---we would see the same benefits repeated, with new
 functionality mostly confined to method spaces. Not only does this
 approach keep the global namespace free of clutter, it also provides
 helpful documentation in the form of method lists.
 
 The example of adding a factorial method to the entire set of integers
 (see accompanying README) demonstrates the flexibility of the
-object-oriented approach, and though the language is still small, the
+object-based approach, and though the language is still small, the
 improved consistency of the semantics has already made itself felt
 during the implementation process. We look forward to finding new ways
-of leveraging the abstractions of object-orientation, both by
-themselves and in conjunction with Lisp's macro system.
+of leveraging the object abstraction, both by itself and in
+conjunction with Lisp's macro system.
 
 \begin{thebibliography}{9}
 \bibitem{Abadi} M. Abadi and L. Cardelli. \textit{A Theory of Objects.} New
@@ -441,6 +562,9 @@ themselves and in conjunction with Lisp's macro system.
 
 \bibitem{Bruce} K. B. Bruce. \textit{Foundations of Object-Oriented
     Languages.} Cambridge, Massachusetts: MIT Press, 2002.
+
+\bibitem{Graham} P. Graham. \textit{Arc at 3 Weeks.} November
+  2001. Web. 8 May 2009.\\ $<$http://www.paulgraham.com/arcll1.html$>$.
 \end{thebibliography}
 
 
