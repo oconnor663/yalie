@@ -24,7 +24,7 @@ class Scope:
         elif self.parent != None:
             return self.parent.ref(key)
         else:
-            raise RuntimeError, "Could not ref key: %s" % key
+            raise RuntimeError, "Could not find a binding for: %s" % key
     def set( self, key, val ):
         ### Returns True on success else False
         if key in self.dict:
@@ -32,11 +32,11 @@ class Scope:
         elif self.parent != None:
             self.parent.set(key,val)
         else:
-            raise RuntimeError, "Could not set key: '%s'" % key
+            raise RuntimeError, "Could not find a binding for: '%s'" % key
     def let( self, key,val ):
         ### No return
         if key in self.dict:
-            raise RuntimeError, "'let' cannot modify an existing binding"
+            raise RuntimeError, "Cannot modify an existing binding"
         self.dict[key] = val
     def __getitem__( self, key ):
         return self.ref( key )
@@ -214,7 +214,7 @@ RootObject = Object(None, "Root")
 def print_ret( obj ):
     print repr(obj)
     return obj
-def def_method_or_form( is_function, scope, obj, shape, *body ):
+def def_method_or_form( is_function, bang, scope, obj, shape, *body ):
     if not shape.inherits(ConsObject):
         print obj
         print shape
@@ -247,20 +247,34 @@ def def_method_or_form( is_function, scope, obj, shape, *body ):
             raise RuntimeError, "non-symbol in args list"
     arg_names = [ i.data for i in args ]
     if is_function:
-        obj.methods[name.data] = LispFnMethod( scope, arg_names, rest_arg, body )
+        if bang:
+            obj.methods[name.data] = \
+                LispFnMethod( scope, arg_names, rest_arg, body )
+        else:
+            obj.methods.let( name.data,
+                             LispFnMethod(scope,arg_names,rest_arg,body))
     else:
-        obj.methods[name.data] = LispFormMethod( scope, arg_names, rest_arg, body )
+        if bang:
+            obj.methods[name.data] = \
+                LispFormMethod( scope, arg_names, rest_arg, body )
+        else:
+            obj.methods.let(name.data,
+                            LispFormMethod(scope,arg_names,rest_arg,body))
     return obj
 def object_def( scope, obj, shape, *body ):
-    return def_method_or_form( True, scope, obj, shape, *body )
+    return def_method_or_form( True, False, scope, obj, shape, *body )
+def object_defbang( scope, obj, shape, *body ):
+    return def_method_or_form( True, True, scope, obj, shape, *body )
 def object_deform( scope, obj, shape, *body ):
-    return def_method_or_form( False, scope, obj, shape, *body )
+    return def_method_or_form( False, False, scope, obj, shape, *body )
+def object_deformbang( scope, obj, shape, *body ):
+    return def_method_or_form( False, True, scope, obj, shape, *body )
 def object_dup( scope, obj, name, new_name ):
     if not name.inherits(SymbolObject):
         raise RuntimeError, "Name of method must be a symbol."
     if not new_name.inherits(SymbolObject):
         raise RuntimeError, "New name of method must be a symbol."
-    obj.methods[new_name.data] = obj.methods[name.data]
+    obj.methods.let(new_name.data, obj.methods[name.data])
     return new_name
 def object_set( scope, obj, name, val ):
     if not name.inherits(SymbolObject):
@@ -288,7 +302,9 @@ RootObject.methods['is'] = PyFnMethod( object_eq )
 RootObject.methods['bool'] = PyFnMethod( lambda scope, obj : make_int(1) )
 RootObject.methods['print'] = PyFnMethod( lambda scope, obj: print_ret(obj) )
 RootObject.methods['def'] = PyFormMethod( object_def )
+RootObject.methods['def!'] = PyFormMethod( object_defbang )
 RootObject.methods['deform'] = PyFormMethod( object_deform )
+RootObject.methods['deform!'] = PyFormMethod( object_deformbang )
 RootObject.methods['dup'] = PyFormMethod( object_dup )
 RootObject.methods['set'] = PyFormMethod( object_set )
 RootObject.methods['get'] = PyFormMethod( object_get )
@@ -634,7 +650,7 @@ def def_call( scope, obj, shape, *body ):
     args = shape.data[1]
     ret = Object( FunctionObject, name.data )
     object_def( scope, ret, make_cons(make_symbol('call'),args), *body )
-    scope[name.data] = ret
+    scope.let(name.data,ret)
     return ret
 DefObject.methods['call'] = PyFormMethod( def_call )
 Builtins['def'] = DefObject
@@ -649,7 +665,7 @@ def deform_call( scope, obj, shape, *body ):
     args = shape.data[1]
     ret = Object( SpecialFormObject, name.data )
     object_deform( scope, ret, make_cons(make_symbol('call'),args), *body )
-    scope[name.data] = ret
+    scope.let(name.data, ret)
     return ret
 DeformObject.methods['call'] = PyFormMethod( deform_call )
 Builtins['deform'] = DeformObject

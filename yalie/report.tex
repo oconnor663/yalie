@@ -1,8 +1,8 @@
 \documentclass[twocolumn]{article}
 \usepackage{amsmath,graphicx,amsfonts,amssymb}
-\usepackage{verbatim}
+\usepackage{sverb}
 \title{Yet Another Lisp Interpreting Experiment}
-\author{John O'Connor, Paul Hudak}
+\author{John O'Connor}
 \date{}
 
 \begin{document}
@@ -43,9 +43,9 @@ understand his language.
 
 More recent developments, however, have seen Lisp fall behind. In
 particular, the Smalltalk language demonstrated that it is possible to
-treat everything in a language as an ``object.'' The popular Python
-and Ruby languages have adopted many concepts from Smalltalk with
-great success. Several object-oriented variants of Lisp have been
+treat everything in a language as an ``object.'' The widely-used
+Python and Ruby languages have adopted many concepts from Smalltalk
+with great success. Several object-oriented variants of Lisp have been
 developed, including the Common Lisp Object System, but these have not
 achieved nearly the same popularity. We wish to suggest that one of
 the failings of various Lisp object systems is that they are built for
@@ -56,9 +56,9 @@ flexibility and greater simplicity. These goals are essentially
 orthogonal to the goal of facilitating an object-oriented programming
 (OOP) style. Lisp object systems have attempted the latter, and as a
 result they have generally made their languages more complicated and
-less consistent. We believe that object-orientation can greatly
-enhance Lisp's core strengths, but only if these concepts are
-introduced consistently throughout the entire language.
+less consistent. We believe that objects can greatly enhance Lisp's
+core strengths, but only if these concepts are introduced consistently
+throughout the entire language.
 
 This is the intention of Yet Another Lisp Interpreting Experiment (or,
 ``Yalie''). Our goal is to demonstrate a Lisp variant in which
@@ -66,39 +66,39 @@ everything is an object and all function calls are based on message
 passing. In doing this, we hope to make the language less complicated,
 rather than more so. An interactive interpreter for Yalie, written in
 Python, accompanies this paper. What follows is a formal description
-of the language implemented in that interpreter.  For a more practical
-description with examples, please see the accompanying README
-file. This paper assumes the reader is familiar with a modern Lisp
-dialect such as Scheme or Common Lisp.
+of the language implemented in that interpreter. For a more practical
+description with examples, please see the accompanying README file,
+reprinted here in the appendix. This paper assumes the reader is
+familiar with a modern Lisp dialect such as Scheme or Common Lisp.
 
 \section*{Concepts}
 \subsection*{Object-based Languages}
 Broadly speaking, there are two major categories of object-oriented
-languages\cite{Abadi}. The most familiar and widely used are the
-``class-based'' languages, including C++, Java, and Smalltalk. The
-other category is ``object-based'' or ``prototype-based'' languages,
-like JavaScript and Lua. Class-based languages distinguish classes
-from the objects that belong to them, and inheritance is accomplished
+languages \cite{Abadi}. The most common are the ``class-based''
+languages, including C++, Java, and Smalltalk. The other category is
+``object-based'' or ``prototype-based'' languages, like JavaScript and
+Lua. Class-based languages distinguish classes from the objects that
+belong to them, and in these languages inheritance is accomplished
 within the class hierarchy. Object-based languages omit this
-distinction, and instead allow objects to inherit from one another and
-produce their own clone or child objects. In practice, object-based
-languages often approximate classes by using certain objects solely
-for inheritance, and for that reason---and because of the wider
-popularity of class-based languages---some have argued that making
-classes an explicit part of the language is more
-convenient\cite{Bruce}.
+distinction, and instead allow objects to inherit directly from other
+objects and to produce their own clone or child objects. In practice,
+object-based languages often approximate classes by using certain
+objects solely for inheritance, and for this reason---and because of
+the wider popularity of class-based languages---some have argued that
+making classes an explicit part of the language is more
+convenient \cite{Bruce}. Our purpose here is simplicity, however, so
+ours will be an object-based semantics.
 
-Our primary purpose here is simplicity, however, so ours will be an
-object-based semantics. We will also draw an unconventional
-distinction between object-\emph{oriented} languages, by which we mean
-those that encourage a programming style centered around objects and
-inheritance, and object-\emph{based} languages, which merely use
-objects as the fundamental unit of their semantics. Yalie is an
-object-\emph{based} language, and our intention is to replicate the
-functional and procedural paradigms traditional in Lisp
-languages. Obviously, an object-based semantics will make OOP fairly
-natural in Yalie, but our primary goals of simplicity, consistency,
-and flexibility should benefit any programming paradigm.
+We will also draw an unconventional distinction between
+object-\emph{oriented} languages, by which we mean those that
+encourage a programming style centered around objects and inheritance,
+and object-\emph{based} languages, which merely use objects as the
+fundamental unit of their semantics. Yalie is an object-\emph{based}
+language, and our intention is to replicate the functional and
+procedural paradigms traditional in Lisp languages. Obviously, an
+object-based semantics will make OOP fairly natural in Yalie, but our
+primary goals of simplicity, consistency, and flexibility should
+benefit any programming style.
 
 \subsection*{Message Passing}
 As a demonstration of the consistency possible with objects, all of
@@ -119,15 +119,14 @@ list as arguments, and finally returns $3$.
 
 Traditionally, S-expressions represented function calls because a
 central evaluation loop interpreted them that way. Here they represent
-function calls because their \eval\ method carries out a
-function call. Note also that functions and forms in Yalie are just
-ordinary objects with a defined \call\ method. We will
-construct a few predefined global functions and forms in Yalie, and
-these will be just ordinary objects with \call\ methods that we
-define usefully.
+function calls because their \eval\ method carries out a function
+call. Note also that a functions or form in Yalie is just an ordinary
+objects with a defined \call\ method. We will construct a few
+predefined global functions and forms in Yalie, and these will be
+ordinary objects whose \call\ methods we define usefully.
 
 Another key difference in this function is the way \texttt{+} is
-defined, which is not immediately visible. Rather than being a builtin
+defined, which is not immediately visible. Rather than being a built-in
 operation that knows about integers, \texttt{+} simply calls invokes a
 method of its arguments. This method is also named \texttt{+}, though
 it resides in method tables rather than the global scope as the
@@ -138,10 +137,11 @@ using \msg, the S-expression we considered above can be rewritten as
 That is, adding $1$ to $2$ means sending the \texttt{+} message to the
 object $1$ with the argument $2$. In full detail, the \eval\ method of
 that list evaluates the symbol \msg, whose value is a special form
-object with a \call\ method that passes that messages. When that \call\
-method is invoked, it evaluates its first argument, the $1$ object,
-and invokes the method named by its second argument, passing the rest
-of its arguments to that method.
+object with a \call\ method designed to pass messages and invoke
+methods. When that \call\ method is invoked, it evaluates its first
+argument, the $1$ object, and invokes the method of that first
+argument named by the second argument, passing any further arguments
+to that method.
 
 Something to keep in mind as we continue is that anything defined as a
 method can be invoked explicitly or even redefined by the user. Thus,
@@ -159,7 +159,7 @@ components. Persistent, often mutable objects will be the core of our
 language, so evaluation will use both a scope and a store. A scope is
 a map from names to positive integer values. We will refer to these
 integers suggestively as pointers. We denote scopes by the variable
-$\varphi$, with the global scope---that is, the builtin scope in which
+$\varphi$, with the global scope---that is, the built-in scope in which
 program evaluation begins---denoted by $\Phi$. A store is then a map
 from these pointers to objects, and this indirection allows us to
 mutate objects by modifying the store. We denote a store by the
@@ -167,7 +167,7 @@ variable $\sigma$, and the global store, analogous to the global
 scope, is denoted by $\Sigma$. An extension to a scope or a store is
 denoted by the expression
 $[\sigma|\text{key}\rightarrow\text{val}]$. We will frequently refer to
-the pointers to certain builtin objects using capitalized names like
+the pointers to certain built-in objects using capitalized names like
 \textsf{ROOT}, the primary object at the top of the inheritance
 hierarchy, or \textsf{INT}, the object from which all integers
 inherit. The objects to which these pointers refer are then written
@@ -189,23 +189,35 @@ as ordered 4-tuples, written
 For example, the integer five would be represented as
 \[ \lb \mathsf{INT}, \mu_0, \varphi_0, 5 \rb, \]
 where $\mu_0$ is the empty function map, and $\varphi_0$ is the empty
-scope. We will frequently use the notation $\mu_{\sigma(\omega)}$ and
+scope. Likewise, the symbol \texttt{foo} would be represented as
+\[ \lb \mathsf{SYMBOL}, \mu_0, \varphi_0, \text{``foo''} \rb. \] We
+will frequently use the notation $\mu_{\sigma(\omega)}$ and
 $\varphi_{\sigma(\omega)}$ to refer to the function map or scope
-elements of the object $\sigma(\omega)$.
+elements of the object $\sigma(\omega)$. Similarly, we will use
+$p_{\sigma(\omega)}$ and $d_{\sigma(\omega)}$ to refer to the parent
+pointer and underlying data element of $\sigma(\omega)$. Note that the
+the root object does not have a parent, i.e.
+$p_{\Sigma(\mathsf{ROOT})} = \varnothing$.
 
 We have already mentioned the function $\next(\sigma)$, but we should
 like to introduce two more semantic function here that we will use
 later. The first is our function for looking up methods, using the
 ``message-passing'' terminology of Simula and Smalltalk. When a method
 cannot be found in the method table of a given object, it's parent is
-queried recursively.
-\begin{multline*} \lookup(\text{``msg''}, \sigma, \omega) = \\
+queried recursively. Character strings representing method names are
+denoted by the variable $m$.
+\begin{multline*} \lookup(m, \sigma, \omega) = \\
 \begin{cases}
-  \varphi_{\sigma(\omega)} &\text{if } \text{``msg''} \in
+  \varphi_{\sigma(\omega)} &\text{if } m \in
   \operatorname{Domain}(\varphi_{\sigma(\omega)}) \\
-    \lookup(\text{``msg''},\sigma,p_{\sigma(\omega)}) &\text{otherwise}
+  \lookup(m,\sigma,p_{\sigma(\omega)})
+  &\text{else if }p_{\sigma(\omega)}\neq \varnothing\\
+  \mathit{undefined} & \text {otherwise}
   \end{cases}
 \end{multline*}
+In practice, these character strings will either be supplied
+explicitly by a built-in method definition or extracted from the data
+field of a symbol object.
 
 The second function we need to define at the moment is the semantic
 function for invoking methods. We mentioned the global \msg\ object in
@@ -218,8 +230,8 @@ tuple. Method functions will be defined so that the value of an
 invocation is a 3-tuple containing the new store and scope and a
 pointer to the object returned by the method.
 \begin{multline*}
-  \invoke( \text{``msg''}, \sigma, \varphi, \lb a_1,\ldots a_n\rb) = \\
-  (\lookup(\text{``msg''}, \sigma, \omega))(\sigma,\varphi,\omega,
+  \invoke( m, \sigma, \varphi, \lb a_1,\ldots a_n\rb) = \\
+  (\lookup(m, \sigma, \omega))(\sigma,\varphi,\omega,
   \lb a_1,\ldots a_n \rb )
 \end{multline*}
   
@@ -243,18 +255,18 @@ as a sequence of whitespace-separated literals enclosed by matching
 parentheses. We define a parsing function that takes as arguments an
 abstract syntax expression and an initial store, and returns a tuple
 containing a pointer to the new object and the updated store.
-Integers are thus parsed as
+An integer $n$ is thus parsed as
 \begin{multline*}
-\parse(\texttt{NUM},\sigma) =
+\parse(n,\sigma) =
 \lb\next(\sigma),[\sigma|\operatorname{next}(\sigma) \rightarrow\right. \\
-\left.\lb\mathsf{INT}, \mu_0, \varphi_{\Sigma(\mathsf{INT})}, \texttt{NUM}\rb]\rb,
+\left.\lb\mathsf{INT}, \mu_0, \varphi_{\Sigma(\mathsf{INT})}, n\rb]\rb,
 \end{multline*}
-and symbols are parsed as
+and a symbol $s$ is parsed as
 \begin{multline*}
-  \parse(\texttt{SYM},\sigma) =
+  \parse(s,\sigma) =
   \lb\next(\sigma),[\sigma|\operatorname{next}(\sigma) \rightarrow\right. \\
 \left.\lb\mathsf{SYMBOL}, \mu_0, \varphi_{\Sigma(\mathsf{SYMBOL})},
-  \texttt{SYM}\rb]\rb.
+  s\rb]\rb.
 \end{multline*}
 Note that the parent of each new integer or symbol object is the
 global integer or symbol object, respectively. These objects are
@@ -341,7 +353,7 @@ the semicolon is used for splicing in Yalie, instead of the comma-at
 operator used in other Lisps. Comments in Yalie are denoted by a hash
 mark, as is common in scripting languages.
 
-\section*{Builtin Objects and Methods}
+\section*{Built-in Objects and Methods}
 
 Yalie defines a number of objects that exist in the global scope and
 store when any program begins. We have already encountered the
@@ -405,7 +417,7 @@ reflected in the child. The child method is defined as
 
 Another pair of important methods is the \texttt{get} and \texttt{set}
 methods, which query and modify member values. These are not used by
-any other builtin functions or methods, but they are an important
+any other built-in functions or methods, but they are an important
 facility for user-defined objects. The \texttt{get} method is the
 simpler of the two, and it is also the first method we have defined so
 far that takes an argument.
@@ -427,15 +439,14 @@ and the return value of \texttt{set}.
 where $\lb \sigma',\varphi',e_1 \rb = \invoke(\text{``eval''},\sigma,
 \varphi, a_2, \lb\rb)$.
 
-The final method of the root object that we define here (others can be
-found in the accompanying README) is \texttt{dup}, which serves in
-place of the ``super'' keyword from languages like C++. When a child
-object redefines an inherited method but wishes to invoke the
-inherited version, it must first duplicate that original method to
-another binding. The \texttt{dup} method thus takes two arguments, a
-method name and a name for the new binding. Note that even if the
-original binding is inherited, the new binding will be local to the
-calling object.
+The final method of the root object that we define here is
+\texttt{dup}, which serves in place of the ``super'' keyword from
+languages like C++. When a child object redefines an inherited method
+but wishes to invoke the inherited version, it must first duplicate
+that original method to another binding. The \texttt{dup} method thus
+takes two arguments, a method name and a name for the new
+binding. Note that even if the original binding is inherited, the new
+binding will be local to the calling object.
 \begin{multline*}
   \mu_{\Sigma(\mathsf{ROOT})}(\text{``dup''})(\sigma,\varphi,\omega,
   \lb a_1,a_2\rb) =\\ \lb [\sigma|\omega\rightarrow \lb
@@ -484,15 +495,14 @@ that age as well. Apart from adding wholly new features, there is much
 room for improvement in the traditional syntax of the language, in
 particular by reducing the sheer number of parentheses that the user
 needs to type. We list here four such attempts that we have included
-in Yalie. The first two are inspired by Paul Graham's work on the Arc
-dialect of Lisp\cite{Graham}, and the others are our own. Each is
-described in the accompanying README file.
+in Yalie.
 
 First, the functionality of the \texttt{cond} expression is
 incorporated into \texttt{if} without changing the basic structure of
-an \texttt{if} call. In particular, \texttt{if} can be made to take an
-arbitrary number of test-consequence pairs, with an optional unpaired
-expression interpreted as an alternative. For example:
+an \texttt{if} call \cite{Graham}. In particular, \texttt{if} can be
+made to take an arbitrary number of test-consequence pairs, with an
+optional unpaired expression interpreted as an alternative. For
+example:
 \begin{quote}
 \begin{verbatim}
 (if test1 a
@@ -511,13 +521,13 @@ are simply dropped. This gives the cleaner syntax:
   (+ a b))
 \end{verbatim}
 \end{quote}
-The meaning of \texttt{let} is also radically extended in a different
-way. A \texttt{let} expression with a single binding and no body can
-create a local binding in the calling scope that persists until the
-end of that scope. This allows the programmer to create a local
-variable without adding a level of nesting and indentation, which can
-greatly improve readability. When doing this, a further pair of
-parentheses is omitted. Thus, the following is valid:
+Yalie also extends the meaning of \texttt{let} in a different way. A
+\texttt{let} expression with a single binding and no body creates a
+local binding in the calling scope that persists until the end of that
+scope. This allows the programmer to create a local variable without
+adding a level of nesting and indentation, which can greatly improve
+readability. When doing this, a further pair of parentheses is
+omitted. Thus, the following is valid:
 \begin{quote}
 \begin{verbatim}
 (let a 1)
@@ -527,9 +537,11 @@ parentheses is omitted. Thus, the following is valid:
 As implemented in Yalie, \texttt{let} can create a new binding in this
 way but cannot modify an existing one. (The \texttt{set} function
 exists for that.) The purpose of the distinction is to separate
-variable declaration for variable modification, so that most
-typographical errors in variable names will lead to a program error
-instead of a silent bug.
+variable declaration for variable modification, so that typographical
+errors in variable assignments will raise an exception instead of
+silently creating a new variable. Yalie also follows the convention
+that any potentially non-functional operations be named with ``set''
+or ``!''.
 
 Finally, the functionality of the \texttt{not} operator is be extended
 to include multiple arguments. When receiving more than one argument,
@@ -568,10 +580,10 @@ helpful documentation in the form of method lists.
 The example of adding a factorial method to the entire set of integers
 (see accompanying README) demonstrates the flexibility of the
 object-based approach, and though the language is still small, the
-improved consistency of the semantics has already made itself felt
-during the implementation process. We look forward to finding new ways
-of leveraging the object abstraction, both by itself and in
-conjunction with Lisp's macro system.
+simplicity of the semantics has already made itself felt during the
+implementation process. We look forward to finding new ways of
+leveraging the object abstraction, both by itself and in conjunction
+with Lisp's macro system.
 
 \begin{thebibliography}{9}
 \bibitem{Abadi} M. Abadi and L. Cardelli. \textit{A Theory of Objects.} New
@@ -584,6 +596,7 @@ conjunction with Lisp's macro system.
   2001. Web. 8 May 2009.\\ $<$http://www.paulgraham.com/arcll1.html$>$.
 \end{thebibliography}
 
-
+\section*{ Appendix: README file }
+\verbinput{README}
 
 \end{document}

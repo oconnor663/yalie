@@ -6,11 +6,13 @@ Invocation
 ./yalie.py code.y
 ./yalie.py < code.y
 
-In addition to functions and methods built in through Python, Yalie
-automatically reads in the file "builtins.y" in the current directory
-and executes the definitions there. This file is included with the
-Yalie source, and it contains a lot of important files. Make sure it
-is in the current directory when you run Yalie.
+In addition to functions and methods built in
+through Python, Yalie automatically reads in the
+file "builtins.y" in the current directory and
+executes the definitions there. This file is
+included with the Yalie source, and it contains
+a lot of important files. Make sure it is in the
+current directory when you run Yalie.
 
 
 Syntax
@@ -19,41 +21,50 @@ Integers: 1, 2, -5, 45984375394875945
 Symbols: a, b, Foo, !!!<<&&
 Lists: (a b c)
 
-Note that inputting a symbol will raise an error unless that symbol is
-defined. (See 'let'.) Inputting a list will also raise an error unless
-the first element is a function. (See 'ls' and 'quote'.)
+Note that inputting a symbol will raise an error
+unless that symbol is defined. (See 'let'.)
+Inputting a list will also raise an error unless
+the first element is a function. (See 'ls' and
+'quote'.)
 
-[#] is comments
-['] or [`] quote an object to prevent it from being implicitly
-evaluated, and [,] and [;] are unquote and unquote-splice,
-respectively. See the "quote" function below.
-[.] is the method operator. It can operate as an infix without parens,
-or it can capture an S-expression if placed after the first element.
-a.b  -->  (msg a b)
-(a.b c d)  -->  (msg a b c d)
+[#] begins a comment to the end of the line.
+['] or [`] quote an object to prevent it from
+being implicitly evaluated, and [,] and [;] are
+unquote and unquote-splice, respectively. See
+the "quote" function below.  [.] is the method
+operator. It can operate as an infix without
+parens, or it can capture an S-expression if
+placed after the first element.
+
+a.b --> (msg a b) (a.b c d) --> (msg a b c d)
 
 
 Reachable Objects
 -----------------
-Root, (Int, Cons, Symbol, Nil, Operator), (Form, Function)
-All of the above are visible in the global scope. Root is the object
-at the very top of the hierarchy. Everything in the first tuple
-inherits directly from Root. The second tuple of objects inherits from
-Operator in the first tuple.
+Root, (Int, Cons, Symbol, Nil, Operator), (Form,
+Function) All of the above are visible in the
+global scope. Root is the object at the very top
+of the hierarchy. Everything in the first tuple
+inherits directly from Root. The second tuple of
+objects inherits from Operator in the first
+tuple.
 
-All of these objects can have methods added or redefined using the
-existing methods described below. This is the essence of the
-flexibility of object-orientation. We can change how builtin data
-types like Int behave.
+All of these objects can have methods added or
+redefined using the existing methods described
+below. This is the essence of the flexibility of
+object-orientation. We can change how built-in
+data types like Int behave.
 
 
 Functions
 ---------
 
 (dir)
-Returns a list of everything defined in the current scope. Call
-it to see what is available in the language, or if you forget the name
-of something.
+
+Returns a list of everything defined in the
+current scope. Call it to see what is available
+in the language, or if you forget the name of
+something.
 
 (= a b)
 (+ a b c ...)
@@ -62,10 +73,13 @@ of something.
 (/ a b)
 (% a b)
 <, >, <=, >=, =
-Arithmetic and comparison functions work as they do in Scheme or
-Common Lisp. % function computes the remainder as in Python. All of
-these functions are defined in builtins.y in terms of the integer 
-methods of the same name. Note that boolean returns are just the
+
+Arithmetic and comparison functions work as they
+do in Scheme or Common Lisp. The % function
+computes the remainder as in Python. All of
+these functions are defined in builtins.y in
+terms of the integer methods of the same
+name. Note that boolean returns are just the
 integers 1 and 0 for True and False.
 
 (cons x y)
@@ -73,19 +87,25 @@ integers 1 and 0 for True and False.
 (cdr a)
 (setcar a x)
 (setcdr a x)
-Operations on cons cells work as in Scheme. Again, these functions are
-just defined for convenience. The semantics are contained within the
-methods that these functions invoke.
+
+Operations on cons cells work as in
+Scheme. Again, these functions are just defined
+for convenience. The semantics are contained
+within the methods that these functions invoke.
 
 (if bool conseq alt)
 (if a b
     c d
     e f
       g)
-As in Scheme. (if) can also accept more argumends, as shown in the
-second example, in which case it behaves like cond. The second example
-will return b if a, c if d, e if f, or else g. Nil is returned when all
-tests are false and no unpaired last element is supplied.
+
+As in Scheme. "if" can also accept more
+arguments, as shown in the second example, in
+which case it behaves like Scheme's "cond". The
+second example will return b if a, c if d, e if
+f, or else g. If all tests are false and no
+unpaired last element is supplied, nil is
+returned.
 
 (while test
    body1
@@ -93,14 +113,18 @@ tests are false and no unpaired last element is supplied.
    ...)
 (break)
 (continue)
-Runs a while loop as in Python. The (break) and (continue) functions
-will result in errors if called outside of a while context.
+
+Runs a while loop as in Python. The (break) and
+(continue) functions will result in errors if
+called outside of a while context.
 
 (len list)
 (ls 1 2 3 4)
 (append '(1 2 3) '(4 5 6))
-List functions work as in Scheme, except that "list" has been renamed
-"ls". (Both for brevity and to free up the variable name.)
+
+List functions work as in Scheme, except that
+"list" has been renamed "ls". (Both for brevity
+and to free up the variable name.)
 
 (def (f x)
   body1
@@ -112,39 +136,59 @@ List functions work as in Scheme, except that "list" has been renamed
    z.print)
 (deform (reverse-if test alt conseq)
   `(if ,test ,conseq, ,alt))
-Function definitions can be specified with an arbitrary number of
-arguments. If a variable number of arguments is desired, the final
-argument should be specified as (rest x), where x is whatever name you
-like.
-The macro definition form, (deform), works similarly. Macros don't
-implicitly evaluate their arguments, and their return values are
-implicitly evaluated. The anonymous counterparts to (def) and (deform)
-are (fn) and (form), respectively.
+
+Function definitions can be specified with an
+arbitrary number of arguments. If a variable
+number of arguments is desired, the final
+argument should be specified as (rest x), where
+x is whatever name you like.  The macro
+definition form, "deform", works
+similarly. Macros don't implicitly evaluate
+their arguments, and their return values are
+implicitly evaluated. The anonymous counterparts
+to "def" and "deform" are "fn" and "form",
+respectively. Note that "def" and "deform" are
+not allowed to modify existing bindings. See
+"set" below.
 
 (quote x)
-When quote is evaluated, it returns x without evaluating x. This is
-helpful for passing symbols or lists as arguments since they do not
-evaluate to themselves. With the splice operators (immediately below),
-the quote tool is a fantastic way to put together the return value of
-a macro.
+
+When quote is evaluated, it returns x without
+evaluating x. This is helpful for passing
+symbols or lists as arguments since they do not
+evaluate to themselves. With the splice
+operators (immediately below), the quote tool is
+a fantastic way to put together the return value
+of a macro.
+
 `(a b c)  ==  (quote a b c)  -->  (a b c)
-`(a b ,(ls 1 2))  ==  (quote a b (unquote (+ 1 1))) --> (a b (1 2))
-`(a b ;(ls 1 2)) ==  (quote a b (unquote-splice (ls 1 2)))
-      	     	     	    --> (a b 1 2))
+`(a b ,(ls 1 2))
+    == (quote a b (unquote (+ 1 1)))
+       --> (a b (1 2))
+`(a b ;(ls 1 2))
+    == (quote a b (unquote-splice (ls 1 2)))
+       --> (a b 1 2))
 
 (do  body1
      body2
      body3...)
+
 Simply evaluates each argument and returns the last.
 
 (call f ...)
-Calls the function f with a supplied list of arguments. If the final
-argument to 'call' is a list (or nil), the contents of the last
-argument are spliced into the list of passed arguments, rather than
-being passed as a single argument. 'Call' is a function, so it's
-arguments will be evaluated, but it suppresses the implicit evaluation
-that would be carried out by f. (Note, it does not suppress the
-evaluation done by special forms like 'let'.) Examples:
+
+Calls the function f with a supplied list of
+arguments. If the final argument to 'call' is a
+list (or nil), the contents of the last argument
+are spliced into the list of passed arguments,
+rather than being passed as a single
+argument. 'Call' is a function, so it's
+arguments will be evaluated, but it suppresses
+the implicit evaluation that would be carried
+out by f. (Note, it does not suppress the
+evaluation done by special forms like 'let'.)
+Examples:
+
 (call + 1 2 3)      -->   6
 (call + '(1 2 3))   -->   6
 (call + 1 2 '(3))   -->   6
@@ -156,112 +200,164 @@ evaluation done by special forms like 'let'.) Examples:
   body1
   body2
   ....)
-Works similarly to let* in Scheme, but omits the parentheses around
-assignment pairs.
+
+Works similarly to let* in Scheme, but omits the
+parentheses around assignment pairs.
 
 (let a 9)
-It is also possible to define a local variable that persists for the
-duration of the calling scope by omitting a body from let. This can
-only be done for one variable at a time, and the grouping parentheses
-are dropped.
+
+It is also possible to define a local variable
+that persists for the duration of the calling
+scope by omitting a body from let. This can only
+be done for one variable at a time, and the
+grouping parentheses are dropped.
 
 (set a x)
-Modifies an existing binding. In order to clearly distinguish
-functional from non-functional operators, (let a x) is not allowed to
-modify an existing binding if one already exists for 'a' in the
-current scope. (Though obviously, if provided a body, let will create
-its own scope without any problems.) Set should do that instead. On
-the other side, set is not allowed to create a new binding. If no
-variable named 'a' exists, set returns an error. This is intended to
-avoid variable misspellings.
+
+Modifies an existing binding. In order to
+clearly distinguish functional from
+non-functional operators, (let a x) is not
+allowed to modify an existing binding if one
+already exists for 'a' in the current
+scope. (Though obviously, if provided a body,
+let will create its own scope without any
+problems.) Set should do that instead. Set can
+also be used, in conjunction with "fn" or
+"form", to modify function bindings. On the
+other side, set is not allowed to create a new
+binding. If no variable named 'a' exists in the
+previous example, set returns an
+error. Separating declaration from modification
+is intended to eliminate silent bugs that result
+from misspelling, and to facilitate functional
+programming.
 
 (msg obj message arg1 arg2...)
-This function is how the user sends messages to objects. It is usually
-invoked using the period syntax.
 
-A few other functions like (eval x) and (print x) are simply defined as
-wrappers around the appropriate method calls.
+This function is how the user sends messages to
+objects. It is usually invoked using the period
+syntax.
+
+A few other functions like (eval x) and (print
+x) are simply defined as wrappers around the
+appropriate method calls.
 
 
 Methods
 -------
 
-The most important methods are those of the root object, since all
-other objects inherit them.
+The most important methods are those of the root
+object, since all other objects inherit them.
 
 x.child
 x.copy
-Return new objects that either inherit from or duplicate x,
-respectively
+
+Return new objects that either inherit from or
+duplicate x, respectively
 
 (x.get key)
 (x.set key val)
-Get returns the value of the member named key, or raises an error. Set
-changes the value of the member or adds a new member if one of that
-name did not exist before. Note that there is no 'let' for member
-variables, so set is allowed to create new bindings.
 
-(x.def (name args...) body...)  (x.deform (name args...)
-macro_body...)  These work similarly to the function and macro
-constructs above, except that they bind methods to an object rather
-than functions to the local scope. This can be used to redefine
-methods (see also 'dup' below). All user defined methods bind the
-variable "self" implicitly in their bodies. For example, to give all
-integers a factorial method denoted by '!', we would write:
+Get returns the value of the member named key,
+or raises an error. Set changes the value of the
+member or adds a new member if one of that name
+did not exist before. Note that there is no
+'let' for member variables, so set is allowed to
+create new bindings.
+
+(x.def (name args...) body...)
+(x.deform (name args...) macro_body...)
+
+These work similarly to the function and macro
+constructs above, except that they bind methods
+to an object rather than functions to the local
+scope. This can be used to redefine methods (see
+also 'dup' below). All user defined methods bind
+the variable "self" implicitly in their
+bodies. For example, to give all integers a
+factorial method denoted by '!', we would write:
+
 (Int.def ! ()
   (if (= self 0)
       1
       (* self (- self 1).! )))
-      # Now even literal integers like "5" have a ! method.
+      # Now even literal integers
+      # like "5" have a ! method.
 
 (x.dup foo bar) 
-Copies a method within x named foo to bar. Note that even if foo is
-inherited, bar will be a method of x directly. Yalie has no 'super'
-function of any kind, so if you want to redefine a method while
-continuing to invoke the old definition, you need to dup the old
-version to another name.
+
+Copies a method within x named foo to bar. Note
+that even if foo is inherited, bar will be a
+method of x directly. Yalie has no 'super'
+function of any kind, so if you want to redefine
+a method while continuing to invoke the old
+definition, you need to dup the old version to
+another name.
 
 (x.isa y)
-Returns a true value if x inherits from y, otherwise a false
-value. Again, booleans are just the integers 1 and 0.
+
+Returns a true value if x inherits from y,
+otherwise a false value. Again, booleans are
+just the integers 1 and 0.
 
 x.parent
-Returns the parent object of x. For Root, this returns an error.
+
+Returns the parent object of x. For Root, this
+returns an error.
 
 (x.is y)
-Returns true only if x and y are the same object in memory.
+
+Returns true only if x and y are the same object
+in memory.
 
 (x.= y)
-For most objects this is the same as "is". For symbols, integers, and
-lists, however, = is defined by value. In the case of lists, that
-definition is recursive. Two lists are equal if their contents are
-equal. Note that the '=' function wraps this method.
+
+For most objects this is the same as "is". For
+symbols, integers, and lists, however, = is
+defined by value. In the case of lists, that
+definition is recursive. Two lists are equal if
+their contents are equal. Note that the '='
+function wraps this method.
 
 x.print
-Prints a representation of x to stdout, with a newline.
+
+Prints a representation of x to stdout, with a
+newline.
 
 x.members
 x.methods
-Return the lists of members or methods of x, as a list of name symbols.
+
+Return the lists of members or methods of x, as
+a list of symbols.
 
 x.eval
-For most objects, this just returns x. For symbols, this returns the
-value of that symbol in the current scope. For lists, it evaluates the
-first argument and then passes the rest of the list to that argument's
-call method. (i.e. a function call) The following produce the same
+
+For most objects, this just returns x. For
+symbols, this returns the value of that symbol
+in the current scope. For lists, it evaluates
+the first argument and then passes the rest of
+the list to that argument's call method. (i.e. a
+function call) The following produce the same
 result, though the second takes an extra step.
-(+ 1 2 3)           #invokes +.call implicitly
-(msg + call 1 2 3)  #invokes +.call explicitly (by invoking msg.call
-       	      	    	     	    	        implicitly)
+
+(+ 1 2 3)           # invokes +.call implicitly
+(msg + call 1 2 3)  # invokes +.call explicitly
+       	      	    # (by invoking msg.call
+		    # implicitly)
 
 x.call
-Defined for things that can be called with function syntax. Redefining
-this method changes the behavior of the function. Evaluating a list
-implicitly calls this method from the first element of that list.
 
-Other objects have specialized methods, and many global functions are
-just wrappers around these methods. Integers, for example, define
-methods for all of the arithmetic operations and binary
-relations. Cons objects define car, cdr, setcar, and setcdr
-methods. If any of these methods are modified, the change will be
-reflected in the behavior of the wrapper functions using them.
+Defined for things that can be called with
+function syntax. Redefining this method changes
+the behavior of the function. Evaluating a list
+implicitly calls this method from the first
+element of that list.
+
+Other objects have specialized methods, and many
+global functions are just wrappers around these
+methods. Integers, for example, define methods
+for all of the arithmetic operations and binary
+relations. Cons objects define car, cdr, setcar,
+and setcdr methods. If any of these methods are
+modified, the change will be reflected in the
+behavior of the wrapper functions using them.
