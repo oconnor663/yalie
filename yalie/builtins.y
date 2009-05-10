@@ -12,6 +12,8 @@
 ### Various useful operators ###
 (def (eval x) x.eval)
 (def (print x) x.print)
+(def (eq a b) (a.eq b))
+(def (is a b) (a.is b))
 
 (def (do (rest rest))
      (if (rest.isa Nil) ()
@@ -77,8 +79,8 @@
       (in obj (cdr list))))
      
 ### Arithmetic operators ###
-(def (< a b) (a.< b))
 (def (= a b) (a.= b))
+(def (< a b) (a.< b))
 (def (<= a b) (or (< a b) (= a b)))
 (def (> a b) (and (not < a b) (not = a b)))
 (def (>= a b) (or (> a b) (= a b)))
@@ -94,9 +96,9 @@
 	 1))
 
 (def (- x (rest rest))
-     (if rest
-     	 (+ x (* -1 (call + rest)))
-	 (* -1 x)))
+     (if (not rest)
+     	 (* -1 x)
+	 (x.- (call + rest))))
 
 (def (/ a b) (a./ b))
 (def (% a b) (a.% b))

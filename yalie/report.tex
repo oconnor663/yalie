@@ -426,19 +426,31 @@ far that takes an argument.
 \lb a_1\rb) = \lb \sigma, \varphi,
 \varphi_{\sigma(\omega)}(d_{\sigma(a_1)})\rb.\] That is, the
 \texttt{get} method receives a symbol, $a_1$, and references its data
-element in the member scope of the caller. The \texttt{set} method
-takes two elements, and it is the first method so far that will
-evaluate an argument. The first argument is a symbol giving the member
-name, and the second is evaluated to give the new value of the member
-and the return value of \texttt{set}.
+element in the member scope of the caller. The \texttt{let} and
+\texttt{set} methods take two elements, and these are the first
+methods we have seen so far that will evaluate an argument. The first
+argument is a symbol giving the member name, and the second is
+evaluated to give the new value of the member and the return value of
+the method call. The \texttt{let} method is used only when the member
+variable is currently bound, and \texttt{set} is used only to modify
+an existing binding. Thus, in the case where $d_{\sigma(a_1)}$ is not
+in the domain of $\varphi_{\sigma(\omega)}$, \texttt{let} is defined
+as
 \begin{multline*}
-  \mu_{\Sigma(\mathsf{ROOT})}(\text{``set''})(\sigma,\varphi,\omega,
+  \mu_{\Sigma(\mathsf{ROOT})}(\text{``let''})(\sigma,\varphi,\omega,
   \lb a_1,a_2\rb) =\\ \lb [\sigma'|\omega\rightarrow \lb p_{\sigma(\omega)},
   \mu_{\sigma(\omega)},[\varphi_{\sigma(\omega)}|d_{\sigma(a_1)}\rightarrow e_1],
   d_{\sigma(\omega)}\rb],\right.\\\left.\varphi', e_1\rb.
 \end{multline*}
 where $\lb \sigma',\varphi',e_1 \rb = \invoke(\text{``eval''},\sigma,
-\varphi, a_2, \lb\rb)$.
+\varphi, a_2, \lb\rb)$. In the case where $d_{\sigma(a_1)}$ is in the
+domain of $\varphi_{\sigma(\omega)}$, \texttt{let} is
+undefined. Likewise, \texttt{set} is defined only in that case, and
+its definition takes the same form as \texttt{let} immediately
+above. These two methods are defined this way in order to separate the
+creation of new bindings from the modification of existing ones. This
+is helpful for functional programming, and it also causes many bugs to
+raise an exception instead of passing silently.
 
 The final method of the root object that we define here is
 \texttt{dup}, which serves in place of the ``super'' keyword from
@@ -570,10 +582,10 @@ define new methods and method forms in a given object. Recall that the
 difference between a function and a form (or ``macro'') is that a
 function implicitly evaluates its arguments while a form implicitly
 evaluates its return. Methods and method forms work in the same way,
-except that they are invoked by message passing. The syntax of
-\texttt{def} and \texttt{deform} is identical to the \texttt{define}
-operator in Scheme, and the return value of both methods is the
-calling object.
+except that they are invoked by message passing. The syntax of the
+\texttt{def} and \texttt{deform} methods is identical to the syntax of
+the \texttt{define} operator in Scheme, and the return value of both
+methods is the calling object.
 
 The definition of \texttt{lambda} thus reads
 \begin{quote}
@@ -594,12 +606,24 @@ defines a \call\ method for the newly created object. Recall that
 this method will define the functionality of \texttt{lambda}. The
 method is a form, so its value is Yalie code to be executed at the end
 of the call. This code can be confusing, because it is creating a
-second child object---from the parent of functions, this time---with
-its own call method. This new object is the anonymous function that
-\texttt{lambda} returns. Note that the arguments and the function body
-are just spliced into the call to the \texttt{def} method of the new
-object.
+second child object---from the parent of all functions, this
+time---with its own call method. This new object is the anonymous
+function that \texttt{lambda} returns. Note that the arguments and the
+function body are just spliced into the call to the \texttt{def}
+method of the new object.
 
+For a final example, the following code would define a factorial
+method named ``!'' for all integers. Note that methods and method
+forms implicitly bind the variable \texttt{self} to the calling
+object.
+\begin{quote}
+\begin{verbatim}
+(Int.def (!)
+  (if (<= self 0)
+      1
+      (* self (- self 1).!)))
+\end{verbatim}
+\end{quote}
 
 \section*{Conclusions}
 Several different interpreters were created at different stages in
@@ -640,9 +664,15 @@ with Lisp's macro system.
 \end{thebibliography}
 
 \section*{Appendix: README}
+This appendix contains the text of the README file that accompanies
+the Yalie interpreter.
+
 \verbinput{README}
 
 \section*{Appendix: builtins.py}
+This appendix contains the text of the file ``builtins.py''. This file
+defines any functions or forms not defined in the Python code.
+
 \verbinput{builtins.y}
 
 \end{document}

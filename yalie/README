@@ -134,9 +134,29 @@ called outside of a while context.
 (ls 1 2 3 4)
 (append '(1 2 3) '(4 5 6))
 
-List functions work as in Scheme, except that
-"list" has been renamed "ls". (Both for brevity
-and to free up the variable name.)
+These list functions work as in Scheme, except
+that "list" has been renamed "ls". (Both for
+brevity and to free up the variable name.)
+
+(map fn list1 list2...)
+Returns the list of return values of "fn", with
+each call taking one arguments from each of the
+passed lists. Thus, the number of lists passed
+to "map" should be equal to the number of
+arguments "fn" takes, and all the lists should
+be of equal length.
+
+(filter test list)
+
+Returns the list of those elements of "list"
+that return true when passed as arguments to the
+function "test".
+
+(in x list)
+
+Returns 1 if x is an element of "list",
+otherwise 0.
+
 
 (def (f x)
   body1
@@ -153,6 +173,8 @@ and to free up the variable name.)
      ;body))
   # like "let", but omits the initial
   # parens and only binds one variable
+(def! ...)
+(deform! ...)
 
 Function and form (or "macro") definitions can
 be specified with an arbitrary number of
@@ -165,9 +187,9 @@ evaluated. This allows users to construct new
 binding forms or control structures in terms of
 existing ones, as shown above. The anonymous
 counterparts to "def" and "deform" are "fn" and
-"form", respectively. Note that "def" and
-"deform" are not allowed to modify existing
-bindings. See "set" below.
+"form", respectively. "def" and "deform" are not
+allowed to modify existing bindings. Use "def!"
+and "deform!" for that.
 
 (quote x)
 
@@ -256,8 +278,28 @@ This function is how the user sends messages to
 objects. It is usually invoked using the period
 syntax.
 
-A few other functions like (eval x) and (print
-x) are simply defined as wrappers around the
+(expand obj message arg1 arg2...)
+
+"expand" is very similar to "msg", but it only
+works when the method specified by "obj" and
+"message" is a method form defined in
+Yalie. (Anything else raises an exception.) In
+that case, rather than evaluating the result of
+the method call, "expand" returns the code that
+would have been evaluated when the method
+returned, that is, the unevaluated return value
+of a method form. To see the expansion of a form
+defined with "deform", one would use something
+like (expand my-form call arg1 arg2...). For
+a simple example:
+  (deform (let-x val) `(let x ,val))
+  (let-x 5)
+     --> 5 (and 5 is now bound to x)
+  (expand let-x call 5)
+     --> '(let x 5)
+
+A few other functions like (eval, print, eq, is)
+are simply defined as wrappers around the
 appropriate method calls.
 
 
@@ -274,14 +316,16 @@ Return new objects that either inherit from or
 duplicate x, respectively
 
 (x.get key)
+(x.let key val)
 (x.set key val)
 
 Get returns the value of the member named key,
-or raises an error. Set changes the value of the
-member or adds a new member if one of that name
-did not exist before. Note that there is no
-'let' for member variables, so set is allowed to
-create new bindings.
+or raises an error. Let binds a new member
+variable, and set changes the value of an
+existing member. NB: member and method scopes
+are separate, and members that happen to be
+functions cannot be invoked using method
+syntax.
 
 (x.def (name args...) body...)
 (x.deform (name args...) macro_body...)
@@ -340,14 +384,17 @@ returns an error.
 Returns true only if x and y are the same object
 in memory.
 
-(x.= y)
+(x.eq y)
 
 For most objects this is the same as "is". For
-symbols, integers, and lists, however, = is
+symbols, integers, and lists, however, "eq" is
 defined by value. In the case of lists, that
 definition is recursive. Two lists are equal if
-their contents are equal. Note that the '='
-function wraps this method.
+their contents are equal. Note that integers
+have an "=" method that identical to their "eq"
+method, except that "=" raises an exception when
+"y" is not an integer. When comparing integers,
+"=" can catch bugs that "eq" would miss.
 
 x.print
 
@@ -356,9 +403,12 @@ newline.
 
 x.members
 x.methods
+x.methods*
 
 Return the lists of members or methods of x, as
-a list of symbols.
+a list of symbols. "methods*" lists only those
+methods that are local to x, omitting inherited
+methods.
 
 x.eval
 
@@ -375,7 +425,7 @@ result, though the second takes an extra step.
                       # (by invoking msg.call
                       # implicitly)
 
-x.call
+(x.call a b c...)
 
 Defined for things that can be called with
 function syntax. Redefining this method changes
