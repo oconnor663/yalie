@@ -4,7 +4,7 @@ import sys,os,string,readline,copy
 from StringIO import *
 
 ### Make this false to see Python error traces
-CATCH_ERRORS = 1
+CATCH_ERRORS = 0
 
 ### Terminal prompts
 PROMPT = "yalie: "
@@ -84,10 +84,34 @@ class Object:
             return self.parent.inherits(ancestor)
         else:
             return False
+    ###
+    ### This is used for passing messages as though they were
+    ### passed from userspace, with implicit evaluation and all
+    ###
     def message( self, scope, message, *args ):
-        ret = self.methods.ref(message).call(scope,self,*args)
+        ret = self.methods.ref(message).call(False,False,scope,self,*args)
         if type(ret)==type(True):
-            print "message %s to obj %s is returning a bool!" % (message, self )
+            raise TypeError, "Boolean function returning the wrong thing!!!"
+        return ret
+    ###
+    ### This is usually used for passing messages within Python.
+    ### It suppresses implicit evaluation of arguments, which is
+    ### important since things aren't getting rebound to variables.
+    ###
+    def call( self, scope, message, *args ):
+        ret = self.methods.ref(message).call(True,False,scope,self,*args)
+        if type(ret)==type(True):
+            raise TypeError, "Boolean function returning the wrong thing!!!"
+        return ret
+    ###
+    ### This is used for passing messages within Python and specifically
+    ### suppressing the evaluation of a macro form. Really only used by
+    ### "expand" method of forms.
+    ###
+    def macroexpand( self, scope, message, *args ):
+        ret = self.methods.ref(message).call(False,True,scope,self,*args)
+        if type(ret)==type(True):
+            raise TypeError, "Boolean function returning the wrong thing!!!"
         return ret
     def copy( self ):
         ret = Object( None )
@@ -101,18 +125,15 @@ class Object:
 class PyFnMethod:
     def __init__( self, fn ):
         self.fn = fn
-    def call( self, scope, obj, *args ):
+    def call( self, noeval_args, noeval_ret, scope, obj, *args ):
         # implicitly eval's the args
-        args = [ i.message(scope,'eval') for i in args ]
+        if not noeval_args:
+            args = [ i.message(scope,'eval') for i in args ]
         ret = self.fn( scope, obj, *args )
         return ret
-    def call_noeval( self, scope, obj, *args ):
-        return self.fn( scope, obj, *args )
 
 class PyFormMethod( PyFnMethod ):
-    def call( self, scope, obj, *args ):
-        return self.fn( scope, obj, *args )
-    def call_noeval( self, scope, obj, *args ):
+    def call( self, noeval_args, noeval_ret, scope, obj, *args ):
         return self.fn( scope, obj, *args )
 
 class LispFnMethod:
@@ -121,7 +142,7 @@ class LispFnMethod:
         self.args = args                 #list of strings
         self.rest_arg = rest_arg         #string or None
         self.body = body                 #list of objects
-    def call( self, call_scope, caller, *call_args ):
+    def call( self, noeval_args, noeval_ret, call_scope, caller, *call_args ):
         ### binds args and self
         ## first check number of args
         if self.rest_arg==None:
@@ -139,42 +160,25 @@ class LispFnMethod:
         new_scope['self'] = caller
         # pair args off with arg names and chop the list of args
         for i in self.args:
-            new_scope[i] = call_args[0].message(call_scope,'eval')
+            if noeval_args:
+                new_scope[i] = call_args[0]
+            else:
+                new_scope[i] = call_args[0].message(call_scope,'eval')
             call_args = call_args[1:]
         # collect any remainder into the final list
         if self.rest_arg:
-            rest = [ i.message(call_scope,'eval') for i in call_args ]
+            if noeval_args:
+                rest = call_args
+            else:
+                rest = [ i.message(call_scope,'eval') for i in call_args ]
             new_scope[self.rest_arg] = make_list(rest)
-        ret = make_nil()
-        for i in self.body:
-            ret = i.message( new_scope, 'eval' )
-        return ret
-    def call_noeval( self, call_scope, caller, *call_args ):
-        ### binds args and self
-        ## first check number of args
-        if self.rest_arg==None and len(call_args)>len(self.args):
-                raise RuntimeError, "Too many arguments to lisp method."
-        if len(call_args)<len(self.args):
-            raise RuntimeError, "Too few arguments to lisp method."
-        new_scope = Scope(self.scope)
-        ### NB: the assignment of self before other arguments allows
-        ### any user-defined argument named 'self' to take precedence
-        ### in binding. This is intended.
-        new_scope['self'] = caller
-        # pair args off with arg names and chop the list of args
-        for i in self.args:
-            new_scope[i] = call_args[0]
-            call_args = call_args[1:]
-        # collect any remainder into the final list
-        if self.rest_arg:
-            new_scope[self.rest_arg] = make_list(call_args)
         ret = make_nil()
         for i in self.body:
             ret = i.message( new_scope, 'eval' )
         return ret
         
 class LispFormMethod( LispFnMethod ):
-    def call( self, call_scope, caller, *call_args ):
+    def call( self, noeval_args, noeval_ret, call_scope, caller, *call_args ):
         ### binds args and self
         ## first check number of args
         if self.rest_arg==None:
@@ -201,9 +205,10 @@ class LispFormMethod( LispFnMethod ):
         ret = make_nil()
         for i in self.body:
             ret = i.message( new_scope, 'eval' )
-        return ret.message( call_scope, 'eval' )
-    def call_noeval( self, call_scope, caller, *call_args ):
-        return self.call(call_args,caller,*call_args)
+        if noeval_ret:
+            return ret
+        else:
+            return ret.message( call_scope, 'eval' )
         
 ###
 ### Builtins
@@ -245,7 +250,14 @@ def def_method_or_form( is_function, bang, scope, obj, shape, *body ):
     for i in args:
         if not i.inherits(SymbolObject):
             raise RuntimeError, "non-symbol in args list"
-    arg_names = [ i.data for i in args ]
+    arg_names = []
+    for i in args:
+        if i.data in arg_names:
+            raise RuntimeError, "Two arguments can't have the same name."
+        arg_names.append(i.data)
+    if rest_arg!=None and rest_arg in arg_names:
+        raise RuntimeError, "Two arguments can't have the same name."
+    
     if is_function:
         if bang:
             obj.methods[name.data] = \
@@ -325,7 +337,8 @@ def make_nil():
     return Object(NilObject)
 NilObject.repr = lambda self: "<Object: Nil>" if self==NilObject else "()"
 NilObject.methods['bool'] = PyFnMethod( lambda scope, obj : make_int(0) )
-NilObject.methods['='] = PyFnMethod( lambda scope,obj,arg: make_bool(arg.inherits(NilObject)) )
+NilObject.methods['='] = PyFnMethod( lambda scope,obj,arg:
+                                         make_bool(arg.inherits(NilObject)) )
 Builtins['Nil'] = NilObject
 
 IntObject = Object(RootObject, "Int")
@@ -369,10 +382,12 @@ IntObject.methods['-'] = PyFnMethod( int_sub )
 IntObject.methods['*'] = PyFnMethod( int_mul )
 IntObject.methods['/'] = PyFnMethod( int_div )
 IntObject.methods['%'] = PyFnMethod( int_mod )
-IntObject.methods['='] = PyFnMethod( lambda scope,obj,arg: make_bool(arg.inherits(IntObject) and
-                                     arg.data == obj.data) )
+IntObject.methods['='] = PyFnMethod( lambda scope,obj,arg:
+                                         make_bool(arg.inherits(IntObject) and
+                                                   arg.data == obj.data) )
 IntObject.methods['<'] = PyFnMethod( int_lt )
-IntObject.methods['bool'] = PyFnMethod( lambda scope, obj : make_bool(obj.data) )
+IntObject.methods['bool'] = PyFnMethod( lambda scope, obj :
+                                            make_bool(obj.data) )
 Builtins['Int'] = IntObject
 
 SymbolObject = Object(RootObject, "Symbol")
@@ -384,9 +399,11 @@ def make_symbol(name):
     ret = Object(SymbolObject)
     ret.data = name
     return ret
-SymbolObject.methods['eval'] = PyFnMethod( lambda scope, obj:scope.ref(obj.data))
-SymbolObject.methods['='] = PyFnMethod( lambda scope,obj,arg: make_bool(arg.inherits(SymbolObject) and
-                                     arg.data == obj.data) )
+SymbolObject.methods['eval'] = PyFnMethod( lambda scope, obj:
+                                               scope.ref(obj.data))
+SymbolObject.methods['='] = PyFnMethod( lambda scope,obj,arg:
+                                            make_bool(arg.inherits(SymbolObject)
+                                                      and arg.data == obj.data))
 Builtins['Symbol'] = SymbolObject
 
 ConsObject = Object(RootObject, "Cons")
@@ -448,7 +465,7 @@ def cons_eval( scope, obj ):
     return fn.message( scope, 'call', *unmake_list(obj.data[1]) )
 def cons_eq( scope, obj, arg ):
     if not arg.inherits(ConsObject):
-        return False
+        return make_bool(0)
     b1 = obj.data[0].message(scope,'=',arg.data[0])
     b2 = obj.data[1].message(scope,'=',arg.data[1])
     return make_bool( b1.data and b2.data )
@@ -461,22 +478,22 @@ ConsObject.methods['='] = PyFnMethod( cons_eq )
 Builtins['Cons'] = ConsObject
 
 # This is the general parent of all callables
-def operator_call( scope, obj ):
+def operator_call( scope, obj, *args):
     raise RuntimeError, "This is not a working function"
 OperatorObject = Object(RootObject, "Operator")
 OperatorObject.repr = lambda self: "<Operator%s>" % (': '+self.name if
                                                      self.name else '')
-OperatorObject.call = PyFnMethod( operator_call )
+OperatorObject.methods['call'] = PyFnMethod( operator_call )
 Builtins['Operator'] = OperatorObject
 FunctionObject = Object(OperatorObject, "Function")
 FunctionObject.repr = lambda self: "<Function%s>" % (': '+self.name if
                                                      self.name else '')
-FunctionObject.call = PyFnMethod( operator_call )
+FunctionObject.methods['call'] = PyFnMethod( operator_call )
 Builtins['Function'] = FunctionObject
 SpecialFormObject = Object(OperatorObject, "Form")
 SpecialFormObject.repr = lambda self: "<Form%s>" % (': '+self.name if 
                                                     self.name else '')
-SpecialFormObject.call = PyFormMethod( operator_call )
+SpecialFormObject.methods['call'] = PyFormMethod( operator_call )
 Builtins['Form'] = SpecialFormObject
 
 CallObject = Object(FunctionObject,"call")
@@ -486,7 +503,8 @@ def call_call( scope, obj, fn, *args ):
     f = fn.message(scope,'eval')
     if not f.inherits(OperatorObject):
         raise RuntimeError, "'call' expects to receive an operator"
-    return f.methods['call'].call_noeval( scope, obj, *args )
+    # note that f.call is used here to suppress evaluation
+    return f.call(scope, 'call', *args )
 CallObject.methods['call'] = PyFnMethod(call_call)
 Builtins['call'] = CallObject
 

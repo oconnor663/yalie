@@ -122,17 +122,18 @@ central evaluation loop interpreted them that way. Here they represent
 function calls because their \eval\ method carries out a function
 call. Note also that a functions or form in Yalie is just an ordinary
 objects with a defined \call\ method. We will construct a few
-predefined global functions and forms in Yalie, and these will be
-ordinary objects whose \call\ methods we define usefully.
+predefined functions and forms in Yalie, and these will be ordinary
+objects whose \call\ methods we define usefully.
 
 Another key difference in this function is the way \texttt{+} is
-defined, which is not immediately visible. Rather than being a built-in
-operation that knows about integers, \texttt{+} simply calls invokes a
-method of its arguments. This method is also named \texttt{+}, though
-it resides in method tables rather than the global scope as the
-\texttt{+} function does. One of the global functions we will define
-is \msg, which allows the user to invoke methods explicitly. Expressed
-using \msg, the S-expression we considered above can be rewritten as
+defined, which is not immediately visible. Rather than being a
+built-in operation that knows about integers, \texttt{+} simply calls
+invokes a method of its arguments. This method is also named
+\texttt{+}, though it resides in method tables rather than the lexical
+scope as the \texttt{+} function does. One of the functions we will
+define is \msg, which allows the user to invoke methods
+explicitly. Expressed using \msg, the S-expression we considered above
+can be rewritten as
 \[\texttt{(msg 1 + 2)}.\]
 That is, adding $1$ to $2$ means sending the \texttt{+} message to the
 object $1$ with the argument $2$. In full detail, the \eval\ method of
@@ -220,7 +221,7 @@ explicitly by a built-in method definition or extracted from the data
 field of a symbol object.
 
 The second function we need to define at the moment is the semantic
-function for invoking methods. We mentioned the global \msg\ object in
+function for invoking methods. We mentioned the \msg\ function in
 the preceding section, and this semantic function will eventually form
 the core of that object's \call\ method, in addition to being used
 explicitly by many other methods. The invocation of a method requires
@@ -289,8 +290,8 @@ This is similar to the integer and symbol parsing operations above,
 though note that the data field of nil objects is ignored. List
 parsing for nonempty lists can now be defined recursively.
 \begin{multline*} \parse(\texttt{(a b \ldots\ z)},\sigma) = \lb
-  \next(\sigma''),[\sigma''|\operatorname{next}(\sigma'')
-  \rightarrow\right. \\\left.\lb\mathsf{CONS}, \mu_0,
+  \next(\sigma''),[\sigma'' \right. |\\\left.\operatorname{next}(\sigma'')
+  \rightarrow\lb\mathsf{CONS}, \mu_0,
   \varphi_{\Sigma(\mathsf{CONS})},
   \lb F, R \rb \rb ] \rb
 \end{multline*}
@@ -489,20 +490,21 @@ that exposes this functionality
 where $\lb \sigma', \varphi', e_1\rb =
 \invoke(\text{``eval''},\sigma,\varphi,a_1,\lb\rb)$.
 
-\section*{Additional Features}
-Today Lisp is over fifty years old, and Common Lisp is almost half
-that age as well. Apart from adding wholly new features, there is much
-room for improvement in the traditional syntax of the language, in
-particular by reducing the sheer number of parentheses that the user
-needs to type. We list here four such attempts that we have included
-in Yalie.
+\section*{Departures}
+Today Lisp is over fifty years old, and Common Lisp is already half
+that age. Aside from adding wholly new features, there is much room
+for improvement in the traditional syntax of the language. Some common
+names can be helpfully shortened (\texttt{fn} instead of
+\texttt{lambda}, \texttt{ls} instead of \texttt{list}), and there are
+several opportunities to reduce the sheer number of parentheses that a
+programmer needs to type \cite{Graham}. Here we explain four such
+opportunities that we have included in Yalie.
 
 First, the functionality of the \texttt{cond} expression is
 incorporated into \texttt{if} without changing the basic structure of
-an \texttt{if} call \cite{Graham}. In particular, \texttt{if} can be
-made to take an arbitrary number of test-consequence pairs, with an
-optional unpaired expression interpreted as an alternative. For
-example:
+an \texttt{if} call. In particular, \texttt{if} can be made to take an
+arbitrary number of test-consequence pairs, with an optional unpaired
+expression interpreted as an alternative. For example:
 \begin{quote}
 \begin{verbatim}
 (if test1 a
@@ -540,12 +542,11 @@ exists for that.) The purpose of the distinction is to separate
 variable declaration for variable modification, so that typographical
 errors in variable assignments will raise an exception instead of
 silently creating a new variable. Yalie also follows the convention
-that any potentially non-functional operations be named with ``set''
-or ``!''.
+that any non-functional operations be marked with ``set'' or ``!''.
 
-Finally, the functionality of the \texttt{not} operator is be extended
-to include multiple arguments. When receiving more than one argument,
-not interprets all its arguments as a function call and returns that
+Finally, the functionality of the \texttt{not} operator is extended to
+include multiple arguments. When receiving more than one argument, not
+interprets all its arguments as a function call and returns that
 call's negation. For instance, the following returns a true value:
 \begin{quote}
 \begin{verbatim}
@@ -554,6 +555,50 @@ call's negation. For instance, the following returns a true value:
 \end{quote}
 In many common cases, this both increases readability and saves the
 user two parentheses.
+
+\section*{Objects: The Ultimate Lambda}
+As both an illustrative example and a demonstration of the flexibility
+of the object system, we detail the creation of a \texttt{lambda}
+operator. Yalie has such an operator built in for convenience (under
+the name \texttt{fn}), but we show how it can be defined within the
+language. As a second example, we will also create a factorial method
+for the integers.
+
+We will need two methods that we did not formally define above,
+\texttt{def} and \texttt{deform}. These methods allow the user to
+define new methods and method forms in a given object. Recall that the
+difference between a function and a form (or ``macro'') is that a
+function implicitly evaluates its arguments while a form implicitly
+evaluates its return. Methods and method forms work in the same way,
+except that they are invoked by message passing. The syntax of
+\texttt{def} and \texttt{deform} is identical to the \texttt{define}
+operator in Scheme, and the return value of both methods is the
+calling object.
+
+The definition of \texttt{lambda} thus reads
+\begin{quote}
+\begin{verbatim}
+(let lambda Form.child)
+(lambda.deform (call args (rest body))
+  `(let (ret Function.child)
+     (ret.def (call ;args)
+       ;body)))
+\end{verbatim}
+\end{quote}
+The first expression creates a child object from the object that is
+the parent of all forms and binds it to the name ``lambda''. We could
+have used any object as the parent, but this way the new operator will
+inherit whatever methods other forms inherit. The second expression
+defines a \call\ method for the newly created object. Recall that
+\call\ methods are invoked when S-expression are evaluated, and so
+this method will define the functionality of \texttt{lambda}. The
+method is a form, so its value is Yalie code to be executed at the end
+of the call. This code can be confusing, because it is creating a
+second child object---from the parent of functions, this time---with
+its own call method. This new object is the anonymous function that
+\texttt{lambda} returns. Note that the arguments and the function body
+are just spliced into the call to the \texttt{def} method of the new
+object.
 
 
 \section*{Conclusions}
@@ -577,9 +622,7 @@ functionality mostly confined to method spaces. Not only does this
 approach keep the global namespace free of clutter, it also provides
 helpful documentation in the form of method lists.
 
-The example of adding a factorial method to the entire set of integers
-(see accompanying README) demonstrates the flexibility of the
-object-based approach, and though the language is still small, the
+We have demonstrated the flexibility of the object-based approach, the
 simplicity of the semantics has already made itself felt during the
 implementation process. We look forward to finding new ways of
 leveraging the object abstraction, both by itself and in conjunction
@@ -596,7 +639,10 @@ with Lisp's macro system.
   2001. Web. 8 May 2009.\\ $<$http://www.paulgraham.com/arcll1.html$>$.
 \end{thebibliography}
 
-\section*{ Appendix: README file }
+\section*{Appendix: README}
 \verbinput{README}
+
+\section*{Appendix: builtins.py}
+\verbinput{builtins.y}
 
 \end{document}

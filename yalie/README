@@ -12,7 +12,7 @@ file "builtins.y" in the current directory and
 executes the definitions there. This file is
 included with the Yalie source, and it contains
 a lot of important files. Make sure it is in the
-current directory when you run Yalie.
+current directory when running Yalie.
 
 
 Syntax
@@ -36,7 +36,9 @@ operator. It can operate as an infix without
 parens, or it can capture an S-expression if
 placed after the first element.
 
-a.b --> (msg a b) (a.b c d) --> (msg a b c d)
+a.b --> (msg a b)
+(a.b c d) --> (msg a b c d)
+(a.b.c d e) --> (msg (msg a b) c d)
 
 
 Reachable Objects
@@ -62,9 +64,8 @@ Functions
 (dir)
 
 Returns a list of everything defined in the
-current scope. Call it to see what is available
-in the language, or if you forget the name of
-something.
+current scope. Call it to see the list of all
+predefined functions and objects.
 
 (= a b)
 (+ a b c ...)
@@ -79,8 +80,19 @@ do in Scheme or Common Lisp. The % function
 computes the remainder as in Python. All of
 these functions are defined in builtins.y in
 terms of the integer methods of the same
-name. Note that boolean returns are just the
+name. Note that boolean values are just the
 integers 1 and 0 for True and False.
+
+(and a b c...)
+(or a b c...)
+(not x)
+(not f a b c...)
+
+"and" and "or" work as they do in Scheme, taking
+an arbitrary number of arguments. "not" has the
+additional property that multiple arguments are
+treated like a function call, i.e. (not = 0 1)
+is syntactic sugar for (not (= 0 1)).
 
 (cons x y)
 (car a)
@@ -134,22 +146,28 @@ and to free up the variable name.)
    x.print
    y.print
    z.print)
-(deform (reverse-if test alt conseq)
-  `(if ,test ,conseq, ,alt))
+(deform (nor a b)
+  '(and (not ,a) (not ,b)))
+(deform (with var val (rest body))
+  '(let (,var ,val)
+     ;body))
+  # like "let", but omits the initial
+  # parens and only binds one variable
 
-Function definitions can be specified with an
-arbitrary number of arguments. If a variable
-number of arguments is desired, the final
-argument should be specified as (rest x), where
-x is whatever name you like.  The macro
-definition form, "deform", works
-similarly. Macros don't implicitly evaluate
-their arguments, and their return values are
-implicitly evaluated. The anonymous counterparts
-to "def" and "deform" are "fn" and "form",
-respectively. Note that "def" and "deform" are
-not allowed to modify existing bindings. See
-"set" below.
+Function and form (or "macro") definitions can
+be specified with an arbitrary number of
+arguments. If a variable number of arguments is
+desired, the final argument should be specified
+as (rest x), where x is any variable name. Forms
+don't implicitly evaluate their arguments, and
+instead their return values are implicitly
+evaluated. This allows users to construct new
+binding forms or control structures in terms of
+existing ones, as shown above. The anonymous
+counterparts to "def" and "deform" are "fn" and
+"form", respectively. Note that "def" and
+"deform" are not allowed to modify existing
+bindings. See "set" below.
 
 (quote x)
 
@@ -161,37 +179,37 @@ operators (immediately below), the quote tool is
 a fantastic way to put together the return value
 of a macro.
 
-`(a b c)  ==  (quote a b c)  -->  (a b c)
-`(a b ,(ls 1 2))
-    == (quote a b (unquote (+ 1 1)))
-       --> (a b (1 2))
-`(a b ;(ls 1 2))
-    == (quote a b (unquote-splice (ls 1 2)))
-       --> (a b 1 2))
+  `(a b c)  ==  (quote a b c)  -->  (a b c)
+  `(a b ,(ls 1 2))
+      == (quote a b (unquote (+ 1 1)))
+         --> (a b (1 2))
+  `(a b ;(ls 1 2))
+      == (quote a b (unquote-splice (ls 1 2)))
+         --> (a b 1 2))
 
 (do  body1
      body2
      body3...)
 
-Simply evaluates each argument and returns the last.
+Simply evaluates each argument and returns the
+last. Equivalent to Common Lisp's "progn".
 
 (call f ...)
 
 Calls the function f with a supplied list of
-arguments. If the final argument to 'call' is a
+arguments. If the final argument to "call" is a
 list (or nil), the contents of the last argument
 are spliced into the list of passed arguments,
 rather than being passed as a single
-argument. 'Call' is a function, so it's
+argument. "Call" is a function, so it's
 arguments will be evaluated, but it suppresses
 the implicit evaluation that would be carried
 out by f. (Note, it does not suppress the
-evaluation done by special forms like 'let'.)
-Examples:
+evaluation done by special forms like "let".)
 
-(call + 1 2 3)      -->   6
-(call + '(1 2 3))   -->   6
-(call + 1 2 '(3))   -->   6
+  (call + 1 2 3)      -->   6
+  (call + (ls 1 2 3))   -->   6
+  (call + 1 2 (ls 3))   -->   6
 
 
 (let (a x
@@ -226,9 +244,9 @@ also be used, in conjunction with "fn" or
 "form", to modify function bindings. On the
 other side, set is not allowed to create a new
 binding. If no variable named 'a' exists in the
-previous example, set returns an
-error. Separating declaration from modification
-is intended to eliminate silent bugs that result
+previous example, set raises an exception.
+Separating declaration from modification is
+intended to eliminate silent bugs that result
 from misspelling, and to facilitate functional
 programming.
 
@@ -268,31 +286,43 @@ create new bindings.
 (x.def (name args...) body...)
 (x.deform (name args...) macro_body...)
 
-These work similarly to the function and macro
-constructs above, except that they bind methods
-to an object rather than functions to the local
-scope. This can be used to redefine methods (see
-also 'dup' below). All user defined methods bind
-the variable "self" implicitly in their
-bodies. For example, to give all integers a
-factorial method denoted by '!', we would write:
+These work similarly to the global "def" and
+"deform" constructs above, except that they bind
+methods to an object rather than functions to
+the local scope. These cannot be used to
+redefine local methods, i.e. those methods not
+inherited from a parent object. (See "def!",
+"deform!", and "dup" below). All user defined
+methods bind the variable "self" implicitly in
+their bodies.  For example, to give all integers
+a factorial method called "!", we would write:
 
-(Int.def ! ()
-  (if (= self 0)
-      1
-      (* self (- self 1).! )))
-      # Now even literal integers
-      # like "5" have a ! method.
+  (Int.def ! ()
+    (if (= self 0)
+        1
+        (* self (- self 1).! )))
+        # Now even literal integers
+        # like "5" have a ! method.
+
+(x.def! (name args...) body...)
+(x.deform! (name args...) macro_body...)
+
+As above, except that these methods can redefine
+an existing binding. The distinction is in place
+to facilitate functional programming: all
+non-functional operations are marked with either
+"set" or "!". See dup below.
 
 (x.dup foo bar) 
 
 Copies a method within x named foo to bar. Note
 that even if foo is inherited, bar will be a
-method of x directly. Yalie has no 'super'
-function of any kind, so if you want to redefine
-a method while continuing to invoke the old
-definition, you need to dup the old version to
-another name.
+local method of x. Yalie has no "super" keyword
+of any kind, so to redefine a method while
+continuing to invoke the old definition, first
+dup the old version to another name. This method
+cannot modify an existing binding, i.e. there
+can be no method named bar when dup is invoked.
 
 (x.isa y)
 
@@ -340,10 +370,10 @@ the list to that argument's call method. (i.e. a
 function call) The following produce the same
 result, though the second takes an extra step.
 
-(+ 1 2 3)           # invokes +.call implicitly
-(msg + call 1 2 3)  # invokes +.call explicitly
-       	      	    # (by invoking msg.call
-		    # implicitly)
+  (+ 1 2 3)           # invokes +.call implicitly
+  (msg + call 1 2 3)  # invokes +.call explicitly
+                      # (by invoking msg.call
+                      # implicitly)
 
 x.call
 
@@ -360,4 +390,6 @@ for all of the arithmetic operations and binary
 relations. Cons objects define car, cdr, setcar,
 and setcdr methods. If any of these methods are
 modified, the change will be reflected in the
-behavior of the wrapper functions using them.
+behavior of the wrapper functions using them. To
+see a list of an objects methods, use the
+"methods" method.
