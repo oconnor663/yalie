@@ -20,6 +20,9 @@
 \newcommand{\lb}{\left<}
 \newcommand{\rb}{\right>}
 
+\newcommand{\ptr}{\sf \small}
+\newcommand{\subptr}{\sf}
+
 \maketitle
 
 \section*{Introduction}
@@ -168,10 +171,10 @@ the global store, analogous to the global scope, is denoted by
 $\Sigma$. An extension to a scope or a store is denoted by the
 expression $[\sigma|\text{key}\rightarrow\text{val}]$. We will
 frequently refer to the pointers to certain built-in objects using
-capitalized names like \textsf{ROOT}, the primary object at the top of
-the inheritance hierarchy, or \textsf{INT}, the object from which all
+capitalized names like {\ptr ROOT}, the primary object at the top of
+the inheritance hierarchy, or {\ptr INT}, the object from which all
 integers inherit. The objects to which these pointers refer are then
-written $\Sigma(\mathsf{ROOT})$ and $\Sigma(\mathsf{INT})$. The actual
+written $\Sigma(\text{\ptr ROOT})$ and $\Sigma(\text{\ptr INT})$. The actual
 values of these pointers are arbitrary, so long as they are constant
 and unique. The only other way we will refer to pointer values is the
 $\next(\sigma)$ function, whose value is the smallest pointer not
@@ -187,17 +190,17 @@ underlying data such as an integer or a name. We will define objects
 as ordered 4-tuples, written
 \[ \lb p, \mu, \varphi, d \rb .\]
 For example, the integer five would be represented as
-\[ \lb \mathsf{INT}, \mu_0, \varphi_0, 5 \rb, \]
+\[ \lb \text{\ptr INT}, \mu_0, \varphi_0, 5 \rb, \]
 where $\mu_0$ is the empty function map, and $\varphi_0$ is the empty
 scope. Likewise, the symbol \texttt{foo} would be represented as
-\[ \lb \mathsf{SYMBOL}, \mu_0, \varphi_0, \text{``foo''} \rb. \] We
+\[ \lb \text{\ptr SYMBOL}, \mu_0, \varphi_0, \text{``foo''} \rb. \] We
 will frequently use the notation $\mu_{\sigma(\omega)}$ and
 $\varphi_{\sigma(\omega)}$ to refer to the function map or scope
 elements of the object $\sigma(\omega)$. Similarly, we will use
 $p_{\sigma(\omega)}$ and $d_{\sigma(\omega)}$ to refer to the parent
 pointer and underlying data element of $\sigma(\omega)$. Note that the
 the root object does not have a parent, i.e.
-$p_{\Sigma(\mathsf{ROOT})} = \varnothing$.
+$p_{\Sigma(\text{\subptr ROOT})} = \varnothing$.
 
 We have already mentioned the function $\next(\sigma)$, and we will
 introduce two more semantic functions here that we will need
@@ -259,13 +262,13 @@ integer $n$ is thus parsed as
 \begin{multline*}
 \parse(n,\sigma) =
 \lb\next(\sigma),[\sigma|\operatorname{next}(\sigma) \rightarrow\right. \\
-\left.\lb\mathsf{INT}, \mu_0, \varphi_{\Sigma(\mathsf{INT})}, n\rb]\rb,
+\left.\lb\text{\ptr INT}, \mu_0, \varphi_{\Sigma(\text{\subptr INT})}, n\rb]\rb,
 \end{multline*}
 and a symbol $s$ is parsed as
 \begin{multline*}
   \parse(s,\sigma) =
   \lb\next(\sigma),[\sigma|\operatorname{next}(\sigma) \rightarrow\right. \\
-\left.\lb\mathsf{SYMBOL}, \mu_0, \varphi_{\Sigma(\mathsf{SYMBOL})},
+\left.\lb\text{\ptr SYMBOL}, \mu_0, \varphi_{\Sigma(\text{\subptr SYMBOL})},
   s\rb]\rb.
 \end{multline*}
 Note that the parent of each new integer or symbol object is the
@@ -283,15 +286,15 @@ list is parsed as
 \begin{multline*}
   \parse(\texttt{()},\sigma) = \lb\next(\sigma),
   [\sigma|\operatorname{next}(\sigma) \rightarrow \right.\\
-\left.\lb\mathsf{NIL}, \mu_0, \varphi_{\Sigma(\mathsf{NIL})}, \varnothing\rb]\rb.
+\left.\lb\text{\ptr NIL}, \mu_0, \varphi_{\Sigma(\text{\subptr NIL})}, \varnothing\rb]\rb.
 \end{multline*}
 This is similar to the integer and symbol parsing operations above,
 though note that the data field of nil objects is ignored. List
 parsing for nonempty lists can now be defined recursively.
 \begin{multline*} \parse(\texttt{(a b \ldots\ z)},\sigma) = \lb
   \next(\sigma''),[\sigma'' \right. |\\\left.\operatorname{next}(\sigma'')
-  \rightarrow\lb\mathsf{CONS}, \mu_0,
-  \varphi_{\Sigma(\mathsf{CONS})},
+  \rightarrow\lb\text{\ptr CONS}, \mu_0,
+  \varphi_{\Sigma(\text{\subptr CONS})},
   \lb F, R \rb \rb ] \rb
 \end{multline*}
 where
@@ -358,27 +361,26 @@ scripting languages.
 
 Yalie defines a number of objects that exist in the global scope and
 store when any program begins. We have already encountered the
-\textsf{ROOT}, \textsf{INT}, \textsf{SYMBOL}, \textsf{CONS}, and
-\textsf{NIL} objects. Other generic parent objects include
-\textsf{FUNCTION}, \textsf{FORM}, and their mutual parent,
-\textsf{OPERATOR}. Predefined function and form objects, which inherit
-from these, include \textsf{MSG} and \textsf{QUOTE}. Others we have
-not yet encountered include \textsf{IF} and \textsf{WHILE}. By
+{\ptr ROOT}, {\ptr INT}, {\ptr SYMBOL}, {\ptr CONS}, and
+{\ptr NIL} objects. Other generic parent objects include
+{\ptr FUNCTION}, {\ptr FORM}, and their mutual parent,
+{\ptr OPERATOR}. Predefined function and form objects, which inherit
+from these, include {\ptr MSG} and {\ptr QUOTE}. Others we have
+not yet encountered include {\ptr IF} and {\ptr WHILE}. By
 convention, we give each such object in $\Sigma$ a corresponding
 binding in $\Phi$.
 
 The meat of our language is not this hierarchy itself but rather the
 methods defined for these objects. Below we provide formal definitions
 of many of the most important methods implemented in the Yalie
-interpreter. We will begin with several methods inherited by every
-object and add to that description several important methods outside
-the root object.
+interpreter. We will define several methods inherited by every object
+and also a few prominent methods outside the root object.
 
 The \texttt{parent} method returns the parent of a given object, and
 it is a good example with which to start. The definition reads
-\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``parent''})(\sigma,\varphi,\omega,
+\[ \mu_{\Sigma(\text{\subptr ROOT})}(\text{``parent''})(\sigma,\varphi,\omega,
 \lb\rb) = \lb [\sigma,\varphi,p_{\sigma(\omega)}] \rb. \] Recall that
-$\mu_{\Sigma(\mathsf{ROOT})}$ is the method table of the \textsf{ROOT}
+$\mu_{\Sigma(\text{\subptr ROOT})}$ is the method table of the {\ptr ROOT}
 object in the global store, $\Sigma$. This method does not modify the
 store or the scope, so those are returned directly. As mentioned
 above, $p_{\sigma(\omega)}$ refers to the $p$ element of the object
@@ -388,7 +390,7 @@ object.
 We can also introduce the default \eval\ method, which most objects
 will inherit. This is just the identity method on the caller, so the
 definition is even simpler.
-\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``eval''})(\sigma,\varphi,\omega,
+\[ \mu_{\Sigma(\text{\subptr ROOT})}(\text{``eval''})(\sigma,\varphi,\omega,
 \lb\rb) = \lb [\sigma,\varphi,\omega] \rb. \]
 
 The next two methods we define are \texttt{copy} and
@@ -399,7 +401,7 @@ source, and it replicates its source's method table, member scope, and
 underlying data. After copying the two objects are independent;
 changing one does not affect the other. The copy method is defined as
 \begin{multline*}
-  \mu_{\Sigma(\mathsf{ROOT})}(\text{``copy''})(\sigma,\varphi,\omega,
+  \mu_{\Sigma(\text{\subptr ROOT})}(\text{``copy''})(\sigma,\varphi,\omega,
 \lb\rb) \\ = \lb [\sigma|\next(\sigma)\rightarrow\sigma(\omega)],\varphi,
 \next(\sigma)\rb.
 \end{multline*}
@@ -410,7 +412,7 @@ initially empty, and they inherit all their methods from the
 parent. Thus any changes made to the methods of the parent will be
 reflected in the child. The child method is defined as
 \begin{multline*}
-  \mu_{\Sigma(\mathsf{ROOT})}(\text{``child''})(\sigma,\varphi,\omega,
+  \mu_{\Sigma(\text{\subptr ROOT})}(\text{``child''})(\sigma,\varphi,\omega,
   \lb\rb) \\ = \lb [\sigma|\next(\sigma)\rightarrow \lb \omega, \mu_0,
   \varphi_{\sigma(\omega)}, d_{\sigma(\omega)}\rb],\right.\\\left.\varphi,
   \next(\sigma)\rb.
@@ -422,7 +424,7 @@ any other built-in functions or methods, but they are an important
 facility for user-defined objects. The \texttt{get} method is the
 simpler of the two, and it is also the first method we have defined so
 far that takes an argument.
-\[ \mu_{\Sigma(\mathsf{ROOT})}(\text{``get''})(\sigma,\varphi,\omega,
+\[ \mu_{\Sigma(\text{\subptr ROOT})}(\text{``get''})(\sigma,\varphi,\omega,
 \lb a_1\rb) = \lb \sigma, \varphi,
 \varphi_{\sigma(\omega)}(d_{\sigma(a_1)})\rb.\] That is, the
 \texttt{get} method receives a symbol, $a_1$, and references its data
@@ -437,7 +439,7 @@ an existing binding. Thus, in the case where $d_{\sigma(a_1)}$ is not
 in the domain of $\varphi_{\sigma(\omega)}$, \texttt{let} is defined
 as
 \begin{multline*}
-  \mu_{\Sigma(\mathsf{ROOT})}(\text{``let''})(\sigma,\varphi,\omega,
+  \mu_{\Sigma(\text{\subptr ROOT})}(\text{``let''})(\sigma,\varphi,\omega,
   \lb a_1,a_2\rb) =\\ \lb [\sigma'|\omega\rightarrow \lb p_{\sigma(\omega)},
   \mu_{\sigma(\omega)},[\varphi_{\sigma(\omega)}|d_{\sigma(a_1)}\rightarrow e_1],
   d_{\sigma(\omega)}\rb],\right.\\\left.\varphi', e_1\rb.
@@ -461,7 +463,7 @@ takes two arguments, a method name and a name for the new
 binding. Note that even if the original binding is inherited, the new
 binding will be local to the calling object.
 \begin{multline*}
-  \mu_{\Sigma(\mathsf{ROOT})}(\text{``dup''})(\sigma,\varphi,\omega,
+  \mu_{\Sigma(\text{\subptr ROOT})}(\text{``dup''})(\sigma,\varphi,\omega,
   \lb a_1,a_2\rb) =\\ \lb [\sigma|\omega\rightarrow \lb
   p_{\sigma(\omega)}, [\mu_{\sigma(\omega)}|d_{\sigma(a_2)}\rightarrow
   \lookup(d_{\sigma(a_1)},\sigma,\omega)],\right.\right.\\\left.\left.
@@ -472,7 +474,7 @@ binding will be local to the calling object.
 One critical method outside of the root object is the \eval\ method of
 symbols. Rather than evaluating to themselves, as most objects do,
 symbols evaluate to their binding in the current scope.
-\[  \mu_{\Sigma(\mathsf{SYMBOL})}(\text{``eval''})(\sigma,\varphi,\omega,
+\[  \mu_{\Sigma(\text{\subptr SYMBOL})}(\text{``eval''})(\sigma,\varphi,\omega,
 \lb a_1\rb) = \lb \sigma, \varphi, \varphi(d_{\sigma(\omega)})\rb.\]
 
 The other nontrivial \eval\ method is that of cons lists. As described
@@ -480,7 +482,7 @@ in a previous section, the \eval\ method of a list evaluates its first
 element and then invokes the \call\ method of that value with the rest
 of the list passed as arguments. We denote this as
 \begin{multline*}
-\mu_{\Sigma(\mathsf{CONS})}(\text{``eval''})(\sigma,\varphi,\omega,
+\mu_{\Sigma(\text{\subptr CONS})}(\text{``eval''})(\sigma,\varphi,\omega,
 \lb\rb) = \\\invoke(\text{``call''},\sigma',\varphi',e_1,\lb a_2,\ldots
 a_n\rb).
 \end{multline*}
@@ -495,7 +497,7 @@ The final method we define here is the critical \call\ method of the
 methods explicitly, and it is the \call\ method of that form object
 that exposes this functionality
 \begin{multline*}
-  \mu_{\Sigma(\mathsf{MSG})}(\text{``call''})(\sigma,\varphi,\omega,
+  \mu_{\Sigma(\text{\subptr MSG})}(\text{``call''})(\sigma,\varphi,\omega,
   \lb a_1,\ldots a_n \rb) = \\\invoke( d_{\sigma'(a_2)}, \sigma', \varphi', e_1,
   \lb a_3,\ldots a_n \rb),
 \end{multline*}
