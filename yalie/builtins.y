@@ -57,7 +57,7 @@
 	      	    (map-single fn
 		    		(cdr list)))))
      (if (not arg-lists)
-	 (error))
+	 (error arguments must be provided))
      (if (car arg-lists)
 	 (let (args (map-single car
 				arg-lists)

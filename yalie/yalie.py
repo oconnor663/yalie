@@ -835,9 +835,10 @@ NotObject.methods['call'] = PyMethodForm( not_call )
 Builtins['not'] = NotObject
 
 ErrorObject = Object( FunctionObject, "error" )
-def error_call( params ):
+def error_call( params, *args ):
+    ### Takes arguments essentially for comments
     raise RuntimeError, "(error) called"
-ErrorObject.methods['call'] = PyMethod( error_call )
+ErrorObject.methods['call'] = PyMethodForm( error_call )
 Builtins['error'] = ErrorObject
 
 ###

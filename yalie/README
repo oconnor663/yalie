@@ -314,6 +314,13 @@ a simple example:
   (expand let-x call 5)
      --> '(let x 5)
 
+(error args...)
+
+Raises an exception. The arguments don't
+actually do anything, but they show up in the
+resulting error traceback, so they are useful
+for commenting the error.
+
 A few other functions like (eval, print, eq, is)
 are simply defined as wrappers around the
 appropriate method calls.
