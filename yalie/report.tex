@@ -28,8 +28,8 @@ languages has been their flexibility. Lisp was one of the first
 languages to include dynamic typing, and Lisp macros allow the
 programmer to create new binding forms and control structures. This
 flexibility is one of the reasons for Lisp's popularity in the AI
-community. Programmers can implement domain-specific mini-languages
-without losing the infrastructure of a full language implementation.
+community. Programmers can create domain-specific mini-languages
+on top of a full Lisp implementation.
 
 Another strength of Lisp is its elegance. The S-expression syntax
 allows Lisp to treat lists as code. Thus Lisp macros, by constructing
@@ -43,39 +43,39 @@ understand his language.
 
 More recent developments, however, have seen Lisp fall behind. In
 particular, the Smalltalk language demonstrated that it is possible to
-treat everything in a language as an ``object.'' The widely-used
-Python and Ruby languages have adopted many concepts from Smalltalk
-with great success. Several object-oriented variants of Lisp have been
-developed, including the Common Lisp Object System, but these have not
-achieved nearly the same popularity. We wish to suggest that one of
-the failings of various Lisp object systems is that they are built for
-the wrong reasons.
+treat everything in a language as an ``object.'' Python and Ruby
+languages have adopted many concepts from Smalltalk with great
+success. Though several object-oriented variants of Lisp have been
+developed, including the Common Lisp Object System, these have not
+achieved nearly the same widespread use. We wish to suggest that one
+of the failings of various Lisp object systems is that they are built
+for the wrong reasons.
 
-Through object-orientation, Smalltalk was able to achieve greater
-flexibility and greater simplicity. These goals are essentially
-orthogonal to the goal of facilitating an object-oriented programming
-(OOP) style. Lisp object systems have attempted the latter, and as a
-result they have generally made their languages more complicated and
-less consistent. We believe that objects can greatly enhance Lisp's
-core strengths, but only if these concepts are introduced consistently
+Through object-orientation, Smalltalk was able to achieve both
+flexibility and simplicity. These goals are essentially orthogonal to
+the goal of facilitating an object-oriented programming (OOP)
+style. Lisp object systems have attempted the latter, and as a result
+they have generally made their languages more complicated and less
+consistent. We believe that objects can greatly enhance Lisp's core
+strengths, but only if these concepts are introduced consistently
 throughout the entire language.
 
 This is the intention of Yet Another Lisp Interpreting Experiment (or,
-``Yalie''). Our goal is to demonstrate a Lisp variant in which
+``Yalie''). Our goal is to demonstrate a variant of Lisp in which
 everything is an object and all function calls are based on message
 passing. In doing this, we hope to make the language less complicated,
 rather than more so. An interactive interpreter for Yalie, written in
 Python, accompanies this paper. What follows is a formal description
-of the language implemented in that interpreter. For a more practical
+of the language implemented in that interpreter. For a practical
 description with examples, please see the accompanying README file,
-reprinted here in the appendix. This paper assumes the reader is
+reprinted here in the appendices. This paper assumes the reader is
 familiar with a modern Lisp dialect such as Scheme or Common Lisp.
 
 \section*{Concepts}
 \subsection*{Object-based Languages}
 Broadly speaking, there are two major categories of object-oriented
-languages \cite{Abadi}. The most common are the ``class-based''
-languages, including C++, Java, and Smalltalk. The other category is
+languages \cite{Abadi}. The most common are ``class-based'' languages,
+including C++, Java, and Smalltalk. The other category is
 ``object-based'' or ``prototype-based'' languages, like JavaScript and
 Lua. Class-based languages distinguish classes from the objects that
 belong to them, and in these languages inheritance is accomplished
@@ -83,57 +83,57 @@ within the class hierarchy. Object-based languages omit this
 distinction, and instead allow objects to inherit directly from other
 objects and to produce their own clone or child objects. In practice,
 object-based languages often approximate classes by using certain
-objects solely for inheritance, and for this reason---and because of
-the wider popularity of class-based languages---some have argued that
-making classes an explicit part of the language is more
-convenient \cite{Bruce}. Our purpose here is simplicity, however, so
+objects solely for inheritance. For this reason, and because of the
+wider popularity of class-based languages, some have argued that
+making classes an explicit part of a language is more convenient
+\cite{Bruce}. One of our primary purposes is simplicity, however, so
 ours will be an object-based semantics.
 
 We will also draw an unconventional distinction between
 object-\emph{oriented} languages, by which we mean those that
 encourage a programming style centered around objects and inheritance,
-and object-\emph{based} languages, which merely use objects as the
+and object-\emph{based} languages that merely use objects as the
 fundamental unit of their semantics. Yalie is an object-\emph{based}
-language, and our intention is to replicate the functional and
-procedural paradigms traditional in Lisp languages. Obviously, an
-object-based semantics will make OOP fairly natural in Yalie, but our
-primary goals of simplicity, consistency, and flexibility should
-benefit any programming style.
+language, and it is not our intention to abandon the functional and
+procedural paradigms traditional in Lisp languages. OOP will of course
+be fairly natural in Yalie, but our goals of simplicity, consistency,
+and flexibility should benefit any programming style.
 
 \subsection*{Message Passing}
-As a demonstration of the consistency possible with objects, all of
-the semantics of our language aside from literal syntax is based on
-message passing. This is very different from traditional Lisp
-semantics and requires some explanation. For an example, suppose we
-wish to evaluate the S-expression
-\[ \texttt{(+ 1 2)}. \] That is a list object (a series of cons
-objects, in fact) containing a symbol object and two integer
-objects. Evaluation begins by calling the \eval\ method of the list. As
-with all Lisp dialects, S-expressions represent function calls, so the
-\eval\ method of a list calls the \eval\ method of its first element,
-expecting a function or special form object of some kind. The \eval\
-method of the \texttt{+} symbol returns the binding of that symbol in
-the calling scope, which is indeed a function. The list \eval\ then
-invokes the \call\ method of that object, passing the remainder of the
-list as arguments, and finally returns $3$.
+As a demonstration of the consistency possible with objects, we base
+all of the semantics of Yalie on message passing. This is very
+different from traditional Lisp semantics and requires some
+explanation. For an example, suppose we wish to evaluate the
+S-expression
+\[ \texttt{(+ 1 2)}. \] That is a list object (i.e.\ a series of cons
+objects with a nil object at the end) containing a symbol object and
+two integer objects. Evaluation begins by calling the \eval\ method of
+the list. As with all Lisp dialects, S-expressions represent function
+calls, so the \eval\ method of a list calls the \eval\ method of its
+first element, expecting to receive a function or special form object
+of some kind. The \eval\ method of the \texttt{+} symbol returns the
+binding of that symbol in the calling scope, which is indeed a
+function. The list \eval\ then invokes the \call\ method of that
+object, passing the remainder of the list as arguments, and finally
+returns $3$.
 
 Traditionally, S-expressions represented function calls because a
 central evaluation loop interpreted them that way. Here they represent
 function calls because their \eval\ method carries out a function
-call. Note also that a functions or form in Yalie is just an ordinary
-objects with a defined \call\ method. We will construct a few
+call. Note also that a function or form in Yalie is just an ordinary
+object with a defined \call\ method. We will construct a few
 predefined functions and forms in Yalie, and these will be ordinary
 objects whose \call\ methods we define usefully.
 
 Another key difference in this function is the way \texttt{+} is
 defined, which is not immediately visible. Rather than being a
-built-in operation that knows about integers, \texttt{+} simply calls
+built-in operation that knows about integers, \texttt{+} simply
 invokes a method of its arguments. This method is also named
-\texttt{+}, though it resides in method tables rather than the lexical
-scope as the \texttt{+} function does. One of the functions we will
-define is \msg, which allows the user to invoke methods
-explicitly. Expressed using \msg, the S-expression we considered above
-can be rewritten as
+\texttt{+}, though it resides in the integer method table rather than
+in the lexical scope as the \texttt{+} function does. One of the
+functions we will define is \msg, which allows the user to invoke
+methods explicitly. Expressed using \msg, the S-expression we
+considered above can be rewritten as
 \[\texttt{(msg 1 + 2)}.\]
 That is, adding $1$ to $2$ means sending the \texttt{+} message to the
 object $1$ with the argument $2$. In full detail, the \eval\ method of
@@ -158,23 +158,22 @@ later sections.
 The semantics of our language will be built from several different
 components. Persistent, often mutable objects will be the core of our
 language, so evaluation will use both a scope and a store. A scope is
-a map from names to positive integer values. We will refer to these
-integers suggestively as pointers. We denote scopes by the variable
-$\varphi$, with the global scope---that is, the built-in scope in which
-program evaluation begins---denoted by $\Phi$. A store is then a map
-from these pointers to objects, and this indirection allows us to
-mutate objects by modifying the store. We denote a store by the
-variable $\sigma$, and the global store, analogous to the global
-scope, is denoted by $\Sigma$. An extension to a scope or a store is
-denoted by the expression
-$[\sigma|\text{key}\rightarrow\text{val}]$. We will frequently refer to
-the pointers to certain built-in objects using capitalized names like
-\textsf{ROOT}, the primary object at the top of the inheritance
-hierarchy, or \textsf{INT}, the object from which all integers
-inherit. The objects to which these pointers refer are then written
-$\Sigma(\mathsf{ROOT})$ and $\Sigma(\mathsf{INT})$. The actual values
-of these pointers are arbitrary, so long as they are constant and
-unique. The only other way we will refer to pointer values is the
+a map from names to positive integer values, which we call
+``pointers.'' We denote scopes by the variable $\varphi$, with the
+global scope---that is, the built-in scope in which program evaluation
+begins---denoted by $\Phi$. A store is then a map from these pointers
+to objects, and this indirection allows us to mutate objects by
+modifying the store. We denote a store by the variable $\sigma$, and
+the global store, analogous to the global scope, is denoted by
+$\Sigma$. An extension to a scope or a store is denoted by the
+expression $[\sigma|\text{key}\rightarrow\text{val}]$. We will
+frequently refer to the pointers to certain built-in objects using
+capitalized names like \textsf{ROOT}, the primary object at the top of
+the inheritance hierarchy, or \textsf{INT}, the object from which all
+integers inherit. The objects to which these pointers refer are then
+written $\Sigma(\mathsf{ROOT})$ and $\Sigma(\mathsf{INT})$. The actual
+values of these pointers are arbitrary, so long as they are constant
+and unique. The only other way we will refer to pointer values is the
 $\next(\sigma)$ function, whose value is the smallest pointer not
 currently in the domain of $\sigma$. We will generally use the
 variable $\omega$ to denote pointers, though we will also use the
@@ -200,11 +199,11 @@ pointer and underlying data element of $\sigma(\omega)$. Note that the
 the root object does not have a parent, i.e.
 $p_{\Sigma(\mathsf{ROOT})} = \varnothing$.
 
-We have already mentioned the function $\next(\sigma)$, but we should
-like to introduce two more semantic function here that we will use
-later. The first is our function for looking up methods, using the
+We have already mentioned the function $\next(\sigma)$, and we will
+introduce two more semantic functions here that we will need
+below. The first is our function for looking up methods, using the
 ``message-passing'' terminology of Simula and Smalltalk. When a method
-cannot be found in the method table of a given object, it's parent is
+cannot be found in the method table of a given object, its parent is
 queried recursively. Character strings representing method names are
 denoted by the variable $m$.
 \begin{multline*} \lookup(m, \sigma, \omega) = \\
@@ -221,14 +220,14 @@ explicitly by a built-in method definition or extracted from the data
 field of a symbol object.
 
 The second function we need to define at the moment is the semantic
-function for invoking methods. We mentioned the \msg\ function in
-the preceding section, and this semantic function will eventually form
-the core of that object's \call\ method, in addition to being used
+function for invoking methods. We mentioned the \msg\ function in the
+preceding section, and this semantic function will eventually form the
+core of that object's \call\ method, in addition to being used
 explicitly by many other methods. The invocation of a method requires
-the current store and scope as well as pointers to invoking object and
-all the arguments of the method, the latter expressed as an ordered
-tuple. Method functions will be defined so that the value of an
-invocation is a 3-tuple containing the new store and scope and a
+the current store and scope as well as a pointer to the invoking
+object and all the arguments of the method, the latter expressed as an
+ordered tuple. Method functions will be defined so that the value of
+an invocation is a 3-tuple containing the new store and scope and a
 pointer to the object returned by the method.
 \begin{multline*}
   \invoke( m, \sigma, \varphi, \lb a_1,\ldots a_n\rb) = \\
@@ -251,12 +250,12 @@ operations with $\Sigma$ and $\Phi$.
 Yalie contains only three literal objects: integers, symbols, and
 lists. Integers are written as strings of decimal digits. Symbols are
 written as any string of characters (other than those defined as
-punctuation in this section) that is not an integer. Lists are written
-as a sequence of whitespace-separated literals enclosed by matching
-parentheses. We define a parsing function that takes as arguments an
+punctuation in this section) that does not denote an integer. Lists
+are written as sequences of whitespace-separated literals enclosed by
+matching parentheses. We define a parsing function that takes an
 abstract syntax expression and an initial store, and returns a tuple
-containing a pointer to the new object and the updated store.
-An integer $n$ is thus parsed as
+containing a pointer to the new object and the updated store.  An
+integer $n$ is thus parsed as
 \begin{multline*}
 \parse(n,\sigma) =
 \lb\next(\sigma),[\sigma|\operatorname{next}(\sigma) \rightarrow\right. \\
@@ -337,22 +336,23 @@ translates as
 \[ \texttt{(a.b.c d e)} \rightarrow \texttt{(msg (msg a b) c d e)}.\]
 
 Another global special form that we define is the \texttt{quote}
-operator, which protects objects from evaluation. We define the
-accompanying grave quote as a prefix operator that takes precedence
-over the dot, and we translate \texttt{`a} as
+operator, which protects objects from evaluation. We use the grave
+quote as a prefix operator that takes precedence over the dot, and we
+translate \texttt{`a} as
 \[ \texttt{`a} \rightarrow \texttt{(quote a)}.\]
 Accompanying the quote syntax we provide unquote and splice syntax, in
-the manner of Common Lisp and Scheme. These translate as
+the style of Common Lisp and Scheme. These translate as
 \begin{align*}
   \texttt{,a} & \rightarrow \texttt{(unquote a)}\\
   \texttt{;a} & \rightarrow \texttt{(unquote-splice a)}.
 \end{align*}
 Note that \texttt{unquote} and \texttt{unquote-splice} are not defined
 as separate operators but are rather ordinary symbols that the
-\texttt{quote} operator looks for and handles itself. Note also that
-the semicolon is used for splicing in Yalie, instead of the comma-at
-operator used in other Lisps. Comments in Yalie are denoted by a hash
-mark, as is common in scripting languages.
+\texttt{quote} operator itself parses. Note also that the semicolon is
+used for splicing in Yalie, rather than for commenting, and it
+replaces the comma-at operator used for splicing in other
+Lisps. Comments in Yalie are denoted by a hash mark, as is common in
+scripting languages.
 
 \section*{Built-in Objects and Methods}
 
@@ -395,8 +395,8 @@ The next two methods we define are \texttt{copy} and
 \texttt{child}. These methods are fundamental to an object-based
 language. Apart from literal objects, copying is the simplest way to
 produce a new object. A copied object shares the same parent as its
-source, and it replicates its source's the method table, member scope,
-and underlying data. After copying the two objects are independent;
+source, and it replicates its source's method table, member scope, and
+underlying data. After copying the two objects are independent;
 changing one does not affect the other. The copy method is defined as
 \begin{multline*}
   \mu_{\Sigma(\mathsf{ROOT})}(\text{``copy''})(\sigma,\varphi,\omega,
@@ -551,7 +551,7 @@ omitted. Thus, the following is valid:
 As implemented in Yalie, \texttt{let} can create a new binding in this
 way but cannot modify an existing one. (The \texttt{set} function
 exists for that.) The purpose of the distinction is to separate
-variable declaration for variable modification, so that typographical
+variable declaration from variable modification, so that typographical
 errors in variable assignments will raise an exception instead of
 silently creating a new variable. Yalie also follows the convention
 that any non-functional operations be marked with ``set'' or ``!''.
@@ -602,8 +602,8 @@ the parent of all forms and binds it to the name ``lambda''. We could
 have used any object as the parent, but this way the new operator will
 inherit whatever methods other forms inherit. The second expression
 defines a \call\ method for the newly created object. Recall that
-\call\ methods are invoked when S-expression are evaluated, and so
-this method will define the functionality of \texttt{lambda}. The
+\call\ methods are invoked when S-expressions are evaluated, and so
+this method will contain the functionality of \texttt{lambda}. The
 method is a form, so its value is Yalie code to be executed at the end
 of the call. This code can be confusing, because it is creating a
 second child object---from the parent of all functions, this
@@ -635,22 +635,26 @@ in reduced debugging time. These semantics are also far easier to
 modify than any previous.
 
 The language is still very small, so some of the benefits of the
-object-based approach are not yet apparent. One tangible benefit is
+object-based approach are not yet apparent. One visible benefit is
 that, despite having gutted the entire language to allow the
-ubiquitous use of objects, the only difference visible in the global
-namespace is the existence of the \msg\ function. All other object
-facilities are confined within the method spaces. If we were to
-further extend the language---with strings and file handles for
-example---we would see the same benefits repeated, with new
-functionality mostly confined to method spaces. Not only does this
-approach keep the global namespace free of clutter, it also provides
-helpful documentation in the form of method lists.
+ubiquitous use of objects, the only change the global namespace is the
+addition of the \msg\ function. All other object facilities are
+confined within the method spaces. If we were to further extend the
+language---with strings and file handles for example---we would see
+the same benefits repeated, with new functionality mostly confined to
+method spaces. Not only does this approach keep the global namespace
+free of clutter, it also provides helpful documentation in the form of
+method lists.
 
-We have demonstrated the flexibility of the object-based approach, the
-simplicity of the semantics has already made itself felt during the
-implementation process. We look forward to finding new ways of
+We have demonstrated the flexibility of the object-based approach, and
+the simplicity of the semantics has already made itself felt during
+the implementation process. We look forward to finding new ways of
 leveraging the object abstraction, both by itself and in conjunction
 with Lisp's macro system.
+
+\section*{Acknowledgements}
+Thanks to Paul Hudak for advising this project and to Tristyn Bloom
+for helping to proofread it.
 
 \begin{thebibliography}{9}
 \bibitem{Abadi} M. Abadi and L. Cardelli. \textit{A Theory of Objects.} New
