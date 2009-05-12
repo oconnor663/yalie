@@ -1,7 +1,8 @@
 #! /usr/bin/python
 
 import sys,os,string,readline,copy
-from StringIO import *
+# for run_string()
+import StringIO
 
 ### Make this false to see Python error traces
 ### Will, however, kill the REPL on an error
@@ -990,6 +991,7 @@ def make_global_scope():
     return S
 
 def run_string( scope, string ):
+    # Useful for testing. Not currently in use.
     buf = Buffer( StringIO(string) )
     obj = buf.read_obj()
     return obj.call('eval',scope)
