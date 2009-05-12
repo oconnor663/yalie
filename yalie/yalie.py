@@ -127,14 +127,17 @@ class Object:
             raise TypeError, "Call returning a non-object!!!"
         return ret
     ###
-    ### This is used for passing messages within Python and specifically
-    ### suppressing the evaluation of a macro form. Really only used by
-    ### "expand" method of forms.
+    ### This is used specifically doe suppressing the evaluation of a
+    ### macro form. Really only used by "expand" method. Raises an
+    ### exception if the given method can't be expanded (i.e. if it's
+    ### defined in Python)
     ###
     def macroexpand( self, message, scope, *args ):
         global CALLSTACK
         params = MethodParams( scope, self, False, True )
         CALLSTACK.append(self)
+        if not isinstance(self.methods.ref(message),LispMethodForm):
+            raise RuntimeError, "Cannot expand '%s'." % message
         ret = self.methods.ref(message).call(params,*args)
         tmp = CALLSTACK.pop(-1)
         # The following is necessary becase "break" and
@@ -174,7 +177,7 @@ class PyMethodForm( PyMethod ):
     def call( self, params, *args ):
         return self.fn( params, *args )
 
-class LispFnMethod:
+class LispMethod:
     def __init__( self, scope, args, rest_arg, body ):
         self.scope = scope
         self.args = args                 #list of strings
@@ -215,7 +218,7 @@ class LispFnMethod:
             ret = i.call( 'eval', new_scope )
         return ret
         
-class LispFormMethod( LispFnMethod ):
+class LispMethodForm( LispMethod ):
    def call( self, params, *call_args ):
         ### binds args and self
         ## first check number of args
@@ -296,17 +299,17 @@ def def_method_or_form( is_function, bang, params, shape, *body ):
     if is_function:
         if bang:
             params.obj.methods[name.data] = \
-                LispFnMethod( params.scope, arg_names, rest_arg, body )
+                LispMethod( params.scope, arg_names, rest_arg, body )
         else:
             params.obj.methods.let( name.data,
-                             LispFnMethod(params.scope,arg_names,rest_arg,body))
+                             LispMethod(params.scope,arg_names,rest_arg,body))
     else:
         if bang:
             params.obj.methods[name.data] = \
-                LispFormMethod( params.scope, arg_names, rest_arg, body )
+                LispMethodForm( params.scope, arg_names, rest_arg, body )
         else:
             params.obj.methods.let(name.data,
-                       LispFormMethod(params.scope,arg_names,rest_arg,body))
+                       LispMethodForm(params.scope,arg_names,rest_arg,body))
     return params.obj
 def object_def( params, shape, *body ):
     return def_method_or_form( True, False, params, shape, *body )
@@ -355,6 +358,10 @@ def object_parent( params ):
         return params.obj.parent
     else:
         raise RuntimeError, "Root object has no parent to return."
+def object_expand( params, message, *args ):
+    if not message.inherits(SymbolObject):
+        raise RuntimeError, "First argument to 'expand' method must be a symbol"
+    return params.obj.macroexpand( message.data, params.scope, *args )
 
 RootObject.methods['eval'] = PyMethod( lambda params : params.obj )
 RootObject.methods['eq'] = PyMethod( object_eq )
@@ -383,6 +390,7 @@ RootObject.methods['methods*'] = PyMethod( lambda params:
 RootObject.methods['members'] = PyMethod( lambda params:
                                             make_list( [make_symbol(i) for i in
                                               params.obj.members.all_keys()]))
+RootObject.methods['expand'] = PyMethodForm( object_expand )
 Builtins['Root'] = RootObject
 
 NilObject = Object(RootObject, "Nil")
@@ -552,7 +560,7 @@ Builtins['Function'] = FunctionObject
 
 SpecialFormObject = Object(OperatorObject, "Form")
 SpecialFormObject.repr = lambda self: "<Form%s>" % (': '+self.name if 
-                                                    self.name else '')
+                                                    self.name else '')    
 SpecialFormObject.methods['call'] = PyMethodForm( operator_call )
 Builtins['Form'] = SpecialFormObject
 
@@ -579,20 +587,6 @@ def msg_call( params, recipient, message, *args ):
     return _recipient.message( message.data, params.scope, *args )    
 MsgObject.methods['call'] = PyMethodForm( msg_call )
 Builtins['msg'] = MsgObject
-
-ExpandObject = Object(SpecialFormObject, "msg")
-def expand_call( params, recipient, message, *args ):
-    if not message.inherits( SymbolObject ):
-        raise RuntimeError, "'expand' requires a symbol as a message"
-    #evaluate the recipient
-    _recipient = recipient.call('eval',params.scope) if not params.noeval_args\
-        else recipient
-    if not isinstance(_recipient.methods['call'], LispFormMethod):
-        raise RuntimeError, "Only forms defined in Yalie can be expanded"
-    #pass the message
-    return _recipient.macroexpand( message.data, params.scope, *args )    
-ExpandObject.methods['call'] = PyMethodForm( expand_call )
-Builtins['expand'] = ExpandObject
 
 LetObject = Object(SpecialFormObject, "let")
 def let_call( params, *body ):
@@ -972,7 +966,7 @@ class Buffer:
 def error_report( exception_args ):
     # clears the call stack
     global CALLSTACK
-    print "ERROR CONTEXT (most recent call last)"
+    print "---Traceback--- (most recent call last)"
     count = 0
     for i in CALLSTACK:
         if not i.inherits(ConsObject):

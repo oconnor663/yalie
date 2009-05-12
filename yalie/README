@@ -239,11 +239,10 @@ evaluated arguments are all of the "let" and
 "set" forms and method forms (though not the
 body of a "let" form, if it has one), "if",
 "and", "or", "not" (in the single argument case
-only), "msg" (the recipient object), and
-"expand" (same as "msg"). Note in particular
-that evaluation done by "quote" and "while"
-forms is always considered explicit and never
-suppressed.
+only), and "msg" (the recipient object). Note in
+particular that evaluation done by "quote" and
+"while" forms is always considered explicit and
+never suppressed.
 
   (call + 1 2 3)      -->   6
   (call + (ls 1 2 3))   -->   6
@@ -294,25 +293,11 @@ This function is how the user sends messages to
 objects. It is usually invoked using the period
 syntax.
 
-(expand obj message arg1 arg2...)
+(expand form args...)
 
-"expand" is very similar to "msg", but it only
-works when the method specified by "obj" and
-"message" is a method form defined in
-Yalie. (Anything else raises an exception.) In
-that case, rather than evaluating the result of
-the method call, "expand" returns the code that
-would have been evaluated when the method
-returned, that is, the unevaluated return value
-of a method form. To see the expansion of a form
-defined with "deform", one would use something
-like (expand my-form call arg1 arg2...). For
-a simple example:
-  (deform (let-x val) `(let x ,val))
-  (let-x 5)
-     --> 5 (and 5 is now bound to x)
-  (expand let-x call 5)
-     --> '(let x 5)
+A wrapper around the "expand" method. Equivalent
+to (form.expand call args...). Useful for seeing
+the macroexpansion of forms created by "deform".
 
 (error args...)
 
@@ -452,13 +437,25 @@ result, though the second takes an extra step.
                       # (by invoking msg.call
                       # implicitly)
 
-(x.call a b c...)
+(x.call args...)
 
 Defined for things that can be called with
 function syntax. Redefining this method changes
 the behavior of the function. Evaluating a list
 implicitly calls this method from the first
 element of that list.
+
+(x.expand message args...)
+
+When the method of x named by the symbol
+"message" is a method form defined in Yalie,
+"expand" invokes that method but suppresses the
+implicit evaluation of the return, instead
+returning the expression that would have been
+evaluated. This can be useful for debugging. If
+"message" does not indicate an expandable method
+in x, an exception is raised.
+
 
 Other objects have specialized methods, and many
 global functions are just wrappers around these

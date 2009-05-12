@@ -21,6 +21,9 @@
 	 (car (while (not (rest.cdr.isa Nil))
 		     (set rest (rest.cdr))))))
 
+(deform (expand form (rest args))
+  `(,form.expand call ;args))
+
 ### List operators ###
 (def (ls (rest rest)) rest)
 (def (car x) x.car)
