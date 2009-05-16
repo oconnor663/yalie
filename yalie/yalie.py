@@ -414,26 +414,43 @@ def make_int( i ):
     return ret
 def make_bool( val ):
     return make_int(1 if val else 0)
-def int_add( params, arg ):
-    if not arg.inherits( IntObject ):
-        raise RuntimeError, "Cannot add int to non-int."
-    return make_int( params.obj.data + arg.data )
-def int_sub( params, arg ):
-    if not arg.inherits( IntObject ):
-        raise RuntimeError, "Cannot subtract int from non-int."
-    return make_int( params.obj.data - arg.data )
-def int_mul( params, arg ):
-    if not arg.inherits( IntObject ):
-        raise RuntimeError, "Cannot subtract int from non-int."
-    return make_int( params.obj.data * arg.data )
-def int_div( params, arg ):
-    if not arg.inherits( IntObject ):
-        raise RuntimeError, "Cannot subtract int from non-int."
-    return make_int( params.obj.data // arg.data )
-def int_mod( params, arg ):
-    if not arg.inherits( IntObject ):
-        raise RuntimeError, "Cannot subtract int from non-int."
-    return make_int( params.obj.data % arg.data )
+def int_add( params, *args ):
+    sum = params.obj.data
+    for i in args:
+        if not i.inherits( IntObject ):
+            raise RuntimeError, "Cannot add int to non-int."
+        sum += i.data
+    return make_int( sum )
+def int_sub( params, *args ):
+    if len(args)==0:
+        return make_int( -params.obj.data )
+    difference = params.obj.data
+    for i in args:
+        if not i.inherits( IntObject ):
+            raise RuntimeError, "Cannot subtract int from non-int."
+        difference -= i.data
+    return make_int( difference )
+def int_mul( params, *args ):
+    product = params.obj.data
+    for i in args:
+        if not i.inherits( IntObject ):
+            raise RuntimeError, "Cannot multiply int with non-int."
+        product *= i.data
+    return make_int( product )
+def int_div( params, *args ):
+    quotient = params.obj.data
+    for i in args:
+        if not i.inherits( IntObject ):
+            raise RuntimeError, "Cannot divide int by non-int."
+        quotient //= i.data
+    return make_int( quotient )
+def int_mod( params, *args ):
+    remainder = params.obj.data
+    for i in args:
+        if not i.inherits( IntObject ):
+            raise RuntimeError, "Cannot take remainder with int and non-int."
+        remainder %= i.data
+    return make_int( remainder )
 def int_eq( params, arg ):
     if not arg.inherits( IntObject ):
         raise RuntimeError, "Cannot compare int to non-int."
@@ -455,6 +472,73 @@ IntObject.methods['eq'] = PyMethod( lambda params, arg:
                                           make_bool( arg.inherits(IntObject)
                                                and params.obj.data==arg.data ))
 Builtins['Int'] = IntObject
+
+StringObject = Object(RootObject, "String" )
+StringObject.data = "<String object>"
+def string_repr( obj ):
+    ret = '"'
+    for i in obj.data:
+        if i=='\n':
+            ret += '\\n'
+        elif i=='\t':
+            ret += '\\t'
+        elif i=='\\':
+            ret += '\\\\'
+        elif i=='"':
+            ret += '\\"'
+        else:
+            ret += i
+    ret += '"'
+    return ret
+StringObject.repr = string_repr
+def make_string( str ):
+    if type(str)!=type(''):
+        raise RuntimeError, "Python Error: Cannot create string from nonstring."
+    ret = Object(StringObject)
+    ret.data = str
+    return ret
+def string_ref( params, start, end=None ):
+    if not start.inherits(IntObject):
+        raise RuntimeError, "String ref requires an integer"
+    _start = start.data
+    if end==None:
+        return make_string( params.obj.data[start] )
+    else:
+        if not end.inherits(IntObject):
+            raise RuntimeError, "String ref requires integer for second arg"
+        _end = end.data
+        return make_string( parame.obj.data[_start:_end] )
+def string_print( params ):
+    print params.obj.data
+    return params.obj
+def string_add( params, *args ): 
+    sum = params.obj.data
+    for i in args:
+        if not i.inherits( StringObject ):
+            raise RuntimeError, "Cannot compare string to nonstring"
+        sum += i.data
+    return make_string( sum )
+def string_mod( params, *args ):
+    # takes advantage of Python string substitutions
+    # "%s" is generally the way to go
+    if "%i" in params.obj.data or "%f" in params.obj.data:
+        raise RuntimeError, "Use '%s' only!"
+    return make_string( params.obj.data % tuple(args) )
+def string_eq( params, arg ):
+    if not arg.inherits( StringObject ):
+        raise RuntimeError, "Cannot compare string to nonstring"
+    return make_bool(params.obj.data == arg.data)
+def string_lt( params, arg ):
+    if not arg.inherits( StringObject ):
+        raise RuntimeError, "Cannot compare string to nonstring"
+    return make_bool(params.obj.data < arg.data)
+StringObject.methods['ref'] = PyMethod( string_ref )
+StringObject.methods['print'] = PyMethod( string_print )
+StringObject.methods['+'] = PyMethod( string_add )
+StringObject.methods['%'] = PyMethod( string_mod )
+StringObject.methods['='] = PyMethod( string_eq )
+StringObject.methods['<'] = PyMethod( string_lt )
+Builtins['String'] = StringObject
 
 SymbolObject = Object(RootObject, "Symbol")
 SymbolObject.data = "<Symbol object>"
@@ -566,7 +650,7 @@ Builtins['Form'] = SpecialFormObject
 
 CallObject = Object(FunctionObject,"call")
 def call_call( params, fn, *args ):
-    if args[-1].inherits(ConsObject) or args[-1].inherits(NilObject):
+    if args and (args[-1].inherits(ConsObject) or args[-1].inherits(NilObject)):
         args = list(args[:-1]) + unmake_list(args[-1])
     if not fn.inherits(OperatorObject):
         raise RuntimeError, "'call' expects to receive an operator"
@@ -841,10 +925,10 @@ Builtins['error'] = ErrorObject
 ###
 
 class Buffer:
-    delimiters = "()"
-    prefixes = "`',;"
+    delimiters = '()'
+    prefixes = "`,;"
     infixes = ".:"
-    punctuation = delimiters+prefixes+infixes
+    punctuation = delimiters + prefixes + infixes
     def __init__( self, file ):
         self.file = file
         self.buf = []
@@ -873,6 +957,35 @@ class Buffer:
         if len(c)>1:
             raise RuntimeError, "OMG!!!!"
         self.buf = [c] + self.buf if c else self.buf
+    def getstring( self, delim, raw ):
+        c =  self.getc( False, True )
+        ret_data = []
+        while c!=delim:
+            if c==None:
+                raise RuntimeError, "EOF encountered inside string"
+            elif c=='\n':
+                raise RuntimeError, "newline encountered inside string"
+            elif c=='\\':
+                c = self.getc(False,True)
+                if c==None:
+                    raise RuntimeError, "EOF encountered inside string"
+                elif c=='\n':
+                    raise RuntimeError, "newline encountered inside string"
+                elif c==delim:
+                    ret_data.append(c)
+                elif raw:
+                    ret_data.append('\\'+c)
+                elif c=='n':
+                    ret_data.append('\n')
+                elif c=='t':
+                    ret_data.append('\t')
+                else:
+                    ret_data.append('\\'+c)
+            else:
+                ret_data.append(c)
+            c = self.getc( False, True )
+        return make_string(string.join(ret_data,''))
+        
     def gettok( self, start=False, gentle=False ):
         if self.tokbuf:
             tmp = self.tokbuf[0]
@@ -883,10 +996,14 @@ class Buffer:
             c = self.getc(start,gentle)
         if c=='':
             return None
-        if c=='#':
+        elif c=='#':
             while c not in '\n': # includes empty
                 c = self.getc()
             return self.gettok()
+        elif c=="'":
+            return self.getstring("'",True)
+        elif c=='"':
+            return self.getstring('"',False)
         elif c in self.punctuation:
             return c
         elif c not in self.punctuation+string.whitespace:
@@ -900,10 +1017,12 @@ class Buffer:
                 return make_int(int(string.join(chars,'')))
             except ValueError:
                 return make_symbol( string.join(chars,'') )
+        else:
+            raise RuntimeError, "We have a problem"
     def ungettok( self, tok ):
         self.tokbuf = [tok] + self.tokbuf
     def read_prefixed(self, start=False):
-        dict = {'`':'quote','\'':'quote',';':'unquote-splice',',':'unquote'}
+        dict = {'`':'quote',';':'unquote-splice',',':'unquote'}
         tok = self.gettok(start)
         if tok==None:
             return None
@@ -936,7 +1055,6 @@ class Buffer:
             return self.read_infixed(list)
 
     def read_sexpr( self, capture_infix=True ):
-        dict = { '.':'msg', ':':'ref' } ##TWO COPIES
         tok = self.gettok()
         if tok==None:
             raise RuntimeError, "Ended in sexpr.0"
@@ -1041,7 +1159,8 @@ def main():
             try:
                 ret = obj.call('eval',scope)
                 if sys.stdin.isatty():
-                    ret.call('print',scope)
+                    #ret.call('print',scope)
+                    print ret
             except Exception, e:
                 error_report(e.args)
             except KeyboardInterrupt, e:
@@ -1050,25 +1169,15 @@ def main():
                 continue
         else:
             ### Unprotected loop for debugging
-            try:
-                obj = buf.read_obj()
-                if obj==None:
-                    if sys.stdin.isatty():
-                        print
-                    break
-                ret = obj.call('eval',scope)
+            obj = buf.read_obj()
+            if obj==None:
                 if sys.stdin.isatty():
-                    ret.call('print',scope)
-            except Exception, e:
-                error_report(e.args)
-                raise e
-            except Exception, e:
-                error_report(e.args)
-                raise e
-            except KeyboardInterrupt, e:
-                print "INTERRUPT"
-                error_report(e.args)
-                raise e
+                    print
+                break
+            ret = obj.call('eval',scope)
+            if sys.stdin.isatty():
+                #ret.call('print',scope)
+                print ret
 
 if __name__=='__main__':
     main()

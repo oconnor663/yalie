@@ -14,6 +14,7 @@
 (def (print x) x.print)
 (def (eq a b) (a.eq b))
 (def (is a b) (a.is b))
+(def (ref obj (rest args)) (call msg obj `ref args))
 
 (def (do (rest rest))
      (if (rest.isa Nil) ()
@@ -88,20 +89,8 @@
 (def (> a b) (and (not < a b) (not = a b)))
 (def (>= a b) (or (> a b) (= a b)))
 
-(def (+ (rest rest))
-     (if rest
-	 ((car rest).+ (call + (cdr rest)))
-	 0))
-
-(def (* (rest rest))
-     (if rest
-	 ((car rest).* (call * (cdr rest)))
-	 1))
-
-(def (- x (rest rest))
-     (if (not rest)
-     	 (* -1 x)
-	 (x.- (call + rest))))
-
-(def (/ a b) (a./ b))
-(def (% a b) (a.% b))
+(def (+ x (rest rest)) (call msg x `+ rest))
+(def (- x (rest rest)) (call msg x `- rest))
+(def (* x (rest rest)) (call msg x `* rest))
+(def (/ x (rest rest)) (call msg x `/ rest))
+(def (% x (rest rest)) (call msg x `% rest))
